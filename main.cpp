@@ -103,8 +103,13 @@ void updateGame(GameState *gameState) {
             }
         }
 
+        if(gameState->mouseLeftBtn == MOUSE_BUTTON_NONE || gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED) {
+            gameState->paintActive = false;
+        }
+
         if(gameState->interactionMode == CANVAS_DRAW_MODE) {
-            if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN) {
+            if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+                
                 //NOTE: Try draw on the canvas
                 const float2 plane = scale_float2(0.5f, make_float2(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x));
                 
@@ -114,15 +119,40 @@ void updateGame(GameState *gameState) {
                 float2 worldP = plus_float2(gameState->camera.T.pos.xy, make_float2(x, y));
                 const int coordX = round(((worldP.x * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*gameState->canvasW) - 0.5f);
                 const int coordY = round(((worldP.y * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*gameState->canvasH) - 0.5f);
-                
+              
+                //NOTE: So there is always a continous line, even when the user is painting fast
+                if(gameState->paintActive) {
+                    //NOTE: Fill in from the last one
+                    float2 endP = make_float2(coordX, coordY);
+                    float2 distance = minus_float2(endP, gameState->lastPaintP);
+                    float2 addend = scale_float2(VOXEL_SIZE_IN_METERS, normalize_float2(distance));
+
+                    float2 startP = plus_float2(gameState->lastPaintP, addend);//NOTE: Move past the one we just did last turn
+                    
+                    u32 color = float4_to_u32_color(gameState->colorPicked);
+                    while(float2_dot(minus_float2(startP, endP), minus_float2(gameState->lastPaintP, endP)) >= 0 && (float2_magnitude(addend) > 0)) {
+                        int x1 = startP.x;
+                        int y1 = startP.y;
+                        if(y1 >= 0 && x1 >= 0 && y1 < gameState->canvasH && x1 < gameState->canvasW) {
+                            if(!(x1 == coordX && y1 == coordY)) 
+                            { //NOTE: Don't color the one were about to do after this loop
+                                addUndoRedoBlock(gameState, gameState->canvas[y1*gameState->canvasW + x1], color, x1, y1);
+                                gameState->canvas[y1*gameState->canvasW + x1] = color;    
+                            }
+                        }
+
+                        startP = plus_float2(startP, addend);
+                    }
+                }
+                  
                 if(coordY >= 0 && coordX >= 0 && coordY < gameState->canvasH && coordX < gameState->canvasW) {
                     u32 color = float4_to_u32_color(gameState->colorPicked);
                     addUndoRedoBlock(gameState, gameState->canvas[coordY*gameState->canvasW + coordX], color, coordX, coordY);
                     gameState->canvas[coordY*gameState->canvasW + coordX] = color;
-
-                    
                 }
-                
+
+                gameState->paintActive = true;
+                gameState->lastPaintP = make_float2(coordX, coordY);
             }
         } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
              if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
@@ -146,7 +176,7 @@ void updateGame(GameState *gameState) {
         gameState->interactionMode = CANVAS_MOVE_MODE;
     }
 
-    if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_SHIFT]) {
+    if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND]) {
         gameState->showNewCanvasWindow = true;
     }
 
@@ -163,7 +193,7 @@ void updateGame(GameState *gameState) {
 
             clearUndoRedoList(gameState);
             //NOTE: The sentinel block
-            addUndoRedoBlock(gameState, 0, 0, -1, -1);
+            addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
 
             for(int i = 0; i < gameState->canvasW*gameState->canvasH; ++i) {
                 gameState->canvas[i] = 0;

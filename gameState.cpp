@@ -31,6 +31,8 @@ struct UndoRedoBlock {
     u32 lastColor;
     u32 thisColor;
 
+    bool isSentintel;
+
     UndoRedoBlock *next;
     UndoRedoBlock *prev;
 };
@@ -189,6 +191,8 @@ struct GameState {
     float scrollSpeed;
     bool draggingCanvas;
     float2 startDragP;
+    bool paintActive;
+    float2 lastPaintP;
 
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;

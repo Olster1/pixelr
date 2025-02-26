@@ -1,5 +1,5 @@
 
-void addUndoRedoBlock(GameState *gameState, u32 lastColor, u32 thisColor, int x, int y) {
+void addUndoRedoBlock(GameState *gameState, u32 lastColor, u32 thisColor, int x, int y, bool isSentintel = false) {
     UndoRedoBlock *block = 0;
     bool repeat = false;
     
@@ -37,6 +37,7 @@ void addUndoRedoBlock(GameState *gameState, u32 lastColor, u32 thisColor, int x,
         block->thisColor = thisColor;
         block->x = x;
         block->y = y;
+        block->isSentintel = isSentintel;
 
         if(gameState->undoList) {
             gameState->undoList->prev = block;
@@ -51,7 +52,7 @@ void addUndoRedoBlock(GameState *gameState, u32 lastColor, u32 thisColor, int x,
 }
 
 bool isUndoBlockSentinel(UndoRedoBlock *block) {
-    return (block->x < 0 || block->y < 0);
+    return (block->isSentintel);
 }
 
 void clearUndoRedoList(GameState *gameState) {

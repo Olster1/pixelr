@@ -23,7 +23,7 @@ void initGameState(GameState *gameState) {
     gameState->bgColor = make_float4(0.3f,0, 0.3f, 1);
 
     //NOTE: The sentinel block
-    addUndoRedoBlock(gameState, 0, 0, -1, -1);
+    addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
 
     // for(int y = 0; y < gameState->canvasH; ++y) {
     //     for(int x = 0; x < gameState->canvasW; ++x) {
