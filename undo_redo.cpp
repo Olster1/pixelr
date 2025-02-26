@@ -53,3 +53,17 @@ void addUndoRedoBlock(GameState *gameState, u32 lastColor, u32 thisColor, int x,
 bool isUndoBlockSentinel(UndoRedoBlock *block) {
     return (block->x < 0 || block->y < 0);
 }
+
+void clearUndoRedoList(GameState *gameState) {
+    //NOTE: Clear the undo buffer
+    UndoRedoBlock *b = gameState->undoList;
+    while(b) {
+        UndoRedoBlock *b1 = b->next;
+        b->next = gameState->undoBlockFreeList;
+        gameState->undoBlockFreeList = b; 
+
+        b = b1;
+    }
+    gameState->undoList = 0;
+    assert(!gameState->undoList);
+}

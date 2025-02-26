@@ -161,6 +161,10 @@ void updateGame(GameState *gameState) {
             gameState->canvasW = atoi(gameState->dimStr0);
             gameState->canvasH = atoi(gameState->dimStr1);
 
+            clearUndoRedoList(gameState);
+            //NOTE: The sentinel block
+            addUndoRedoBlock(gameState, 0, 0, -1, -1);
+
             for(int i = 0; i < gameState->canvasW*gameState->canvasH; ++i) {
                 gameState->canvas[i] = 0;
             }

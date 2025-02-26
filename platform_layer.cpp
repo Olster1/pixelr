@@ -143,7 +143,7 @@ int main(int argc, char **argv) {
   initAudioSpec(&gameState->audioSpec, 44100);
   initAudio(&gameState->audioSpec);
 
-  SDL_Window *window = SDL_CreateWindow("Minecraft",  SDL_WINDOWPOS_CENTERED,  SDL_WINDOWPOS_CENTERED, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x, flags);
+  SDL_Window *window = SDL_CreateWindow("Pixelr",  SDL_WINDOWPOS_CENTERED,  SDL_WINDOWPOS_CENTERED, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x, flags);
 
   SDL_GLContext renderContext = SDL_GL_CreateContext(window);
 
