@@ -4,9 +4,9 @@ A Pixel art drawing program
 
 Uses OpenGL 3.3 and SDL for platform layer.
 
+![](image1.png) 
+
 ## Goals
-
-
 
 ## WHY's
 - [x] Fun & Challenging to program
