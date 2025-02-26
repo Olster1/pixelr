@@ -23,6 +23,8 @@
 #include "./interaction.cpp"
 #include "./texture_atlas.cpp"
 #include "./gameState.cpp"
+#include "./undo_redo.cpp"
+#include "./gameState_init.cpp"
 #include "./chunk.cpp"
 #include "./player.cpp"
 #include "./camera.cpp"

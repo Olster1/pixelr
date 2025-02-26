@@ -28,7 +28,7 @@ void updateGame(GameState *gameState) {
     float3 lookingAxis = make_float3(rot.E_[2][0], rot.E_[2][1], rot.E_[2][2]);
 
         
-    for(int x = 0; x < gameState->canvasW; ++x) {
+    for(int x = 0; x < gameState->canvasW + 1; ++x) {
         TransformX T = {};
         T.pos = make_float3(0, x*VOXEL_SIZE_IN_METERS - 0.5f*gameState->canvasW*VOXEL_SIZE_IN_METERS, 0);
         T.scale.xy = make_float2(gameState->canvasH*VOXEL_SIZE_IN_METERS, 0);
@@ -36,7 +36,7 @@ void updateGame(GameState *gameState) {
         pushLine(gameState->renderer, A, make_float4(1, 0, 0, 1));
     }
 
-    for(int y = 0; y < gameState->canvasH; ++y) {
+    for(int y = 0; y < gameState->canvasH + 1; ++y) {
         TransformX T = {};
         T.pos = make_float3(y*VOXEL_SIZE_IN_METERS - 0.5f*gameState->canvasH*VOXEL_SIZE_IN_METERS, 0, 0);
         T.rotation.z = 90;
@@ -53,7 +53,19 @@ void updateGame(GameState *gameState) {
             float4 color = u32_to_float4_color(c);
 
             float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*gameState->canvasW*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*gameState->canvasH*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
-            pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+
+            if(gameState->checkBackground) 
+            {
+                float4 c = make_float4(0.8f, 0.8f, 0.8f, 0.3);
+                if(((y % 2) == 0 && (x % 2) == 1) || ((y % 2) == 1 && (x % 2) == 0)) {
+                    c = make_float4(0.6f, 0.6f, 0.6f, 0.3);
+                }
+                pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), c);
+            }
+
+            if(color.w > 0) {
+                pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+            }
         }
     }
 
@@ -69,6 +81,27 @@ void updateGame(GameState *gameState) {
 
     //NOTE: Update interaction with the canvas
     if(!(ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered())) {
+            
+        
+        
+        if(gameState->undoList) {
+            if(gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] != MOUSE_BUTTON_DOWN) {
+                UndoRedoBlock *block = gameState->undoList;
+                if(block->next && !isUndoBlockSentinel(block)) {
+                    gameState->canvas[block->y*gameState->canvasW + block->x] = block->lastColor;
+                    gameState->undoList = block->next;
+                }
+            }
+
+            if(gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] == MOUSE_BUTTON_DOWN) {
+                UndoRedoBlock *block = gameState->undoList;
+                if(block->prev) {
+                    block = block->prev;
+                    gameState->canvas[block->y*gameState->canvasW + block->x] = block->thisColor;
+                    gameState->undoList = block;
+                }
+            }
+        }
 
         if(gameState->interactionMode == CANVAS_DRAW_MODE) {
             if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN) {
@@ -84,7 +117,10 @@ void updateGame(GameState *gameState) {
                 
                 if(coordY >= 0 && coordX >= 0 && coordY < gameState->canvasH && coordX < gameState->canvasW) {
                     u32 color = float4_to_u32_color(gameState->colorPicked);
+                    addUndoRedoBlock(gameState, gameState->canvas[coordY*gameState->canvasW + coordX], color, coordX, coordY);
                     gameState->canvas[coordY*gameState->canvasW + coordX] = color;
+
+                    
                 }
                 
             }

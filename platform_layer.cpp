@@ -45,6 +45,8 @@ enum KeyTypes {
   KEY_DOWN,
   KEY_E,
   KEY_Q,
+  KEY_X,
+  KEY_Z,
   KEY_N,
   KEY_S,
   KEY_LEFT,
@@ -59,6 +61,7 @@ enum KeyTypes {
   KEY_6,
   KEY_7,
   KEY_8,
+  KEY_COMMAND,
 
   ///////////
   KEY_COUNTS
@@ -182,6 +185,9 @@ int main(int argc, char **argv) {
         gameState->keys.keys[i] = MOUSE_BUTTON_NONE;
       }
     } 
+    gameState->keys.keys[KEY_X] = MOUSE_BUTTON_NONE;
+    gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_NONE;
+
     gameState->scrollSpeed = 0;
 
     while (SDL_PollEvent(&e)) {
@@ -189,7 +195,23 @@ int main(int argc, char **argv) {
           quit = true;
         } else if (e.type == SDL_MOUSEWHEEL) {
           gameState->scrollSpeed = e.wheel.y;
-      }
+        } else if(e.type == SDL_KEYDOWN) {
+          SDL_Scancode scancode = e.key.keysym.scancode; 
+          if(scancode == SDL_SCANCODE_X) {
+            
+            gameState->keys.keys[KEY_X] = MOUSE_BUTTON_DOWN;
+          } else if(scancode == SDL_SCANCODE_Z) {
+            
+            gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_DOWN;
+          }
+        } else if(e.type == SDL_KEYUP) {
+          SDL_Scancode scancode = e.key.keysym.scancode; 
+          if(scancode == SDL_SCANCODE_X) {
+            gameState->keys.keys[KEY_X] = MOUSE_BUTTON_RELEASED;
+          } else if(scancode == SDL_SCANCODE_Z) {
+            gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_RELEASED;
+          }
+        }
       ImGui_ImplSDL2_ProcessEvent(&e);
     }
 
@@ -202,6 +224,7 @@ int main(int argc, char **argv) {
     updateKeyState(gameState, KEY_N, currentKeyStates[SDL_SCANCODE_N] == 1);
     updateKeyState(gameState, KEY_S, currentKeyStates[SDL_SCANCODE_S] == 1);
     updateKeyState(gameState, KEY_Q, currentKeyStates[SDL_SCANCODE_Q] == 1);
+    updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_SCANCODE_LGUI] == 1);
     updateKeyState(gameState, KEY_DOWN, currentKeyStates[SDL_SCANCODE_DOWN] == 1 || currentKeyStates[SDL_SCANCODE_S] == 1);
     updateKeyState(gameState, KEY_LEFT, currentKeyStates[SDL_SCANCODE_LEFT] == 1 || currentKeyStates[SDL_SCANCODE_A] == 1);
     updateKeyState(gameState, KEY_RIGHT, currentKeyStates[SDL_SCANCODE_RIGHT] == 1 || currentKeyStates[SDL_SCANCODE_D] == 1);
@@ -248,7 +271,7 @@ int main(int argc, char **argv) {
 
     // Clear screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClearColor(0.3f, 0.3f, 0.3f, 1);
+    glClearColor(gameState->bgColor.x, gameState->bgColor.y, gameState->bgColor.z, gameState->bgColor.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
 
     updateGame(gameState);
