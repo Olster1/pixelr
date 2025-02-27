@@ -53,6 +53,7 @@ enum BlockFlags {
 enum CanvasInteractionMode {
     CANVAS_DRAW_MODE,
     CANVAS_MOVE_MODE,
+    CANVAS_FILL_MODE,
 
 };
 

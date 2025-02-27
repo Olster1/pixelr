@@ -1,14 +1,14 @@
 #include "includes.h"
 
 u32 float4_to_u32_color(float4 c) {
-    return (((u32)(c.x*255.0f)) << 24) | (((u32)(c.y*255.0f)) << 16) | (((u32)(c.z*255.0f)) << 8) | (((u32)(c.w*255.0f)) << 0);
+    return (((u32)(c.w*255.0f)) << 24) | (((u32)(c.z*255.0f)) << 16) | (((u32)(c.y*255.0f)) << 8) | (((u32)(c.x*255.0f)) << 0);
 }
 
 float4 u32_to_float4_color(u32 c) {
-    float r = ((float)((c >> 24) & 0xFF))/255.0f;
-    float g = ((float)((c >> 16) & 0xFF))/255.0f;
-    float b = ((float)((c >> 8) & 0xFF))/255.0f;
-    float a = ((float)((c >> 0) & 0xFF))/255.0f;
+    float a = ((float)((c >> 24) & 0xFF))/255.0f;
+    float b = ((float)((c >> 16) & 0xFF))/255.0f;
+    float g = ((float)((c >> 8) & 0xFF))/255.0f;
+    float r = ((float)((c >> 0) & 0xFF))/255.0f;
     return make_float4(r, g, b, a);
 }
 
@@ -27,13 +27,14 @@ void updateGame(GameState *gameState) {
     float16 rot = eulerAnglesToTransform(gameState->camera.T.rotation.y, gameState->camera.T.rotation.x, gameState->camera.T.rotation.z);
     float3 lookingAxis = make_float3(rot.E_[2][0], rot.E_[2][1], rot.E_[2][2]);
 
-        
+    
+    float4 greyColor = make_float4(0.6, 0.6, 0.6, 1);
     for(int x = 0; x < gameState->canvasW + 1; ++x) {
         TransformX T = {};
         T.pos = make_float3(0, x*VOXEL_SIZE_IN_METERS - 0.5f*gameState->canvasW*VOXEL_SIZE_IN_METERS, 0);
         T.scale.xy = make_float2(gameState->canvasH*VOXEL_SIZE_IN_METERS, 0);
         float16 A = getModelToViewSpace(T);
-        pushLine(gameState->renderer, A, make_float4(1, 0, 0, 1));
+        pushLine(gameState->renderer, A, greyColor);
     }
 
     for(int y = 0; y < gameState->canvasH + 1; ++y) {
@@ -42,7 +43,7 @@ void updateGame(GameState *gameState) {
         T.rotation.z = 90;
         T.scale.xy = make_float2(gameState->canvasW*VOXEL_SIZE_IN_METERS, 0);
         float16 A = getModelToViewSpace(T);
-        pushLine(gameState->renderer, A, make_float4(1, 0, 0, 1));
+        pushLine(gameState->renderer, A, greyColor);
     }
 
     //NOTE: Draw the canvas
@@ -107,7 +108,14 @@ void updateGame(GameState *gameState) {
             gameState->paintActive = false;
         }
 
-        if(gameState->interactionMode == CANVAS_DRAW_MODE) {
+        
+
+        if(gameState->interactionMode == CANVAS_FILL_MODE) {
+            if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+                //NOTE: Use Flood fill algorithm
+
+            }
+        } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
             if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
                 
                 //NOTE: Try draw on the canvas
@@ -179,6 +187,12 @@ void updateGame(GameState *gameState) {
     if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND]) {
         gameState->showNewCanvasWindow = true;
     }
+
+    if(gameState->keys.keys[KEY_S] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND]) {
+        saveFileToPNG(gameState);
+    }
+
+    
 
     if(gameState->showNewCanvasWindow) {
          //NOTE: Create new canvas

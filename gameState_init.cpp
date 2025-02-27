@@ -22,6 +22,8 @@ void initGameState(GameState *gameState) {
     gameState->colorPicked = make_float4(1, 1, 1, 1);
     gameState->bgColor = make_float4(0.3f,0, 0.3f, 1);
 
+    stbi_flip_vertically_on_write(1);
+
     //NOTE: The sentinel block
     addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
 

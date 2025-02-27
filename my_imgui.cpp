@@ -15,6 +15,17 @@ ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window) {
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init("#version 150");
 
+    io.Fonts->AddFontDefault(); // Regular font
+    static const ImWchar icon_ranges[] = { 0x0020, 0xFFFF, 0 };
+    ImFontConfig config;
+    config.MergeMode = true;
+    ImFont* iconFont = io.Fonts->AddFontFromFileTTF("./fonts/fa1.otf", 16.0f, &config, icon_ranges);
+    if (!iconFont) {
+        assert(false);
+    }
+
+  io.Fonts->Build();
+
 
     return io;
 
@@ -44,16 +55,23 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           ImGui::Begin("Color Palette");                          // Create a window called "Hello, world!" and append into it.
 
         //   ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-          ImGui::ColorEdit3("Brush Color", (float*)&state->colorPicked); // Edit 3 floats representing a color
-          ImGui::ColorEdit3("Background Color", (float*)&state->bgColor); // Edit 3 floats representing a color
+          ImGui::ColorEdit3("Brush", (float*)&state->colorPicked); // Edit 3 floats representing a color
+          ImGui::ColorEdit3("Background", (float*)&state->bgColor); // Edit 3 floats representing a color
           ImGui::Checkbox("Check Background", &state->checkBackground); // Edit 3 floats representing a color
 
-        //   if (ImGui::Button("Button"))                            // Buttons return true when clicked (most widgets return true when edited/activated)
-        //       counter++;
-        //   ImGui::SameLine();
-        //   ImGui::Text("counter = %d", counter);
-
-          ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+          if (ImGui::Button("\uf0b2")) {
+            //NOTE: MOVE
+            state->interactionMode = CANVAS_MOVE_MODE;
+          } else if (ImGui::Button("\uf1fc")) {
+              //NOTE: BRUSH
+              state->interactionMode = CANVAS_DRAW_MODE;
+            } else if (ImGui::Button("\uf575")) {
+              //NOTE: FILL
+              state->interactionMode = CANVAS_FILL_MODE;
+          }
+              
+        
+          // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
           ImGui::End();
       }
 }

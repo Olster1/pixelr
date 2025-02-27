@@ -5,6 +5,7 @@
 #include "./easy_string_utf8.h"
 #include "./easy_string.h"
 #include "./easy_files.h"
+#include "./libs/tinyfiledialogs.c"
 #include "./easy_lex.h"
 #include "./render.h"
 #include "./transform.cpp"
@@ -37,3 +38,4 @@
 #include "backends/imgui_impl_opengl3.h"
 #include "backends/imgui_impl_sdl2.h"
 #include "./my_imgui.cpp"
+#include "./export.cpp"
