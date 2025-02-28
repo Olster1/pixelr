@@ -115,6 +115,7 @@ MemoryArenaMark takeMemoryMark(Arena *arena) {
     result.arena = arena;
     result.memAt = arena->pieces->currentSize;
     result.id = arena->markCount++;
+    // printf("id: %d\n", result.id);
     result.piece = arena->pieces;
     return result;
 }
@@ -122,6 +123,8 @@ MemoryArenaMark takeMemoryMark(Arena *arena) {
 void releaseMemoryMark(MemoryArenaMark *mark) {
     mark->arena->markCount--;
     Arena *arena = mark->arena;
+    // printf("mark: %d\n", arena->markCount);
+    // printf("mark id: %d\n", mark->id);
     assert(mark->id == arena->markCount);
     assert(arena->markCount >= 0);
     assert(arena->pieces);

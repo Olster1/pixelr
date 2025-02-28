@@ -39,3 +39,5 @@
 #include "backends/imgui_impl_sdl2.h"
 #include "./my_imgui.cpp"
 #include "./export.cpp"
+#include "./canvas.cpp"
+#include "./flood_fill.cpp"

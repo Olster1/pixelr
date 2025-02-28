@@ -1,16 +1,5 @@
 #include "includes.h"
 
-u32 float4_to_u32_color(float4 c) {
-    return (((u32)(c.w*255.0f)) << 24) | (((u32)(c.z*255.0f)) << 16) | (((u32)(c.y*255.0f)) << 8) | (((u32)(c.x*255.0f)) << 0);
-}
-
-float4 u32_to_float4_color(u32 c) {
-    float a = ((float)((c >> 24) & 0xFF))/255.0f;
-    float b = ((float)((c >> 16) & 0xFF))/255.0f;
-    float g = ((float)((c >> 8) & 0xFF))/255.0f;
-    float r = ((float)((c >> 0) & 0xFF))/255.0f;
-    return make_float4(r, g, b, a);
-}
 
 void updateGame(GameState *gameState) {
     checkInitGameState(gameState);
@@ -113,20 +102,22 @@ void updateGame(GameState *gameState) {
         if(gameState->interactionMode == CANVAS_FILL_MODE) {
             if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
                 //NOTE: Use Flood fill algorithm
+                float2 canvasP = getCanvasCoordFromMouse(gameState);
+                u32 startColor = getCanvasColor(gameState, canvasP.x, canvasP.y);
+                
+                if(isValidCanvasRange(gameState, canvasP.x, canvasP.y)) {
+                    floodFillWithBucket(gameState, gameState->canvasW, gameState->canvasH, canvasP.x, canvasP.y, getCanvasColor(gameState, canvasP.x, canvasP.y), float4_to_u32_color(gameState->colorPicked));
+                }
 
             }
         } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
             if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
                 
-                //NOTE: Try draw on the canvas
-                const float2 plane = scale_float2(0.5f, make_float2(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x));
-                
-                const float x = lerp(-plane.x, plane.x, make_lerpTValue(gameState->mouseP_01.x));
-                const float y = lerp(-plane.y, plane.y, make_lerpTValue(gameState->mouseP_01.y));
-    
-                float2 worldP = plus_float2(gameState->camera.T.pos.xy, make_float2(x, y));
-                const int coordX = round(((worldP.x * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*gameState->canvasW) - 0.5f);
-                const int coordY = round(((worldP.y * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*gameState->canvasH) - 0.5f);
+               
+               float2 a = getCanvasCoordFromMouse(gameState);
+
+               const int coordX = a.x;
+               const int coordY = a.y;
               
                 //NOTE: So there is always a continous line, even when the user is painting fast
                 if(gameState->paintActive) {
@@ -155,6 +146,7 @@ void updateGame(GameState *gameState) {
                   
                 if(coordY >= 0 && coordX >= 0 && coordY < gameState->canvasH && coordX < gameState->canvasW) {
                     u32 color = float4_to_u32_color(gameState->colorPicked);
+                    
                     addUndoRedoBlock(gameState, gameState->canvas[coordY*gameState->canvasW + coordX], color, coordX, coordY);
                     gameState->canvas[coordY*gameState->canvasW + coordX] = color;
                 }
