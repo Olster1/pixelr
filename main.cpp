@@ -18,21 +18,25 @@ void updateGame(GameState *gameState) {
 
     
     float4 greyColor = make_float4(0.6, 0.6, 0.6, 1);
-    for(int x = 0; x < gameState->canvasW + 1; ++x) {
-        TransformX T = {};
-        T.pos = make_float3(0, x*VOXEL_SIZE_IN_METERS - 0.5f*gameState->canvasW*VOXEL_SIZE_IN_METERS, 0);
-        T.scale.xy = make_float2(gameState->canvasH*VOXEL_SIZE_IN_METERS, 0);
-        float16 A = getModelToViewSpace(T);
-        pushLine(gameState->renderer, A, greyColor);
+    for(int x = 0; x < gameState->canvasH + 1; ++x) {
+        if(gameState->drawGrid || (x == 0 || x == gameState->canvasH)) {
+            TransformX T = {};
+            T.pos = make_float3(0, x*VOXEL_SIZE_IN_METERS - 0.5f*gameState->canvasH*VOXEL_SIZE_IN_METERS, 0);
+            T.scale.xy = make_float2(gameState->canvasW*VOXEL_SIZE_IN_METERS, 0);
+            float16 A = getModelToViewSpace(T);
+            pushLine(gameState->renderer, A, greyColor);
+        }
     }
 
-    for(int y = 0; y < gameState->canvasH + 1; ++y) {
-        TransformX T = {};
-        T.pos = make_float3(y*VOXEL_SIZE_IN_METERS - 0.5f*gameState->canvasH*VOXEL_SIZE_IN_METERS, 0, 0);
-        T.rotation.z = 90;
-        T.scale.xy = make_float2(gameState->canvasW*VOXEL_SIZE_IN_METERS, 0);
-        float16 A = getModelToViewSpace(T);
-        pushLine(gameState->renderer, A, greyColor);
+    for(int y = 0; y < gameState->canvasW + 1; ++y) {
+        if(gameState->drawGrid || (y == 0 || y == gameState->canvasW)) {
+            TransformX T = {};
+            T.pos = make_float3(y*VOXEL_SIZE_IN_METERS - 0.5f*gameState->canvasW*VOXEL_SIZE_IN_METERS, 0, 0);
+            T.rotation.z = 90;
+            T.scale.xy = make_float2(gameState->canvasH*VOXEL_SIZE_IN_METERS, 0);
+            float16 A = getModelToViewSpace(T);
+            pushLine(gameState->renderer, A, greyColor);
+        }
     }
 
     //NOTE: Draw the canvas
@@ -98,8 +102,17 @@ void updateGame(GameState *gameState) {
         }
 
         
+        
+        if(gameState->interactionMode == CANVAS_DRAW_RECTANGLE_MODE) {
+        } else if(gameState->interactionMode == CANVAS_DRAW_CIRCLE_MODE) {
+        } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
+            if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN) {
+                float2 canvasP = getCanvasCoordFromMouse(gameState);
+                addUndoRedoBlock(gameState, getCanvasColor(gameState, canvasP.x, canvasP.y), 0, canvasP.x, canvasP.y);
+                setCanvasColor(gameState, canvasP.x, canvasP.y, 0, false);
+            }
 
-        if(gameState->interactionMode == CANVAS_FILL_MODE) {
+        } else if(gameState->interactionMode == CANVAS_FILL_MODE) {
             if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
                 //NOTE: Use Flood fill algorithm
                 float2 canvasP = getCanvasCoordFromMouse(gameState);
@@ -135,8 +148,9 @@ void updateGame(GameState *gameState) {
                         if(y1 >= 0 && x1 >= 0 && y1 < gameState->canvasH && x1 < gameState->canvasW) {
                             if(!(x1 == coordX && y1 == coordY)) 
                             { //NOTE: Don't color the one were about to do after this loop
-                                addUndoRedoBlock(gameState, gameState->canvas[y1*gameState->canvasW + x1], color, x1, y1);
-                                gameState->canvas[y1*gameState->canvasW + x1] = color;    
+                                addUndoRedoBlock(gameState, getCanvasColor(gameState, x1, y1), color, x1, y1);
+                                setCanvasColor(gameState, x1, y1, color);
+                                
                             }
                         }
 
@@ -147,8 +161,8 @@ void updateGame(GameState *gameState) {
                 if(coordY >= 0 && coordX >= 0 && coordY < gameState->canvasH && coordX < gameState->canvasW) {
                     u32 color = float4_to_u32_color(gameState->colorPicked);
                     
-                    addUndoRedoBlock(gameState, gameState->canvas[coordY*gameState->canvasW + coordX], color, coordX, coordY);
-                    gameState->canvas[coordY*gameState->canvasW + coordX] = color;
+                    addUndoRedoBlock(gameState, getCanvasColor(gameState, coordX, coordY), color, coordX, coordY);
+                    setCanvasColor(gameState, coordX, coordY, color);
                 }
 
                 gameState->paintActive = true;

@@ -21,18 +21,13 @@ void initGameState(GameState *gameState) {
     gameState->canvasH = 16;
     gameState->colorPicked = make_float4(1, 1, 1, 1);
     gameState->bgColor = make_float4(0.3f,0, 0.3f, 1);
+    gameState->drawGrid = false;
+    gameState->opacity = 1.0f;
 
     stbi_flip_vertically_on_write(1);
 
     //NOTE: The sentinel block
     addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
-
-    // for(int y = 0; y < gameState->canvasH; ++y) {
-    //     for(int x = 0; x < gameState->canvasW; ++x) {
-    //         if(x % 2)
-    //         gameState->canvas[y*gameState->canvasW + x] = 0xFF0000FF;
-    //     }
-    // }
 
     gameState->currentInventoryHotIndex = 0;
 

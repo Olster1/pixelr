@@ -54,10 +54,13 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       {
           ImGui::Begin("Color Palette");                          // Create a window called "Hello, world!" and append into it.
 
-        //   ImGui::SliderFloat("float", &f, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
+          
           ImGui::ColorEdit3("Brush", (float*)&state->colorPicked); // Edit 3 floats representing a color
+          ImGui::SliderFloat("Opacity", &state->opacity, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
           ImGui::ColorEdit3("Background", (float*)&state->bgColor); // Edit 3 floats representing a color
           ImGui::Checkbox("Check Background", &state->checkBackground); // Edit 3 floats representing a color
+          ImGui::Checkbox("Draw Grid", &state->drawGrid); // Edit 3 floats representing a color
+
 
           if (ImGui::Button("\uf0b2")) {
             //NOTE: MOVE
@@ -68,7 +71,18 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             } else if (ImGui::Button("\uf575")) {
               //NOTE: FILL
               state->interactionMode = CANVAS_FILL_MODE;
-          }
+            } else if (ImGui::Button("\uf111")) {
+              //NOTE: circle shape
+              state->interactionMode = CANVAS_DRAW_CIRCLE_MODE;
+            } else if (ImGui::Button("\uf0c8")) {
+              //NOTE: rectangle shape
+              state->interactionMode = CANVAS_DRAW_RECTANGLE_MODE;
+            } else if (ImGui::Button("\uf12d")) {
+              state->interactionMode = CANVAS_ERASE_MODE;
+              
+            }
+
+          
               
         
           // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);

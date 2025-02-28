@@ -2,6 +2,10 @@
 void addUndoRedoBlock(GameState *gameState, u32 lastColor, u32 thisColor, int x, int y, bool isSentintel = false) {
     UndoRedoBlock *block = 0;
     bool repeat = false;
+
+    if(thisColor == lastColor) {
+        repeat = true;
+    }
     
     if(gameState->undoList) {
         UndoRedoBlock *b = gameState->undoList;
@@ -60,6 +64,7 @@ void clearUndoRedoList(GameState *gameState) {
     UndoRedoBlock *b = gameState->undoList;
     while(b) {
         UndoRedoBlock *b1 = b->next;
+        b->onDispose();
         b->next = gameState->undoBlockFreeList;
         gameState->undoBlockFreeList = b; 
 

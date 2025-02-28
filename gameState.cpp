@@ -25,16 +25,32 @@ struct ChunkVertexToCreate {
     bool ready;
 };
 
+struct PixelInfo {
+    int x; 
+    int y;
+    u32 lastColor;
+    u32 thisColor;
+};
+
 struct UndoRedoBlock {
     int x; 
     int y;
     u32 lastColor;
     u32 thisColor;
+    
+    PixelInfo *pixelInfos; //NOTE: Resize array 
 
     bool isSentintel;
 
     UndoRedoBlock *next;
     UndoRedoBlock *prev;
+
+    void onDispose() {
+        if(pixelInfos) {
+            freeResizeArray(pixelInfos);
+            pixelInfos = 0;
+        }
+    }
 };
 
 enum BlockFlags {
@@ -54,6 +70,9 @@ enum CanvasInteractionMode {
     CANVAS_DRAW_MODE,
     CANVAS_MOVE_MODE,
     CANVAS_FILL_MODE,
+    CANVAS_DRAW_CIRCLE_MODE,
+    CANVAS_DRAW_RECTANGLE_MODE,
+    CANVAS_ERASE_MODE
 
 };
 
@@ -194,6 +213,8 @@ struct GameState {
     float2 startDragP;
     bool paintActive;
     float2 lastPaintP;
+    bool drawGrid;
+    float opacity;
 
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;

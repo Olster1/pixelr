@@ -27,17 +27,21 @@ float2 getCanvasCoordFromMouse(GameState *gameState) {
 
 
 u32 getCanvasColor(GameState *gameState, int coordX, int coordY) {
+    u32 result = 0;
     if(coordY >= 0 && coordX >= 0 && coordY < gameState->canvasH && coordX < gameState->canvasW) {
-        return gameState->canvas[coordY*gameState->canvasW + coordX];    
+        result = gameState->canvas[coordY*gameState->canvasW + coordX];    
     } 
 
-    return 0;
+    return result;
     
 }
 
-void setCanvasColor(GameState *gameState, int coordX, int coordY, u32 color) {
+void setCanvasColor(GameState *gameState, int coordX, int coordY, u32 color, bool useOpacity = true) {
     if(coordY >= 0 && coordX >= 0 && coordY < gameState->canvasH && coordX < gameState->canvasW) {
-        gameState->canvas[coordY*gameState->canvasW + coordX] = color;
+        u32 oldColor = getCanvasColor(gameState, coordX, coordY);
+        const float4 c = lerp_float4(u32_to_float4_color(oldColor), u32_to_float4_color(color), gameState->opacity);
+
+        gameState->canvas[coordY*gameState->canvasW + coordX] = float4_to_u32_color(c);
     }
 }
 
