@@ -41,4 +41,5 @@
 #include "./export.cpp"
 #include "./canvas.cpp"
 #include "./flood_fill.cpp"
+#include "./save_load_project.cpp"
 
