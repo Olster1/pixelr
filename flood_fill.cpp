@@ -86,3 +86,17 @@ void floodFillWithBucket(GameState *gameState, int canvasW, int canvasH, int sta
 
     releaseMemoryMark(&mark);
 }
+
+
+void updateBucket(GameState *gameState) {
+    if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+        //NOTE: Use Flood fill algorithm
+        float2 canvasP = getCanvasCoordFromMouse(gameState);
+        u32 startColor = getCanvasColor(gameState, canvasP.x, canvasP.y);
+        
+        if(isValidCanvasRange(gameState, canvasP.x, canvasP.y)) {
+            floodFillWithBucket(gameState, gameState->canvasW, gameState->canvasH, canvasP.x, canvasP.y, getCanvasColor(gameState, canvasP.x, canvasP.y), float4_to_u32_color(gameState->colorPicked));
+        }
+
+    }
+}

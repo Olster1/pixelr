@@ -50,42 +50,59 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
       // ImGui::ShowDemoWindow(&show_demo_window);
 
-      // 2. Show a simple window that we create ourselves. We use a Begin/End pair to create a named window.
       {
-          ImGui::Begin("Color Palette");                          // Create a window called "Hello, world!" and append into it.
-
-          
-          ImGui::ColorEdit3("Brush", (float*)&state->colorPicked); // Edit 3 floats representing a color
-          ImGui::SliderFloat("Opacity", &state->opacity, 0.0f, 1.0f);            // Edit 1 float using a slider from 0.0f to 1.0f
-          ImGui::ColorEdit3("Background", (float*)&state->bgColor); // Edit 3 floats representing a color
-          ImGui::Checkbox("Check Background", &state->checkBackground); // Edit 3 floats representing a color
-          ImGui::Checkbox("Draw Grid", &state->drawGrid); // Edit 3 floats representing a color
+          ImGui::Begin("Color Palette");
+          ImGui::ColorEdit3("Brush", (float*)&state->colorPicked);
+          ImGui::SliderFloat("Opacity", &state->opacity, 0.0f, 1.0f);
+          ImGui::ColorEdit3("Background", (float*)&state->bgColor);
+          ImGui::Checkbox("Check Background", &state->checkBackground);
+          ImGui::Checkbox("Draw Grid", &state->drawGrid); 
+          ImGui::SliderFloat("Eraser", &state->eraserSize, 1.0f, 100.0f);
 
 
           if (ImGui::Button("\uf0b2")) {
             //NOTE: MOVE
             state->interactionMode = CANVAS_MOVE_MODE;
-          } else if (ImGui::Button("\uf1fc")) {
-              //NOTE: BRUSH
-              state->interactionMode = CANVAS_DRAW_MODE;
-            } else if (ImGui::Button("\uf575")) {
-              //NOTE: FILL
-              state->interactionMode = CANVAS_FILL_MODE;
-            } else if (ImGui::Button("\uf111")) {
-              //NOTE: circle shape
-              state->interactionMode = CANVAS_DRAW_CIRCLE_MODE;
-            } else if (ImGui::Button("\uf0c8")) {
-              //NOTE: rectangle shape
-              state->interactionMode = CANVAS_DRAW_RECTANGLE_MODE;
-            } else if (ImGui::Button("\uf12d")) {
-              state->interactionMode = CANVAS_ERASE_MODE;
-              
-            }
+          } 
+          if(state->interactionMode == CANVAS_MOVE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+          if (ImGui::Button("\uf1fc")) {
+            //NOTE: BRUSH
+            state->interactionMode = CANVAS_DRAW_MODE;
+          } 
+          if(state->interactionMode == CANVAS_DRAW_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+          
+          if (ImGui::Button("\uf575")) {
+            //NOTE: FILL
+            state->interactionMode = CANVAS_FILL_MODE;
+          } 
+          if(state->interactionMode == CANVAS_FILL_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+          
+          if (ImGui::Button("\uf111")) {
+            //NOTE: circle shape
+            state->interactionMode = CANVAS_DRAW_CIRCLE_MODE;
+          }
+          if(state->interactionMode == CANVAS_DRAW_CIRCLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+          
+          if (ImGui::Button("\uf0c8")) {
+            //NOTE: rectangle shape
+            state->interactionMode = CANVAS_DRAW_RECTANGLE_MODE;
+          }
+          if(state->interactionMode == CANVAS_DRAW_RECTANGLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+          
+          if (ImGui::Button("\uf12d")) {
+            state->interactionMode = CANVAS_ERASE_MODE;
+            
+          }
+          if(state->interactionMode == CANVAS_ERASE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+
+          if (ImGui::Button("\uf068")) {
+            state->interactionMode = CANVAS_DRAW_LINE_MODE;
+            
+          }
+          if(state->interactionMode == CANVAS_DRAW_LINE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
 
           
-              
-        
-          // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
+
           ImGui::End();
       }
 }
@@ -94,4 +111,8 @@ void imguiEndFrame() {
     // Rendering
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+}
+
+bool isInteractingWithIMGUI() {
+  return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
 }

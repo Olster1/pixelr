@@ -1,4 +1,15 @@
 
+
+void startCanvas(GameState *gameState) {
+    addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
+
+    for(int y = 0; y < gameState->canvasH; ++y) {
+        for(int x = 0; x < gameState->canvasW; ++x) {
+            gameState->canvas[y*gameState->canvasW + x] = 0x00FFFFFF;
+        }
+    }
+}
+
 void initGameState(GameState *gameState) {
     srand(time(NULL));
     gameState->randomStartUpID = rand();
@@ -19,15 +30,16 @@ void initGameState(GameState *gameState) {
 
     gameState->canvasW = 16;
     gameState->canvasH = 16;
-    gameState->colorPicked = make_float4(1, 1, 1, 1);
-    gameState->bgColor = make_float4(0.3f,0, 0.3f, 1);
+    gameState->colorPicked = make_float4(1, 0, 0, 1);
+    gameState->bgColor = make_float4(0.3f,0, 0.3f, 1); //make_float4(1, 1, 1, 1); //
     gameState->drawGrid = false;
-    gameState->opacity = 1.0f;
+    gameState->opacity = 0.5f;
+    gameState->eraserSize = 1.0f;
 
     stbi_flip_vertically_on_write(1);
 
     //NOTE: The sentinel block
-    addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
+    startCanvas(gameState);
 
     gameState->currentInventoryHotIndex = 0;
 

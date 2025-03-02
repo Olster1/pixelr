@@ -71,8 +71,9 @@ enum CanvasInteractionMode {
     CANVAS_MOVE_MODE,
     CANVAS_FILL_MODE,
     CANVAS_DRAW_CIRCLE_MODE,
+    CANVAS_DRAW_LINE_MODE,
     CANVAS_DRAW_RECTANGLE_MODE,
-    CANVAS_ERASE_MODE
+    CANVAS_ERASE_MODE,
 
 };
 
@@ -215,6 +216,10 @@ struct GameState {
     float2 lastPaintP;
     bool drawGrid;
     float opacity;
+    float2 drawShapeStart;
+    bool drawingShape;
+    float eraserSize;
+    bool autoFocus;
 
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;

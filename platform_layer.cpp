@@ -53,6 +53,7 @@ enum KeyTypes {
   KEY_RIGHT,
   KEY_SPACE,
   KEY_SHIFT,
+  KEY_ESCAPE,
   KEY_1,
   KEY_2,
   KEY_3,
@@ -230,6 +231,7 @@ int main(int argc, char **argv) {
     updateKeyState(gameState, KEY_RIGHT, currentKeyStates[SDL_SCANCODE_RIGHT] == 1 || currentKeyStates[SDL_SCANCODE_D] == 1);
     updateKeyState(gameState, KEY_SPACE, currentKeyStates[SDL_SCANCODE_SPACE] == 1);
     updateKeyState(gameState, KEY_SHIFT, currentKeyStates[SDL_SCANCODE_LSHIFT] == 1);
+    updateKeyState(gameState, KEY_ESCAPE, currentKeyStates[SDL_SCANCODE_ESCAPE] == 1);
     updateKeyState(gameState, KEY_1, currentKeyStates[SDL_SCANCODE_1] == 1);
     updateKeyState(gameState, KEY_2, currentKeyStates[SDL_SCANCODE_2] == 1);
     updateKeyState(gameState, KEY_3, currentKeyStates[SDL_SCANCODE_3] == 1);
