@@ -223,6 +223,8 @@ struct GameState {
 
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;
+
+    bool quit;
 };
 
 void createBlockFlags(GameState *gameState) {

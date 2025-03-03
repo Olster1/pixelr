@@ -134,6 +134,7 @@ int main(int argc, char **argv) {
   gameState->screenWidth = 0.5f*1920;
   gameState->aspectRatio_y_over_x = (1080.f / 1920.0f);
   gameState->mouseLeftBtn = MOUSE_BUTTON_NONE;
+  gameState->quit = false;
 
   for(int i = 0; i < arrayCount(gameState->keys.keys); ++i) {
       gameState->keys.keys[i] = MOUSE_BUTTON_NONE;
@@ -171,9 +172,8 @@ int main(int argc, char **argv) {
   // SDL_ShowCursor(SDL_DISABLE);
 
   SDL_Event e;
-  bool quit = false;
   Uint32 start = SDL_GetTicks();
-  while (!quit) {
+  while (!gameState->quit) {
     
     Uint32 end = SDL_GetTicks();
     float secondsElapsed = (end - start) / 1000.0f;
@@ -193,7 +193,7 @@ int main(int argc, char **argv) {
 
     while (SDL_PollEvent(&e)) {
        if (e.type == SDL_QUIT) {
-          quit = true;
+          gameState->quit = true;
         } else if (e.type == SDL_MOUSEWHEEL) {
           gameState->scrollSpeed = e.wheel.y;
         } else if(e.type == SDL_KEYDOWN) {

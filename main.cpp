@@ -52,37 +52,14 @@ void updateGame(GameState *gameState) {
     }
 
     if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND]) {
-        gameState->showNewCanvasWindow = true;
-        gameState->autoFocus = true;
+        showNewCanvas(gameState);
     }
 
-    if(gameState->keys.keys[KEY_S] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND]) {
+    if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND]) {
         saveFileToPNG(gameState);
     }
 
-    if(gameState->showNewCanvasWindow) {
-         //NOTE: Create new canvas
-         ImGui::Begin("Canvas Size");       
-         
-         ImGui::Text("How big do you want the canvas?"); 
-         if(gameState->autoFocus) {
-            ImGui::SetKeyboardFocusHere();
-            gameState->autoFocus = false;
-         }
-         ImGui::InputText("Width", gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0));
-         ImGui::InputText("Height", gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1));
-         if (ImGui::Button("Create")) {
-            gameState->canvasW = atoi(gameState->dimStr0);
-            gameState->canvasH = atoi(gameState->dimStr1);
-
-            clearUndoRedoList(gameState);
-            startCanvas(gameState);
-            
-            gameState->showNewCanvasWindow = false;
-         }
- 
-         ImGui::End();
-    }
+    
     
     TimeOfDayValues timeOfDayValues = getTimeOfDayValues(gameState);
     // updateAndDrawDebugCode(gameState);

@@ -337,3 +337,8 @@ void updateCanvasDraw(GameState *gameState) {
          gameState->lastPaintP = make_float2(coordX, coordY);
      }
 }
+
+void showNewCanvas(GameState *gameState) {
+    gameState->showNewCanvasWindow = true;
+    gameState->autoFocus = true;
+}

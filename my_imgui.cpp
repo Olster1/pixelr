@@ -31,6 +31,63 @@ ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window) {
 
 }
 
+#include "imgui.h"
+
+void updateNewCanvasWindow(GameState *gameState) {
+  if(gameState->showNewCanvasWindow) {
+    //NOTE: Create new canvas
+    ImGui::Begin("Canvas Size", &gameState->showNewCanvasWindow);       
+    
+    ImGui::Text("How big do you want the canvas?"); 
+    if(gameState->autoFocus) {
+       ImGui::SetKeyboardFocusHere();
+       gameState->autoFocus = false;
+    }
+    ImGui::InputText("Width", gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0));
+    ImGui::InputText("Height", gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1));
+    if (ImGui::Button("Create")) {
+       gameState->canvasW = atoi(gameState->dimStr0);
+       gameState->canvasH = atoi(gameState->dimStr1);
+
+       clearUndoRedoList(gameState);
+       startCanvas(gameState);
+       
+       gameState->showNewCanvasWindow = false;
+    }
+
+    ImGui::End();
+  }
+}
+
+void showMainMenuBar(GameState *state)
+{
+    if (ImGui::BeginMainMenuBar()) // Creates the top bar
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("New")) { showNewCanvas(state); }
+            if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Handle Open */ }
+            if (ImGui::MenuItem("Save", "Ctrl+S")) { saveProjectFile(state); }
+            if (ImGui::MenuItem("Export", "Ctrl+E")) { saveFileToPNG(state); }
+            if (ImGui::MenuItem("Exit")) { state->quit = true;  }
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Edit"))
+        {
+            if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Handle Undo */ }
+            if (ImGui::MenuItem("Redo", "Ctrl+Y")) { /* Handle Redo */ }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Cut", "Ctrl+X")) { /* Handle Cut */ }
+            if (ImGui::MenuItem("Copy", "Ctrl+C")) { /* Handle Copy */ }
+            if (ImGui::MenuItem("Paste", "Ctrl+V")) { /* Handle Paste */ }
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMainMenuBar();
+    }
+}
+
 void updateMyImgui(GameState *state, ImGuiIO& io) {
 
   
@@ -105,7 +162,12 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
           ImGui::End();
       }
+
+      showMainMenuBar(state);
+      updateNewCanvasWindow(state);
 }
+
+
 
 void imguiEndFrame() {
     // Rendering
