@@ -52,34 +52,33 @@ void setCanvasColor(GameState *gameState, int coordX, int coordY, const u32 colo
         float4 oldColorF = u32_to_float4_color(oldColor);
         float4 newColorF = u32_to_float4_color(color);
 
+        float4 c;
         if(useOpacity) {
             newColorF.w = gameState->opacity;
-        } else {
-            newColorF.w = 1.0f;
-        }
-        
-        
-        // Convert colors to premultiplied alpha
-        float oldR = oldColorF.x * oldColorF.w;
-        float oldG = oldColorF.y * oldColorF.w;
-        float oldB = oldColorF.z * oldColorF.w;
-        
-        float newR = newColorF.x * newColorF.w;
-        float newG = newColorF.y * newColorF.w;
-        float newB = newColorF.z * newColorF.w;
-        
-        // Compute new alpha
-        float alphaNew = newColorF.w + oldColorF.w * (1.0f - newColorF.w);
-        
-        // Blend each color channel separately
-        float blendedR = (newR + oldR * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
-        float blendedG = (newG + oldG * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
-        float blendedB = (newB + oldB * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
-        
-        // Store final color
-        float4 c = make_float4(blendedR, blendedG, blendedB, alphaNew);
 
-       
+            // Convert colors to premultiplied alpha
+            float oldR = oldColorF.x * oldColorF.w;
+            float oldG = oldColorF.y * oldColorF.w;
+            float oldB = oldColorF.z * oldColorF.w;
+            
+            float newR = newColorF.x * newColorF.w;
+            float newG = newColorF.y * newColorF.w;
+            float newB = newColorF.z * newColorF.w;
+            
+            // Compute new alpha
+            float alphaNew = newColorF.w + oldColorF.w * (1.0f - newColorF.w);
+            
+            // Blend each color channel separately
+            float blendedR = (newR + oldR * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
+            float blendedG = (newG + oldG * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
+            float blendedB = (newB + oldB * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
+            
+            // Store final color
+            c = make_float4(blendedR, blendedG, blendedB, alphaNew);
+
+        } else {
+            c = newColorF;
+        }
 
         gameState->canvas[coordY*gameState->canvasW + coordX] = float4_to_u32_color(c);
     }

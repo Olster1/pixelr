@@ -74,6 +74,14 @@ void initGameState(GameState *gameState) {
     Texture breakBlockTexture = loadTextureToGPU("./images/break_block.png");
     Texture atlasTexture = loadTextureToGPU("./images/atlas.png");
 
+    if(!gameState->playBackAnimation.frameTextures) {
+        gameState->playBackAnimation.frameTextures = initResizeArray(unsigned int);
+  
+        pushArrayItem(&gameState->playBackAnimation.frameTextures, gameState->grassTexture.handle, u32);
+        pushArrayItem(&gameState->playBackAnimation.frameTextures, gameState->grassTexture.handle, u32);
+    }
+    gameState->playBackAnimation.frameTime = 0.2f;
+
     gameState->currentMiningBlock = 0;
 
     gameState->meshesToCreate = 0;

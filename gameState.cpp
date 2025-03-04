@@ -80,6 +80,15 @@ enum CanvasInteractionMode {
 #define MAX_CANVAS_DIM 4000
 #define CHUNK_LIST_SIZE 4096*4
 
+// Animation state
+struct PlayBackAnimation {
+    unsigned int *frameTextures; // Placeholder for frames (could be actual image/frame data)
+    int currentFrame = 0;
+    bool playing = false;
+    float frameTime = 0.2f; // Time per frame in seconds
+    float elapsedTime = 0.0f;
+  };
+
 struct GameState {
     bool inited;
     float dt;
@@ -220,6 +229,8 @@ struct GameState {
     bool drawingShape;
     float eraserSize;
     bool autoFocus;
+
+    PlayBackAnimation playBackAnimation;
 
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;

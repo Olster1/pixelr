@@ -33,6 +33,81 @@ ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window) {
 
 #include "imgui.h"
 
+void drawAnimationTimeline(GameState *state, float deltaTime) {
+
+    PlayBackAnimation *anim = &state->playBackAnimation;
+
+    ImGui::Begin("Animation Timeline");
+
+    // Play/Pause/Reset buttons
+    if (ImGui::Button(anim->playing ? "\uf04c Pause" : "\uf04b Play")) {
+        anim->playing = !anim->playing;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("\uf2f9 Reset")) {
+        anim->currentFrame = 0;
+        anim->elapsedTime = 0.0f;
+        anim->playing = false;
+    }
+
+    ImGui::Separator();
+
+    // Display all frames in a row
+    if (getArrayLength(anim->frameTextures) > 0) {
+      ImGui::Text("Frames:");
+  
+      for (int i = 0; i < getArrayLength(anim->frameTextures); i++) {
+          if (i > 0) ImGui::SameLine(); // Keep frames on the same line
+  
+          ImVec2 imageSize(64, 64); // Adjust as needed
+          ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+          ImVec4 borderColor = (i == anim->currentFrame) ? ImVec4(1, 1, 0, 1) : ImVec4(0, 0, 0, 0); // Yellow for current frame
+  
+          // Make a button that overlays the image so we can detect clicks
+          ImGui::PushID(i); // Unique ID for each frame
+          if (ImGui::InvisibleButton("##frame", imageSize)) {
+              anim->currentFrame = i; // Change current frame
+              anim->playing = false; // Stop animation
+          }
+          ImGui::PopID();
+  
+          // Draw frame image over the invisible button
+          ImGui::SetCursorScreenPos(cursorPos); // Reset position to draw the image
+          ImGui::Image((ImTextureID)(intptr_t)anim->frameTextures[i], imageSize);
+  
+          // Draw border if this is the current frame
+          if (i == anim->currentFrame) {
+              ImGui::GetWindowDrawList()->AddRect(
+                  cursorPos, ImVec2(cursorPos.x + imageSize.x, cursorPos.y + imageSize.y),
+                  IM_COL32(255, 255, 0, 255), // Yellow border
+                  0.0f, 0, 2.0f // Thickness
+              );
+          }
+      }
+  }
+
+    ImGui::Separator();
+
+    ImGui::SliderFloat("Time per Frame", &anim->frameTime, 0.01f, 2.0f);
+
+   
+    if (ImGui::Button("Add New Frame +")) {
+        // Example: Add a placeholder OpenGL texture ID (should load real textures)
+        pushArrayItem(&state->playBackAnimation.frameTextures, state->grassTexture.handle, u32);
+    }
+
+    // Animation playback logic
+    if (anim->playing && getArrayLength(anim->frameTextures) > 1) {
+        anim->elapsedTime += deltaTime;
+        if (anim->elapsedTime >= anim->frameTime) {
+            anim->elapsedTime = 0.0f;
+            anim->currentFrame = (anim->currentFrame + 1) % getArrayLength(anim->frameTextures);
+        }
+    }
+
+    ImGui::End();
+}
+
 void updateNewCanvasWindow(GameState *gameState) {
   if(gameState->showNewCanvasWindow) {
     //NOTE: Create new canvas
@@ -76,7 +151,7 @@ void showMainMenuBar(GameState *state)
         if (ImGui::BeginMenu("Edit"))
         {
             if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Handle Undo */ }
-            if (ImGui::MenuItem("Redo", "Ctrl+Y")) { /* Handle Redo */ }
+            if (ImGui::MenuItem("Redo", "Ctrl+SHIFT+Z")) { /* Handle Redo */ }
             ImGui::Separator();
             if (ImGui::MenuItem("Cut", "Ctrl+X")) { /* Handle Cut */ }
             if (ImGui::MenuItem("Copy", "Ctrl+C")) { /* Handle Copy */ }
@@ -165,6 +240,8 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
       showMainMenuBar(state);
       updateNewCanvasWindow(state);
+
+      drawAnimationTimeline(state, state->dt);
 }
 
 
@@ -178,3 +255,4 @@ void imguiEndFrame() {
 bool isInteractingWithIMGUI() {
   return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
 }
+
