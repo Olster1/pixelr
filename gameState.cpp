@@ -25,34 +25,6 @@ struct ChunkVertexToCreate {
     bool ready;
 };
 
-struct PixelInfo {
-    int x; 
-    int y;
-    u32 lastColor;
-    u32 thisColor;
-};
-
-struct UndoRedoBlock {
-    int x; 
-    int y;
-    u32 lastColor;
-    u32 thisColor;
-    
-    PixelInfo *pixelInfos; //NOTE: Resize array 
-
-    bool isSentintel;
-
-    UndoRedoBlock *next;
-    UndoRedoBlock *prev;
-
-    void onDispose() {
-        if(pixelInfos) {
-            freeResizeArray(pixelInfos);
-            pixelInfos = 0;
-        }
-    }
-};
-
 enum BlockFlags {
     BLOCK_FLAGS_NONE = 0,
     BLOCK_EXISTS_COLLISION = 1 << 0,
@@ -80,14 +52,6 @@ enum CanvasInteractionMode {
 #define MAX_CANVAS_DIM 4000
 #define CHUNK_LIST_SIZE 4096*4
 
-// Animation state
-struct PlayBackAnimation {
-    unsigned int *frameTextures; // Placeholder for frames (could be actual image/frame data)
-    int currentFrame = 0;
-    bool playing = false;
-    float frameTime = 0.2f; // Time per frame in seconds
-    float elapsedTime = 0.0f;
-  };
 
 struct GameState {
     bool inited;
@@ -234,6 +198,9 @@ struct GameState {
 
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;
+
+    CanvasTab *canvasTabs; //NOTE: resize array
+    int activeCanvasTab;
 
     bool quit;
 };

@@ -74,6 +74,13 @@ void initGameState(GameState *gameState) {
     Texture breakBlockTexture = loadTextureToGPU("./images/break_block.png");
     Texture atlasTexture = loadTextureToGPU("./images/atlas.png");
 
+    {
+        gameState->canvasTabs = initResizeArray(CanvasTab);
+        CanvasTab tab = CanvasTab(16, 16);
+        pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
+        gameState->activeCanvasTab = 0;
+    }
+
     if(!gameState->playBackAnimation.frameTextures) {
         gameState->playBackAnimation.frameTextures = initResizeArray(unsigned int);
   

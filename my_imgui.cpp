@@ -33,6 +33,39 @@ ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window) {
 
 #include "imgui.h"
 
+void drawTabs(GameState *state) {
+      // Push a style to keep the tab bar at the top of the screen
+      ImGui::SetNextWindowPos(ImVec2(0, 15));
+      ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, 50));
+  
+      // Begin a window without decorations, keeping it at the top
+      if (ImGui::Begin("Top Tab Bar", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground))
+      {
+          if (ImGui::BeginTabBar("TopTabs"))
+          {
+              if (ImGui::BeginTabItem("Home"))
+              {
+                  state->activeCanvasTab = 0;
+                  ImGui::EndTabItem();
+              }
+              if (ImGui::BeginTabItem("Settings"))
+              {
+                state->activeCanvasTab = 1;
+                  ImGui::EndTabItem();
+              }
+              if (ImGui::BeginTabItem("About"))
+              {
+                state->activeCanvasTab = 2;
+                  ImGui::EndTabItem();
+              }
+  
+              ImGui::EndTabBar();
+          }
+      }
+      ImGui::End(); // End the top bar window
+  
+}
+
 void drawAnimationTimeline(GameState *state, float deltaTime) {
 
     PlayBackAnimation *anim = &state->playBackAnimation;
@@ -240,6 +273,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
       showMainMenuBar(state);
       updateNewCanvasWindow(state);
+      drawTabs(state);
 
       drawAnimationTimeline(state, state->dt);
 }
