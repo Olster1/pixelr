@@ -17,8 +17,8 @@ void updateGame(GameState *gameState) {
     float3 lookingAxis = make_float3(rot.E_[2][0], rot.E_[2][1], rot.E_[2][2]);
 
     
-   drawLinedGrid(gameState);
-   drawCanvas(gameState);
+   drawLinedGrid(gameState, getActiveCanvas(gameState));
+   drawCanvas(gameState, getActiveCanvas(gameState));
    updateCanvasZoom(gameState);
 
     //NOTE: Update interaction with the canvas
@@ -26,13 +26,13 @@ void updateGame(GameState *gameState) {
         updateUndoState(gameState);
         
         if(gameState->interactionMode == CANVAS_DRAW_RECTANGLE_MODE || gameState->interactionMode == CANVAS_DRAW_CIRCLE_MODE || gameState->interactionMode == CANVAS_DRAW_LINE_MODE) {
-           updateDrawShape(gameState);
+           updateDrawShape(gameState, getActiveCanvas(gameState));
         } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
-           updateEraser(gameState);
+           updateEraser(gameState, getActiveCanvas(gameState));
         } else if(gameState->interactionMode == CANVAS_FILL_MODE) {
-           updateBucket(gameState);
+           updateBucket(gameState, getActiveCanvas(gameState));
         } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
-           updateCanvasDraw(gameState);
+           updateCanvasDraw(gameState, getActiveCanvas(gameState));
         } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
             updateCanvasMove(gameState);
         }
@@ -56,7 +56,7 @@ void updateGame(GameState *gameState) {
     }
 
     if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND]) {
-        saveFileToPNG(gameState);
+        saveFileToPNG(getActiveCanvas(gameState));
     }
 
     

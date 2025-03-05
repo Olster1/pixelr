@@ -27,6 +27,15 @@ struct UndoRedoBlock {
     }
 };
 
+struct PlayBackAnimation {
+    unsigned int *frameTextures;
+    int currentFrame;
+    bool playing;
+    float frameTime;
+    float elapsedTime;
+};
+
+
 struct Canvas {
     u32 gpuHandle;
     u32 *pixels;
@@ -56,6 +65,7 @@ struct Canvas {
 
 struct Frame {
     Canvas *layers;
+    int activeLayer = 0;
 
     Frame(int w, int h) {
         layers = initResizeArray(Canvas);
@@ -72,27 +82,29 @@ struct Frame {
 
 };
 
-struct PlayBackAnimation {
-    unsigned int *frameTextures;
-    int currentFrame;
-    bool playing;
-    float frameTime;
-    float elapsedTime;
-};
 
 struct CanvasTab {
     Frame *frames;
+    int activeFrame = 0;
+
     PlayBackAnimation playback;
     int w;
     int h;
 
+    char *saveFilePath; //NOTE: Allocated on heap - need to free on dispose
+    char *fileName; //NOTE: Allocated on heap - need to free on dispose
+
     UndoRedoBlock *undoList;
 
-    CanvasTab(int w, int h) {
+    CanvasTab(int w, int h, char *saveFilePath_) {
         frames = initResizeArray(Frame);
         Frame f = Frame(w, h);
         pushArrayItem(&frames, f, Frame);
         playback.frameTime = 0.2f;
+
+        saveFilePath = saveFilePath_;
+        fileName = getFileLastPortion(saveFilePath);
+
 
         //TODO:Complete
         // addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
@@ -103,6 +115,14 @@ struct CanvasTab {
         if(frames) {
             freeResizeArray(frames);
             frames = 0;
+        }
+
+        if(saveFilePath) {
+            easyPlatform_freeMemory(saveFilePath);
+        }
+
+        if(fileName) {
+            easyPlatform_freeMemory(saveFilePath);
         }
     }
 };

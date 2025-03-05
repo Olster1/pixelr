@@ -1,13 +1,13 @@
 
 
 void startCanvas(GameState *gameState) {
-    addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
+    // addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
 
-    for(int y = 0; y < gameState->canvasH; ++y) {
-        for(int x = 0; x < gameState->canvasW; ++x) {
-            gameState->canvas[y*gameState->canvasW + x] = 0x00FFFFFF;
-        }
-    }
+    // for(int y = 0; y < gameState->canvasH; ++y) {
+    //     for(int x = 0; x < gameState->canvasW; ++x) {
+    //         gameState->canvas[y*gameState->canvasW + x] = 0x00FFFFFF;
+    //     }
+    // }
 }
 
 void initGameState(GameState *gameState) {
@@ -28,8 +28,6 @@ void initGameState(GameState *gameState) {
     gameState->camera.shakeTimer = -1;
     gameState->camera.runShakeTimer = -1;
 
-    gameState->canvasW = 16;
-    gameState->canvasH = 16;
     gameState->colorPicked = make_float4(1, 0, 0, 1);
     gameState->bgColor = make_float4(0.3f,0, 0.3f, 1); //make_float4(1, 1, 1, 1); //
     gameState->drawGrid = false;
@@ -76,7 +74,7 @@ void initGameState(GameState *gameState) {
 
     {
         gameState->canvasTabs = initResizeArray(CanvasTab);
-        CanvasTab tab = CanvasTab(16, 16);
+        CanvasTab tab = CanvasTab(16, 16, easyString_copyToHeap("Untitled"));
         pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
         gameState->activeCanvasTab = 0;
     }

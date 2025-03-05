@@ -178,9 +178,9 @@ struct GameState {
     float4 bgColor;
     char dimStr0[256];
     char dimStr1[256];
-    u32 canvas[MAX_CANVAS_DIM*MAX_CANVAS_DIM]; 
-    int canvasW;
-    int canvasH;
+    // u32 canvas[MAX_CANVAS_DIM*MAX_CANVAS_DIM]; 
+    // int canvasW;
+    // int canvasH;
     bool showNewCanvasWindow;
     float scrollSpeed;
     bool draggingCanvas;

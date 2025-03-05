@@ -43,23 +43,36 @@ void drawTabs(GameState *state) {
       {
           if (ImGui::BeginTabBar("TopTabs"))
           {
-              if (ImGui::BeginTabItem("Home"))
+
+            for(int i = 0; i < getArrayLength(state->canvasTabs); ++i) {
+              CanvasTab *t = state->canvasTabs + i;
+
+              char *id = easy_createString_printf(&globalPerFrameArena, "%s%d", (char *)t->fileName, i);
+              ImGui::PushID(id);
+            bool open = true;
+              if (ImGui::BeginTabItem(t->fileName, &open))
               {
-                  state->activeCanvasTab = 0;
+                state->activeCanvasTab = i;
+              
                   ImGui::EndTabItem();
               }
-              if (ImGui::BeginTabItem("Settings"))
-              {
-                state->activeCanvasTab = 1;
-                  ImGui::EndTabItem();
-              }
-              if (ImGui::BeginTabItem("About"))
-              {
-                state->activeCanvasTab = 2;
-                  ImGui::EndTabItem();
-              }
+
+              ImGui::PopID();
+            } 
+
+           
   
               ImGui::EndTabBar();
+
+               // Align button next to the tab bar
+                ImGui::SameLine();
+                
+                if (ImGui::Button("+"))
+                {
+                    CanvasTab tab = CanvasTab(16, 16, easyString_copyToHeap("Untitled"));
+                    pushArrayItem(&state->canvasTabs, tab, CanvasTab);
+                    state->activeCanvasTab = getArrayLength(state->canvasTabs) - 1;
+                }
           }
       }
       ImGui::End(); // End the top bar window
@@ -154,8 +167,8 @@ void updateNewCanvasWindow(GameState *gameState) {
     ImGui::InputText("Width", gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0));
     ImGui::InputText("Height", gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1));
     if (ImGui::Button("Create")) {
-       gameState->canvasW = atoi(gameState->dimStr0);
-       gameState->canvasH = atoi(gameState->dimStr1);
+      //  gameState->canvasW = atoi(gameState->dimStr0);
+      //  gameState->canvasH = atoi(gameState->dimStr1);
 
        clearUndoRedoList(gameState);
        startCanvas(gameState);
@@ -176,7 +189,7 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("New")) { showNewCanvas(state); }
             if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Handle Open */ }
             if (ImGui::MenuItem("Save", "Ctrl+S")) { saveProjectFile(state); }
-            if (ImGui::MenuItem("Export", "Ctrl+E")) { saveFileToPNG(state); }
+            if (ImGui::MenuItem("Export", "Ctrl+E")) { saveFileToPNG(getActiveCanvas(state)); }
             if (ImGui::MenuItem("Exit")) { state->quit = true;  }
             ImGui::EndMenu();
         }

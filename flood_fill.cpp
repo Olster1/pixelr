@@ -43,15 +43,15 @@ FloodFillCavnas *popOffFloodFillQueue(FloodFillCavnas *queue) {
 }
 
 
-void floodFillWithBucket(GameState *gameState, int canvasW, int canvasH, int startX, int startY, u32 startColor, u32 newColor) {
+void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int startY, u32 startColor, u32 newColor) {
     MemoryArenaMark mark = takeMemoryMark(&globalPerFrameArena);
 
-    bool *visited = pushArray(&globalPerFrameArena, canvasW*canvasH, bool);
-    easyMemory_zeroSize(visited, sizeof(bool)*canvasW*canvasH);
+    bool *visited = pushArray(&globalPerFrameArena, canvas->w*canvas->h, bool);
+    easyMemory_zeroSize(visited, sizeof(bool)*canvas->w*canvas->h);
 
     FloodFillCavnas queue = {};
     queue.next = queue.prev = &queue; 
-	pushOnFloodFillQueue(&queue, visited, startX, startY, canvasW, canvasH);
+	pushOnFloodFillQueue(&queue, visited, startX, startY, canvas->w, canvas->h);
 
 	bool searching = true;
 	while(searching) {	
@@ -60,17 +60,17 @@ void floodFillWithBucket(GameState *gameState, int canvasW, int canvasH, int sta
 			int x = node->x;
 			int y = node->y;
 
-			if((getCanvasColor(gameState, x, y) != startColor)) {
+			if((getCanvasColor(canvas, x, y) != startColor)) {
                 //NOTE: Don't add anymore
 			} else {
 				//NOTE: Set the color
-				setCanvasColor(gameState, x, y, newColor);
+				setCanvasColor(canvas, x, y, newColor, gameState->opacity);
 
 				//push on more directions   
-				pushOnFloodFillQueue(&queue, visited, x + 1, y, canvasW, canvasH);
-				pushOnFloodFillQueue(&queue, visited, x - 1, y, canvasW, canvasH);
-				pushOnFloodFillQueue(&queue, visited, x, y + 1, canvasW, canvasH);
-				pushOnFloodFillQueue(&queue, visited, x, y - 1, canvasW, canvasH);
+				pushOnFloodFillQueue(&queue, visited, x + 1, y, canvas->w, canvas->h);
+				pushOnFloodFillQueue(&queue, visited, x - 1, y, canvas->w, canvas->h);
+				pushOnFloodFillQueue(&queue, visited, x, y + 1, canvas->w, canvas->h);
+				pushOnFloodFillQueue(&queue, visited, x, y - 1, canvas->w, canvas->h);
 
 				//Diagonal movements
                 // pushOnFloodFillQueue(&queue, visited, x + 1, y + 1, canvasW, canvasH);
@@ -88,14 +88,14 @@ void floodFillWithBucket(GameState *gameState, int canvasW, int canvasH, int sta
 }
 
 
-void updateBucket(GameState *gameState) {
+void updateBucket(GameState *gameState, Canvas *canvas) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
         //NOTE: Use Flood fill algorithm
-        float2 canvasP = getCanvasCoordFromMouse(gameState);
-        u32 startColor = getCanvasColor(gameState, canvasP.x, canvasP.y);
+        float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+        u32 startColor = getCanvasColor(canvas, canvasP.x, canvasP.y);
         
-        if(isValidCanvasRange(gameState, canvasP.x, canvasP.y)) {
-            floodFillWithBucket(gameState, gameState->canvasW, gameState->canvasH, canvasP.x, canvasP.y, getCanvasColor(gameState, canvasP.x, canvasP.y), float4_to_u32_color(gameState->colorPicked));
+        if(isValidCanvasRange(canvas, canvasP.x, canvasP.y)) {
+            floodFillWithBucket(gameState, canvas, canvasP.x, canvasP.y, getCanvasColor(canvas, canvasP.x, canvasP.y), float4_to_u32_color(gameState->colorPicked));
         }
 
     }
