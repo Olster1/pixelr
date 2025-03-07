@@ -1,9 +1,47 @@
-
 struct PixelInfo {
     int x; 
     int y;
     u32 lastColor;
     u32 thisColor;
+};
+
+struct PixelClipboardInfo {
+    int x; 
+    int y;
+    u32 color;
+
+    PixelClipboardInfo(float x, float y, u32 color) {
+        this->x = x;
+        this->y = y;
+        this->color = color;
+    }
+};
+
+struct Clipboard {
+    PixelClipboardInfo *pixels = 0;
+    Clipboard() {
+
+    }
+
+    void clear() {
+        if(pixels) {
+            freeResizeArray(pixels);
+            pixels = 0;
+        }
+    }
+
+    bool hasCopy() {
+        return pixels != 0 && getArrayLength(pixels);
+    }
+
+    void addPixelInfo(float x, float y, u32 color) {
+        if(!pixels) {
+            pixels = initResizeArray(PixelClipboardInfo);
+        }
+
+        PixelClipboardInfo p = PixelClipboardInfo(x, y, color);
+        pushArrayItem(&pixels, p, PixelClipboardInfo);
+    }
 };
 
 struct UndoRedoBlock {
@@ -106,7 +144,6 @@ struct Frame {
     }
 
 };
-
 
 struct CanvasTab {
     Frame *frames = 0;

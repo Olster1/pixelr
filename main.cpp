@@ -31,7 +31,7 @@ void updateGame(GameState *gameState) {
         } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
            updateEraser(gameState, getActiveCanvas(gameState));
         } else if(gameState->interactionMode == CANVAS_FILL_MODE) {
-           updateBucket(gameState, getActiveCanvas(gameState));
+           updateBucket(gameState, getActiveCanvas(gameState), gameState->selectMode);
         } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
            updateCanvasDraw(gameState, getActiveCanvas(gameState));
         } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
@@ -56,12 +56,74 @@ void updateGame(GameState *gameState) {
         gameState->interactionMode = CANVAS_MOVE_MODE;
     }
 
-    if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND]) {
+    if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
         showNewCanvas(gameState);
     }
 
-    if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND]) {
+    if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
         saveFileToPNG(getActiveCanvas(gameState));
+    }
+
+    if(gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED) {
+        CanvasTab *t = getActiveCanvasTab(gameState);
+        if(t) {
+            if(getArrayLength(t->selected) > 0) {
+                clearResizeArray(t->selected);
+            }
+        }
+    }
+
+    if(gameState->keys.keys[KEY_C] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        CanvasTab *t = getActiveCanvasTab(gameState);
+        if(t) {
+            for(int i = 0; i < getArrayLength(t->selected); i++) {
+                float2 p = t->selected[i];
+                Canvas *c = getActiveCanvas(gameState);
+                if(c) {
+                    u32 color = getCanvasColor(c, (int)p.x, (int)p.y);
+                    gameState->clipboard.addPixelInfo((int)p.x, (int)p.y, color);
+                }
+            }
+        }
+    }
+
+    if(gameState->keys.keys[KEY_V] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        Canvas *c = getActiveCanvas(gameState);
+        if(c && gameState->clipboard.hasCopy()) {
+            for(int i = 0; i < getArrayLength(gameState->clipboard.pixels); i++) {
+                PixelClipboardInfo info = gameState->clipboard.pixels[i];
+
+                setCanvasColor(c, info.x, info.y, info.color, gameState->opacity, false);
+            }
+        }
+    }
+
+    if(gameState->keys.keys[KEY_DELETE] == MOUSE_BUTTON_PRESSED || gameState->keys.keys[KEY_BACKSPACE] == MOUSE_BUTTON_PRESSED) {
+        Canvas *c = getActiveCanvas(gameState);
+        CanvasTab *t = getActiveCanvasTab(gameState);
+        if(t && c) {
+            for(int i = 0; i < getArrayLength(t->selected); i++) {
+                float2 p = t->selected[i];
+                setCanvasColor(c, p.x, p.y, 0x00FFFFFF, gameState->opacity, false);
+            }
+        }
+    }
+
+    if(gameState->keys.keys[KEY_A] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        CanvasTab *t = getActiveCanvasTab(gameState);
+        if(t) {
+            Canvas *canvas = getActiveCanvas(gameState);
+            if(canvas) {
+                clearResizeArray(t->selected);
+
+                for(int y = 0; y <= t->h; ++y) {
+                    for(int x = 0; x <= t->w; ++x) {
+                        float2 f = make_float2(x, y);
+                        pushArrayItem(&t->selected, f, float2);
+                    }
+                }
+            }
+        }
     }
 
     

@@ -43,7 +43,7 @@ FloodFillCavnas *popOffFloodFillQueue(FloodFillCavnas *queue) {
 }
 
 
-void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int startY, u32 startColor, u32 newColor) {
+void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int startY, u32 startColor, u32 newColor, bool isSelect) {
     MemoryArenaMark mark = takeMemoryMark(&globalPerFrameArena);
 
     bool *visited = pushArray(&globalPerFrameArena, canvas->w*canvas->h, bool);
@@ -52,6 +52,13 @@ void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int s
     FloodFillCavnas queue = {};
     queue.next = queue.prev = &queue; 
 	pushOnFloodFillQueue(&queue, visited, startX, startY, canvas->w, canvas->h);
+
+	if(isSelect) {
+		CanvasTab *t = getActiveCanvasTab(gameState);
+		if(t) {
+			clearResizeArray(t->selected);
+		}
+	}
 
 	bool searching = true;
 	while(searching) {	
@@ -63,8 +70,16 @@ void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int s
 			if((getCanvasColor(canvas, x, y) != startColor)) {
                 //NOTE: Don't add anymore
 			} else {
-				//NOTE: Set the color
-				setCanvasColor(canvas, x, y, newColor, gameState->opacity);
+				if(isSelect) {
+					CanvasTab *t = getActiveCanvasTab(gameState);
+					if(t) {
+						float2 f = make_float2(x, y);
+            			pushArrayItem(&t->selected, f, float2);
+					}
+				} else {
+					//NOTE: Set the color
+					setCanvasColor(canvas, x, y, newColor, gameState->opacity);
+				}
 
 				//push on more directions   
 				pushOnFloodFillQueue(&queue, visited, x + 1, y, canvas->w, canvas->h);
@@ -88,14 +103,14 @@ void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int s
 }
 
 
-void updateBucket(GameState *gameState, Canvas *canvas) {
+void updateBucket(GameState *gameState, Canvas *canvas, bool isSelect = false) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
         //NOTE: Use Flood fill algorithm
         float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
         u32 startColor = getCanvasColor(canvas, canvasP.x, canvasP.y);
         
         if(isValidCanvasRange(canvas, canvasP.x, canvasP.y)) {
-            floodFillWithBucket(gameState, canvas, canvasP.x, canvasP.y, getCanvasColor(canvas, canvasP.x, canvasP.y), float4_to_u32_color(gameState->colorPicked));
+            floodFillWithBucket(gameState, canvas, canvasP.x, canvasP.y, getCanvasColor(canvas, canvasP.x, canvasP.y), float4_to_u32_color(gameState->colorPicked), isSelect);
         }
 
     }

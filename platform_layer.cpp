@@ -49,11 +49,16 @@ enum KeyTypes {
   KEY_Z,
   KEY_N,
   KEY_S,
+  KEY_C,
+  KEY_V,
+  KEY_A,
   KEY_LEFT,
   KEY_RIGHT,
   KEY_SPACE,
   KEY_SHIFT,
   KEY_ESCAPE,
+  KEY_DELETE,
+  KEY_BACKSPACE,
   KEY_1,
   KEY_2,
   KEY_3,
@@ -225,6 +230,9 @@ int main(int argc, char **argv) {
     updateKeyState(gameState, KEY_N, currentKeyStates[SDL_SCANCODE_N] == 1);
     updateKeyState(gameState, KEY_S, currentKeyStates[SDL_SCANCODE_S] == 1);
     updateKeyState(gameState, KEY_Q, currentKeyStates[SDL_SCANCODE_Q] == 1);
+    updateKeyState(gameState, KEY_C, currentKeyStates[SDL_SCANCODE_C] == 1);
+    updateKeyState(gameState, KEY_V, currentKeyStates[SDL_SCANCODE_V] == 1);
+    updateKeyState(gameState, KEY_A, currentKeyStates[SDL_SCANCODE_A] == 1);
     updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_SCANCODE_LGUI] == 1);
     updateKeyState(gameState, KEY_DOWN, currentKeyStates[SDL_SCANCODE_DOWN] == 1 || currentKeyStates[SDL_SCANCODE_S] == 1);
     updateKeyState(gameState, KEY_LEFT, currentKeyStates[SDL_SCANCODE_LEFT] == 1 || currentKeyStates[SDL_SCANCODE_A] == 1);
@@ -232,6 +240,8 @@ int main(int argc, char **argv) {
     updateKeyState(gameState, KEY_SPACE, currentKeyStates[SDL_SCANCODE_SPACE] == 1);
     updateKeyState(gameState, KEY_SHIFT, currentKeyStates[SDL_SCANCODE_LSHIFT] == 1);
     updateKeyState(gameState, KEY_ESCAPE, currentKeyStates[SDL_SCANCODE_ESCAPE] == 1);
+    updateKeyState(gameState, KEY_DELETE, currentKeyStates[SDL_SCANCODE_DELETE] == 1);
+    updateKeyState(gameState, KEY_BACKSPACE, currentKeyStates[SDL_SCANCODE_BACKSPACE] == 1);
     updateKeyState(gameState, KEY_1, currentKeyStates[SDL_SCANCODE_1] == 1);
     updateKeyState(gameState, KEY_2, currentKeyStates[SDL_SCANCODE_2] == 1);
     updateKeyState(gameState, KEY_3, currentKeyStates[SDL_SCANCODE_3] == 1);

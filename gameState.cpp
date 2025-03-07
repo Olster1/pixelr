@@ -194,6 +194,7 @@ struct GameState {
     bool drawingShape;
     float eraserSize;
     bool autoFocus;
+    bool selectMode;
 
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;
@@ -208,6 +209,8 @@ struct GameState {
     bool showColorPalleteEnter;
 
     char colorsPalleteBuffer[10000];
+
+    Clipboard clipboard;
 
     bool quit;
 };

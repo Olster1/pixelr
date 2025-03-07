@@ -331,6 +331,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           ImGui::Checkbox("Check Background", &state->checkBackground);
           ImGui::Checkbox("Draw Grid", &state->drawGrid); 
           ImGui::SliderFloat("Eraser", &state->eraserSize, 1.0f, 100.0f);
+          ImGui::Checkbox("SELECT", &state->selectMode);
 
 
           if (ImGui::Button("\uf0b2")) {

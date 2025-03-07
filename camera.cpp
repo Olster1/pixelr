@@ -19,24 +19,24 @@ void updateCamera(GameState *gameState) {
         float3 yAxis = make_float3(rot.E_[1][0], rot.E_[1][1], rot.E_[1][2]);
         float3 xAxis = make_float3(rot.E_[0][0], rot.E_[0][1], rot.E_[0][2]);
 
-        if(gameState->keys.keys[KEY_LEFT]) {
-            gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(-gameState->dt*speed, xAxis));
-        }
-        if(gameState->keys.keys[KEY_RIGHT]) {
-            gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(gameState->dt*speed, xAxis));
-        }
-        if(gameState->keys.keys[KEY_DOWN]) {
-            gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(-gameState->dt*speed, zAxis));
-        }
-        if(gameState->keys.keys[KEY_UP]) {
-            gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(gameState->dt*speed, zAxis));
-        }
-        if(gameState->keys.keys[KEY_Q]) {
-            gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(-gameState->dt*speed, yAxis));
-        }
-        if(gameState->keys.keys[KEY_E]) {
-            gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(gameState->dt*speed, yAxis));
-        }
+        // if(gameState->keys.keys[KEY_LEFT]) {
+        //     gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(-gameState->dt*speed, xAxis));
+        // }
+        // if(gameState->keys.keys[KEY_RIGHT]) {
+        //     gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(gameState->dt*speed, xAxis));
+        // }
+        // if(gameState->keys.keys[KEY_DOWN]) {
+        //     gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(-gameState->dt*speed, zAxis));
+        // }
+        // if(gameState->keys.keys[KEY_UP]) {
+        //     gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(gameState->dt*speed, zAxis));
+        // }
+        // if(gameState->keys.keys[KEY_Q]) {
+        //     gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(-gameState->dt*speed, yAxis));
+        // }
+        // if(gameState->keys.keys[KEY_E]) {
+        //     gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(gameState->dt*speed, yAxis));
+        // }
 
     } else if(gameState->useCameraMovement) {
         gameState->camera.T.pos = plus_float3(gameState->cameraOffset, gameState->camera.T.pos);

@@ -99,7 +99,8 @@ void initGameState(GameState *gameState) {
 
     playSound(&gameState->bgMusic);
 
-    
+    gameState->clipboard = Clipboard();
+    gameState->selectMode = false;
 
     gameState->drawBlocks = false;
 
