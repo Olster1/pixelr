@@ -31,7 +31,7 @@ void initGameState(GameState *gameState) {
     gameState->colorPicked = make_float4(1, 0, 0, 1);
     gameState->bgColor = make_float4(0.3f,0, 0.3f, 1); //make_float4(1, 1, 1, 1); //
     gameState->drawGrid = false;
-    gameState->opacity = 0.5f;
+    gameState->opacity = 1;
     gameState->eraserSize = 1.0f;
 
     stbi_flip_vertically_on_write(1);
@@ -78,14 +78,6 @@ void initGameState(GameState *gameState) {
         pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
         gameState->activeCanvasTab = 0;
     }
-
-    if(!gameState->playBackAnimation.frameTextures) {
-        gameState->playBackAnimation.frameTextures = initResizeArray(unsigned int);
-  
-        pushArrayItem(&gameState->playBackAnimation.frameTextures, gameState->grassTexture.handle, u32);
-        pushArrayItem(&gameState->playBackAnimation.frameTextures, gameState->grassTexture.handle, u32);
-    }
-    gameState->playBackAnimation.frameTime = 0.2f;
 
     gameState->currentMiningBlock = 0;
 

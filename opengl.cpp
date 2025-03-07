@@ -148,6 +148,7 @@ Shader loadShader(char *vertexShader, char *fragShader) {
         glGetShaderInfoLog(fragShaderHandle, 2048, &flength, flog);
         glGetProgramInfoLog(result.handle, 2048, &plength, plog);
         
+        
         if(vlength || flength || plength) {
             printf("%s\n", vertexShader);
             printf("%s\n", fragShader);
@@ -157,6 +158,8 @@ Shader loadShader(char *vertexShader, char *fragShader) {
             
         }
     }
+
+    renderCheckError();
     
     assert(result.valid);
 
@@ -504,6 +507,32 @@ void deleteTexture(Texture *t) {
     glDeleteTextures(1, &t->handle);
 }
 
+void deleteTextureHandle(u32 handle) {
+    glDeleteTextures(1, &handle);
+}
+
+Texture createGPUTextureRed(int width, int height, void *data = 0) {
+    Texture result;
+    result.w = width;
+    result.h = height;
+
+    unsigned int texture;
+    glGenTextures(1, &texture);
+    glBindTexture(GL_TEXTURE_2D, texture);
+
+    
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+
+    glBindTexture(GL_TEXTURE_2D, 0); 
+
+    result.handle = texture;   
+
+    return result;
+}
+
 Texture createGPUTexture(int width, int height, void *data = 0) {
     Texture result;
     result.w = width;
@@ -516,9 +545,8 @@ Texture createGPUTexture(int width, int height, void *data = 0) {
     
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  
-
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 
     glBindTexture(GL_TEXTURE_2D, 0); 
 
@@ -754,7 +782,7 @@ void prepareChunkRender(ChunkModelBuffer *model, Shader *shader, uint32_t textur
    
 }
 
-void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int instanceCount, float16 projectionTransform, float16 modelViewTransform, float3 lookingAxis, bool underWater, TimeOfDayValues timeOfDayValues, uint32_t flags = 0, int skinningTextureId = -1, GLenum primitive = GL_TRIANGLES) {
+void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int instanceCount, float16 projectionTransform, float16 modelViewTransform, float3 lookingAxis, bool underWater, TimeOfDayValues timeOfDayValues, uint32_t flags = 0, int skinningTextureId = -1, GLenum primitive = GL_TRIANGLES, float time = 0) {
     // printf("%d\n", instanceCount);
     glUseProgram(shader->handle);
     renderCheckError();
@@ -775,6 +803,9 @@ void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int inst
     renderCheckError();
 
     glUniform3f(glGetUniformLocation(shader->handle, "lookingAxis"), lookingAxis.x, lookingAxis.y, lookingAxis.z);
+    renderCheckError();
+
+    glUniform1f(glGetUniformLocation(shader->handle, "u_time"), time); //global_fogSeeDistance*1000
     renderCheckError();
 
     float4 fogColor = make_float4(0.9, 0.9, 0.9, 1);
@@ -818,6 +849,11 @@ void endChunkRender() {
     glUseProgram(0);
     renderCheckError();
 }
+
+// void draw() {
+//     updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->atlasQuads, renderer->atlasQuadCount*sizeof(InstanceDataWithRotation));
+//     drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadCount, projectionTransform, modelViewTransform, lookingAxis, false, getTimeOfDayValues());
+// }
 
 void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 modelViewTransform, float16 projectionScreenTransform, float16 textScreenTransform, float3 lookingAxis, float16 cameraTransformWithoutTranslation, TimeOfDayValues timeOfDay, uint32_t perlinNoiseHandle) {
     if(renderer->cubeCount > 0) {
@@ -888,4 +924,16 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
         renderer->lineCount = 0;
     }
+
+    if(renderer->selectionCount > 0) {
+        //NOTE: Draw circle oultines
+        updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->selectionQuad, sizeof(InstanceDataWithRotation));
+        drawModels(&renderer->quadModel, &renderer->pixelSelectionShader, renderer->selectionTextureHandle, 1, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay, 0, -1, GL_TRIANGLES, renderer->timeAccum);
+
+        renderer->selectionCount = 0;
+    }
+
+    
+
+    
 }

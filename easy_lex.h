@@ -12,6 +12,11 @@ bool lexIsNumeric(char charValue) {
     return result;
 }
 
+bool lexIsHexadecimalNumeric(char charValue) {
+    bool result = (charValue >= '0' && charValue <= '9') || (charValue >= 'a' && charValue <= 'f') || (charValue >= 'A' && charValue <= 'F');
+    return result;
+}
+
 bool lexIsAlphaNumeric(char charValue) {
     bool result = ((charValue >= 'A' && charValue <= 'Z') || (charValue >= 'a' && charValue <= 'z') || charValue == '_');
     return result;
@@ -364,7 +369,17 @@ EasyToken lexGetToken_(EasyTokenizer *tokenizer, bool advanceWithToken) {
                 int numberOfDecimal = 0;
                 bool hadENotation = false;
                 at++; //move past the first number
-                while(!hadENotation && *at && (lexIsNumeric(*at) || *at == '.' || *at == 'E' || *at == 'e')) {
+                bool isHexadecimal = false;
+                if(*at == 'x' || *at == 'X') {
+                    if(token.at[0] == '0') {
+                        //NOTE: Hexadecimal number
+                        at++;
+                        printf("%s\n", at);
+                        assert(lexIsHexadecimalNumeric(*at));
+                        isHexadecimal = true;
+                    }
+                }
+                while(!hadENotation && *at && (lexIsNumeric(*at) || *at == '.' || *at == 'E' || *at == 'e' || (isHexadecimal && lexIsHexadecimalNumeric(*at)))) {
                     if(*at == '.') {
                         numberOfDecimal++;
                         if(numberOfDecimal > 1) {
@@ -411,7 +426,19 @@ EasyToken lexGetToken_(EasyTokenizer *tokenizer, bool advanceWithToken) {
                 
                 if(!hadENotation) {
                     char *a = nullTerminateArena(token.at, (at - token.at), &globalPerFrameArena);
-                    if(numberOfDecimal > 0) {
+                    if(isHexadecimal) {
+
+                        char *endptr;
+                        long value = strtol(a, &endptr, 16);  // Base 16 for hexadecimal
+
+                        if (*endptr != '\0') {
+                            printf("Invalid character encountered: %s\n", endptr);
+                        } else {
+                            printf("Hexadecimal %s is %ld in decimal\n", a, value);
+                        }
+                        token.intVal = value;
+
+                    } else if(numberOfDecimal > 0) {
                         token.type = TOKEN_FLOAT;
                         token.floatVal = atof(a);
                     } else {

@@ -28,19 +28,24 @@ struct UndoRedoBlock {
 };
 
 struct PlayBackAnimation {
-    unsigned int *frameTextures;
-    int currentFrame;
-    bool playing;
-    float frameTime;
-    float elapsedTime;
+    int currentFrame = 0;
+    bool playing = false;
+    float frameTime = 0.2f;
+    float elapsedTime = 0;
+
+    PlayBackAnimation() {
+
+    }
 };
 
 
 struct Canvas {
-    u32 gpuHandle;
-    u32 *pixels;
+    u32 gpuHandle = 0;
+    u32 *pixels = 0;
     int w;
     int h;
+
+    
 
     Canvas(int w_, int h_) {
         w = w_;
@@ -52,31 +57,51 @@ struct Canvas {
                 pixels[y*w + x] = 0x00FFFFFF;
             }
         }
+
+        gpuHandle = createGPUTexture(w, h, pixels).handle;
+
+        
     }
 
     void dispose() {
         if(pixels) {
             easyPlatform_freeMemory(pixels);
             pixels = 0;
-
         }
+        
+        if(gpuHandle > 0) {
+            deleteTextureHandle(gpuHandle);
+        }
+      
     }
 };
 
 struct Frame {
-    Canvas *layers;
+    Canvas *layers = 0;
     int activeLayer = 0;
+
+    u32 gpuHandle = 0;
 
     Frame(int w, int h) {
         layers = initResizeArray(Canvas);
         Canvas f = Canvas(w, h);
         pushArrayItem(&layers, f, Canvas);
+
+        gpuHandle = createGPUTexture(w, h, f.pixels).handle;
     }
 
     void dispose() {
         if(layers) {
+            for(int i = 0; i < getArrayLength(layers); ++i) {
+                Canvas *c = layers + i;
+                c->dispose();
+            }
             freeResizeArray(layers);
             layers = 0;
+        }
+
+        if(gpuHandle > 0) {
+            deleteTextureHandle(gpuHandle);
         }
     }
 
@@ -84,27 +109,38 @@ struct Frame {
 
 
 struct CanvasTab {
-    Frame *frames;
+    Frame *frames = 0;
     int activeFrame = 0;
 
     PlayBackAnimation playback;
     int w;
     int h;
 
+    float2 *selected = 0;//NOTE: Resize array 
+    u32 selectionGpuHandle = 0;
+
     char *saveFilePath; //NOTE: Allocated on heap - need to free on dispose
     char *fileName; //NOTE: Allocated on heap - need to free on dispose
 
     UndoRedoBlock *undoList;
 
+    bool isOpen = true; //NOTE: Used to close the tab
+
     CanvasTab(int w, int h, char *saveFilePath_) {
+        this->w = w;
+        this->h = h;
         frames = initResizeArray(Frame);
         Frame f = Frame(w, h);
         pushArrayItem(&frames, f, Frame);
+
+        playback = PlayBackAnimation();
         playback.frameTime = 0.2f;
 
         saveFilePath = saveFilePath_;
         fileName = getFileLastPortion(saveFilePath);
 
+        selectionGpuHandle = createGPUTextureRed(w, h).handle;
+        selected = initResizeArray(float2);
 
         //TODO:Complete
         // addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
@@ -113,6 +149,11 @@ struct CanvasTab {
     void dispose() {
         //TODO: Clear the undo list 
         if(frames) {
+            for(int i = 0; i < getArrayLength(frames); ++i) {
+                Frame *f = frames + i;
+                f->dispose();
+            }
+
             freeResizeArray(frames);
             frames = 0;
         }
@@ -122,7 +163,16 @@ struct CanvasTab {
         }
 
         if(fileName) {
-            easyPlatform_freeMemory(saveFilePath);
+            easyPlatform_freeMemory(fileName);
+        }
+
+        if(selectionGpuHandle > 0) {
+            deleteTextureHandle(selectionGpuHandle);
+        }
+        
+        if(selected) {
+            freeResizeArray(selected);
+            selected = 0;
         }
     }
 };

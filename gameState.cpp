@@ -46,6 +46,7 @@ enum CanvasInteractionMode {
     CANVAS_DRAW_LINE_MODE,
     CANVAS_DRAW_RECTANGLE_MODE,
     CANVAS_ERASE_MODE,
+    CANVAS_SELECT_RECTANGLE_MODE,
 
 };
 
@@ -194,13 +195,19 @@ struct GameState {
     float eraserSize;
     bool autoFocus;
 
-    PlayBackAnimation playBackAnimation;
-
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;
 
     CanvasTab *canvasTabs; //NOTE: resize array
     int activeCanvasTab;
+
+    int palletteCount;
+    int palletteIndexAt;
+    int colorsPalletePicked;
+    float4 colorsPallete[256];
+    bool showColorPalleteEnter;
+
+    char colorsPalleteBuffer[10000];
 
     bool quit;
 };

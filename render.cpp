@@ -225,6 +225,11 @@ struct Renderer {
     int lineCount; 
     InstanceDataWithRotation lineData[MAX_LINES_PER_RENDER];
 
+    int selectionCount;
+    InstanceDataWithRotation selectionQuad;
+
+    uint32_t selectionTextureHandle;
+
     Shader blockShader;
     Shader blockGreedyShader;
     Shader blockPickupShader;
@@ -235,6 +240,7 @@ struct Renderer {
     Shader lineShader;
     Shader skyboxShader;
     Shader blockColorShader;
+    Shader pixelSelectionShader;
     Shader blockSameTextureShader;
     Shader rayCastShader;
     
@@ -245,6 +251,8 @@ struct Renderer {
     ModelBuffer avocadoModel;
     ModelBuffer blockModelSameTexture;
     ModelBuffer lineModel;
+
+    float timeAccum;
 
     bool underWater;
 };
@@ -387,6 +395,14 @@ void pushPlainQuadHUD(Renderer *renderer, float3 worldP, float2 scale, float4 co
 
 void pushColoredQuad(Renderer *renderer, float3 worldP, float2 scale, float4 color) {
     pushAtlasQuad_(renderer, worldP, make_float3(scale.x, scale.y, 0), make_float3(0, 0, 0), make_float4(0.12f, 0.35f, 0.65, 0.75f), color, false);
+}
+
+void pushSelectionQuad(Renderer *renderer, float3 worldP, float2 scale, float4 color) {
+    float16 T = eulerAnglesToTransform(0, 0, 0);
+    renderer->selectionQuad.M = float16_set_pos(float16_scale(T, make_float3(scale.x, scale.y, 0)), worldP);
+    renderer->selectionQuad.color = color;
+    renderer->selectionQuad.uv = make_float4(0, 1, 0, 1);
+    renderer->selectionCount++;
 }
 
 void pushCircleOutline(Renderer *renderer, float3 worldP, float radius, float4 color) {

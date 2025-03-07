@@ -43,12 +43,40 @@ int getArrayLength(void *array) {
     return result;
 }
 
-// bool removeArrayIndex(void *array, int index) {
-//     ResizeArrayHeader *header = getResizeArrayHeader((u8 *)array);
-//     assert(header->elementsCount <= header->maxCount);
-//     assert(index < header->elementsCount);
-//     return result;
-// }
+void clearResizeArray(void *array) {
+    if(!array) {
+        return;
+    }
+    ResizeArrayHeader *header = getResizeArrayHeader((u8 *)array);
+    assert(header->elementsCount <= header->maxCount);
+    header->elementsCount = 0;
+}
+
+bool removeArrayAtIndex(void *array, int index) {
+    bool found = false;
+    if(!array) {
+        found = false;
+    } else {
+        ResizeArrayHeader *header = getResizeArrayHeader((u8 *)array);
+        assert(header->elementsCount <= header->maxCount);
+        assert(index < header->elementsCount);
+
+        if(index < header->elementsCount) {
+            found = true;
+            //NOTE: Move everything down
+            u8 *a = (u8 *)array;
+            for(int i = index; i < (header->elementsCount - 1); ++i) {
+                *(a + (i * header->sizeOfElement)) = *(a + ((i + 1) * header->sizeOfElement));
+                
+            }
+
+            header->elementsCount--;
+        }
+    }
+
+    return found;
+    
+}
 
 #define pushArrayItem(array_, data, type)  (type *)pushArrayItem_((void **)array_, &data)
 void *pushArrayItem_(void **array_, void *data) {

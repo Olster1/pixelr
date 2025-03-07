@@ -88,6 +88,10 @@ bool isValidCanvasRange(Canvas *canvas, int coordX, int coordY) {
     return (coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w);
 }
 
+bool isValidCanvasTabRange(CanvasTab *canvas, int coordX, int coordY) {
+    return (coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w);
+}
+
 bool isInShape(int x, int y, int w, int h, CanvasInteractionMode mode) {
     bool result = false;
     if(mode == CANVAS_DRAW_RECTANGLE_MODE) {
@@ -122,6 +126,35 @@ bool isInShape(int x, int y, int w, int h, CanvasInteractionMode mode) {
     }
 
     return result;
+}
+
+void drawSelectShape(GameState *gameState, CanvasTab *canvas, CanvasInteractionMode mode) {
+    float2 p = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+    float2 diff1 = minus_float2(p, gameState->drawShapeStart);
+    float2 diff = diff1;
+    diff.x = abs(diff1.x);
+    diff.y = abs(diff1.y);
+    float4 color = gameState->colorPicked;
+
+    float startX = (gameState->drawShapeStart.x < p.x) ? gameState->drawShapeStart.x : p.x;
+    float startY = (gameState->drawShapeStart.y < p.y) ? gameState->drawShapeStart.y : p.y;
+
+    int w = round(diff.x);
+    int h = round(diff.y);
+
+    clearResizeArray(canvas->selected);
+
+    for(int y = 0; y <= h; ++y) {
+        for(int x = 0; x <= w; ++x) {
+            float2 f = make_float2(round(x + startX), round(y + startY));
+            pushArrayItem(&canvas->selected, f, float2);
+        }
+    }
+    
+}
+
+void clearSelection(CanvasTab *canvas) {
+    clearResizeArray(canvas->selected);
 }
 
 void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode mode, bool fill = false) {
@@ -160,7 +193,43 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
     }
 }
 
-void drawCanvas(GameState *gameState, Canvas *canvas) {
+float2 canvasCoordToWorldSpace(Canvas *canvas, int x, int y) {
+    float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
+    return p;
+}
+
+void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
+    renderer->selectionTextureHandle = t->selectionGpuHandle;
+    glBindTexture(GL_TEXTURE_2D, t->selectionGpuHandle);
+    renderCheckError();
+
+    u8 *pixels = (u8 *)pushArray(&globalPerFrameArena, t->w*t->h, u8);
+            
+    for(int i = 0; i < getArrayLength(t->selected); ++i) {
+        float2 p = t->selected[i];
+        int y = (t->h - 1) - p.y;
+        if(isValidCanvasTabRange(t, p.x, y)) 
+        {
+            pixels[(int)(y*t->w + p.x)] = 0xFF;
+        }
+    } 
+            
+    glTexSubImage2D(
+        GL_TEXTURE_2D,  // Target
+        0,              // Mipmap level (0 for base level)
+        0, 0,           // X and Y offset (update from the top-left corner)
+        t->w, t->h,  // Width and height of the new data
+        GL_RED,        // Format of the pixel data
+        GL_UNSIGNED_BYTE, // Data type
+        pixels    // Pointer to new pixel data
+    );
+
+    renderCheckError();
+    glBindTexture(GL_TEXTURE_2D, 0);
+    renderCheckError();
+}
+
+void drawCanvas(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
      //NOTE: Draw the canvas
      for(int y = 0; y < canvas->h; ++y) {
         for(int x = 0; x < canvas->w; ++x) {
@@ -182,6 +251,13 @@ void drawCanvas(GameState *gameState, Canvas *canvas) {
                 pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
             }
         }
+    }
+
+
+    //NOTE: Draw selected
+    if(getArrayLength(canvasTab->selected) > 0) {
+        updateCanvasSelectionTexture(gameState->renderer, canvasTab);
+        pushSelectionQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvas->w*VOXEL_SIZE_IN_METERS, canvas->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 0.7f));
     }
 }
 
@@ -290,6 +366,25 @@ void updateDrawShape(GameState *gameState, Canvas *canvas) {
     }
 }
 
+void updateCanvasSelect(GameState *gameState, CanvasTab *canvas) {
+    if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+        gameState->drawShapeStart = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+        gameState->drawingShape = true;
+    }
+
+    if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED) {
+        if(gameState->drawingShape) {
+            drawSelectShape(gameState, canvas, gameState->interactionMode);
+        }
+    } 
+    
+    if(gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED) {
+        if(gameState->drawingShape) {
+            gameState->drawingShape = false;
+        }
+    }
+}
+
 void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
                 
@@ -354,4 +449,73 @@ Canvas *getActiveCanvas(GameState *gameState) {
 
     return canvas;
 
+}
+
+CanvasTab *getActiveCanvasTab(GameState *gameState) {
+    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
+    return t;
+
+}
+
+Frame *getActiveFrame(GameState *gameState) {
+    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
+    Frame *f = t->frames + t->activeFrame;
+    return f;
+
+}
+
+
+
+void updateFrameGPUHandles(Frame *f, CanvasTab *t) {
+   
+    for (int j = 0; j < getArrayLength(f->layers); j++) {
+        Canvas *c = f->layers + j;
+        assert(c->gpuHandle > 0);
+
+        glBindTexture(GL_TEXTURE_2D, c->gpuHandle);
+        renderCheckError();
+
+        glTexSubImage2D(
+            GL_TEXTURE_2D,  // Target
+            0,              // Mipmap level (0 for base level)
+            0, 0,           // X and Y offset (update from the top-left corner)
+            t->w, t->h,  // Width and height of the new data
+            GL_RGBA,        // Format of the pixel data
+            GL_UNSIGNED_BYTE, // Data type
+            c->pixels    // Pointer to new pixel data
+        );
+
+        renderCheckError();
+        glBindTexture(GL_TEXTURE_2D, 0);
+        renderCheckError();
+    }
+}
+
+void updateGpuCanvasTextures(GameState *gameState) {
+    CanvasTab *t = getActiveCanvasTab(gameState);
+
+    for (int i = 0; i < getArrayLength(t->frames); i++) {
+        Frame *f = t->frames + i;
+        
+        updateFrameGPUHandles(f, t);
+
+        //NOTE: Draw to a frame buffer all the images 
+        glBindTexture(GL_TEXTURE_2D, f->gpuHandle);
+        renderCheckError();
+
+        glTexSubImage2D(
+            GL_TEXTURE_2D,  // Target
+            0,              // Mipmap level (0 for base level)
+            0, 0,           // X and Y offset (update from the top-left corner)
+            t->w, t->h,  // Width and height of the new data
+            GL_RGBA,        // Format of the pixel data
+            GL_UNSIGNED_BYTE, // Data type
+            f->layers[0].pixels    // Pointer to new pixel data
+        );
+        
+        renderCheckError();
+
+        glBindTexture(GL_TEXTURE_2D, 0);
+        renderCheckError();
+    }
 }

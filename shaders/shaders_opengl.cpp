@@ -67,6 +67,27 @@ static char *lineFragShader =
     "color = color_frag;"
 "}";
 
+static char *selectionFragShader = 
+"#version 330\n"
+"in vec4 color_frag;" 
+"in vec2 uv_frag;"
+
+"uniform sampler2D diffuse;" //NOTE: Selection Mask
+"uniform float u_time;"
+"out vec4 color;"
+
+"void main() {"
+    "vec4 color1 = color_frag;" 
+    "float isSelected = texture(diffuse, uv_frag).r;"
+    "if (isSelected > 0.5) {"
+        "float stripe = sin((uv_frag.x + uv_frag.y - u_time * 2.0) * 50.0) * 0.5 + 0.5;"
+        "color1.rgb = mix(color1.rgb, vec3(1.0, 1.0, 1.0), stripe * 0.5);"
+        "color1.w *= stripe;"
+        "color = color1;"
+    "} else {"
+        "discard;"
+    "}"
+"}";
 
 static char *skeletalVertexShader = 
 "#version 330\n"
