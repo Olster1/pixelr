@@ -128,6 +128,16 @@ bool isInShape(int x, int y, int w, int h, CanvasInteractionMode mode) {
     return result;
 }
 
+void clearSelection(CanvasTab *canvas, GameState *gameState = 0) {
+    bool shouldClear = true;
+    if(gameState) {
+        shouldClear = !(gameState->keys.keys[KEY_SHIFT] == MOUSE_BUTTON_DOWN);
+    }
+    if(shouldClear) {
+        clearResizeArray(canvas->selected);
+    }
+}
+
 void drawSelectShape(GameState *gameState, CanvasTab *canvas, CanvasInteractionMode mode) {
     float2 p = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
     float2 diff1 = minus_float2(p, gameState->drawShapeStart);
@@ -142,7 +152,7 @@ void drawSelectShape(GameState *gameState, CanvasTab *canvas, CanvasInteractionM
     int w = round(diff.x);
     int h = round(diff.y);
 
-    clearResizeArray(canvas->selected);
+    clearSelection(canvas, gameState);
 
     for(int y = 0; y <= h; ++y) {
         for(int x = 0; x <= w; ++x) {
@@ -151,10 +161,6 @@ void drawSelectShape(GameState *gameState, CanvasTab *canvas, CanvasInteractionM
         }
     }
     
-}
-
-void clearSelection(CanvasTab *canvas) {
-    clearResizeArray(canvas->selected);
 }
 
 void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode mode, bool fill = false) {
@@ -229,7 +235,29 @@ void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
     renderCheckError();
 }
 
-void drawCanvas(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
+void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
+    if(gameState->checkBackground) {
+        //NOTE: Draw the canvas
+        for(int y = 0; y < canvas->h; ++y) {
+            for(int x = 0; x < canvas->w; ++x) {
+                u32 c = canvas->pixels[y*canvas->w + x];
+                float4 color = u32_to_float4_color(c);
+
+                float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
+
+                {
+                    float4 c = make_float4(0.8f, 0.8f, 0.8f, 1);
+                    if(((y % 2) == 0 && (x % 2) == 1) || ((y % 2) == 1 && (x % 2) == 0)) {
+                        c = make_float4(0.6f, 0.6f, 0.6f, 1);
+                    }
+                    pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), c);
+                }
+            }
+        }
+    }
+}
+
+void drawCanvas(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab, float onionSkinOpacity) {
      //NOTE: Draw the canvas
      for(int y = 0; y < canvas->h; ++y) {
         for(int x = 0; x < canvas->w; ++x) {
@@ -238,14 +266,7 @@ void drawCanvas(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
 
             float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
 
-            if(gameState->checkBackground) 
-            {
-                float4 c = make_float4(0.8f, 0.8f, 0.8f, 1);
-                if(((y % 2) == 0 && (x % 2) == 1) || ((y % 2) == 1 && (x % 2) == 0)) {
-                    c = make_float4(0.6f, 0.6f, 0.6f, 1);
-                }
-                pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), c);
-            }
+            color.w *= onionSkinOpacity;
 
             if(color.w > 0) {
                 pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);

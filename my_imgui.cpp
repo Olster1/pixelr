@@ -162,6 +162,11 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
       ImGui::Separator();
 
       ImGui::SliderFloat("Time per Frame", &anim->frameTime, 0.01f, 2.0f);
+      if(state->onionSkinningFrames > (getArrayLength(canvasTab->frames) - 1)) {
+        state->onionSkinningFrames = getArrayLength(canvasTab->frames) - 1;
+      }
+      ImGui::SliderInt("Onion Skinning", &state->onionSkinningFrames, 0, MathMax(getArrayLength(canvasTab->frames) - 1, 0));
+      
 
     
       if (ImGui::Button("Add New Frame +")) {
@@ -169,8 +174,8 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
           pushArrayItem(&canvasTab->frames, f, Frame);
           Frame *activeFrame = getActiveFrame(state);
           if(activeFrame) {
-            easyPlatform_copyMemory(f.layers[0].pixels, activeFrame->layers[0].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
-            updateGpuCanvasTextures(state);
+            // easyPlatform_copyMemory(f.layers[0].pixels, activeFrame->layers[0].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
+            // updateGpuCanvasTextures(state);
           }
 
           

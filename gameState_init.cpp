@@ -101,6 +101,7 @@ void initGameState(GameState *gameState) {
 
     gameState->clipboard = Clipboard();
     gameState->selectMode = false;
+    gameState->onionSkinningFrames = 0;
 
     gameState->drawBlocks = false;
 

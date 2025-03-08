@@ -16,9 +16,33 @@ void updateGame(GameState *gameState) {
     float16 rot = eulerAnglesToTransform(gameState->camera.T.rotation.y, gameState->camera.T.rotation.x, gameState->camera.T.rotation.z);
     float3 lookingAxis = make_float3(rot.E_[2][0], rot.E_[2][1], rot.E_[2][2]);
 
-    
+    drawCanvasGridBackground(gameState, getActiveCanvas(gameState), getActiveCanvasTab(gameState));
    drawLinedGrid(gameState, getActiveCanvas(gameState));
-   drawCanvas(gameState, getActiveCanvas(gameState), getActiveCanvasTab(gameState));
+   
+   {
+        CanvasTab *t = getActiveCanvasTab(gameState);
+        if(t && getArrayLength(t->frames) > 0) {
+            
+            for(int i = gameState->onionSkinningFrames; i >= 0; --i) {
+                int frameIndex = t->activeFrame - i;
+                if(frameIndex < 0) {
+                    frameIndex = getArrayLength(t->frames) + frameIndex;
+                }
+                
+                assert(frameIndex >= 0 && frameIndex < getArrayLength(t->frames));
+
+                Frame *f = t->frames + frameIndex;
+                assert(f);
+
+                Canvas *canvas = f->layers + f->activeLayer;
+                assert(canvas);
+
+                float onionSkinOpacity = 1.0f / MathMax(i + 1, 1);
+                drawCanvas(gameState, canvas, t, onionSkinOpacity);
+            }
+        }
+    }
+   
    
 
     //NOTE: Update interaction with the canvas
@@ -68,7 +92,7 @@ void updateGame(GameState *gameState) {
         CanvasTab *t = getActiveCanvasTab(gameState);
         if(t) {
             if(getArrayLength(t->selected) > 0) {
-                clearResizeArray(t->selected);
+                clearSelection(t);
             }
         }
     }
@@ -114,7 +138,8 @@ void updateGame(GameState *gameState) {
         if(t) {
             Canvas *canvas = getActiveCanvas(gameState);
             if(canvas) {
-                clearResizeArray(t->selected);
+                clearSelection(t);
+                
 
                 for(int y = 0; y <= t->h; ++y) {
                     for(int x = 0; x <= t->w; ++x) {

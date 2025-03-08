@@ -56,7 +56,7 @@ void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int s
 	if(isSelect) {
 		CanvasTab *t = getActiveCanvasTab(gameState);
 		if(t) {
-			clearResizeArray(t->selected);
+			clearSelection(t, gameState);
 		}
 	}
 

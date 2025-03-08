@@ -195,6 +195,7 @@ struct GameState {
     float eraserSize;
     bool autoFocus;
     bool selectMode;
+    int onionSkinningFrames;
 
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;
