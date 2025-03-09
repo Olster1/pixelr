@@ -17,6 +17,33 @@ struct PixelClipboardInfo {
     }
 };
 
+struct SelectObject {
+    bool isActive = false;
+    TransformX T;
+    float2 startCanvasP;
+    PixelClipboardInfo *pixels;
+    bool dragging = false;
+
+    SelectObject() {
+        T = initTransformX();
+        pixels = initResizeArray(PixelClipboardInfo);
+        isActive = false;
+        startCanvasP = make_float2(0, 0);
+    }
+
+    void clear() {
+        if(pixels) {
+            clearResizeArray(pixels);
+        }
+    }
+
+    void dispose() {
+        if(pixels) {
+            freeResizeArray(pixels);
+        }
+    }
+};
+
 struct Clipboard {
     PixelClipboardInfo *pixels = 0;
     Clipboard() {

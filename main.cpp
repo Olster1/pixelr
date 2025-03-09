@@ -65,7 +65,10 @@ void updateGame(GameState *gameState) {
         }
 
         updateGpuCanvasTextures(gameState);
+        
     }
+
+    updateSelectObject(gameState, getActiveCanvas(gameState));
 
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_NONE || gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED || gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED) {
         gameState->paintActive = false;
@@ -111,14 +114,54 @@ void updateGame(GameState *gameState) {
         }
     }
 
+    if(gameState->keys.keys[KEY_X] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        CanvasTab *t = getActiveCanvasTab(gameState);
+        if(t) {
+            for(int i = 0; i < getArrayLength(t->selected); i++) {
+                float2 p = t->selected[i];
+                Canvas *c = getActiveCanvas(gameState);
+                if(c) {
+                    u32 color = getCanvasColor(c, (int)p.x, (int)p.y);
+                    gameState->clipboard.addPixelInfo((int)p.x, (int)p.y, color);
+                    setCanvasColor(c, p.x, p.y, 0x00FFFFFF, gameState->opacity, false);
+                }
+            }
+        }
+    }
+
     if(gameState->keys.keys[KEY_V] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
         Canvas *c = getActiveCanvas(gameState);
         if(c && gameState->clipboard.hasCopy()) {
+            gameState->selectObject.isActive = true;
+            gameState->selectObject.T = initTransformX();
+            gameState->selectObject.clear();
+            gameState->interactionMode = CANVAS_MOVE_SELECT_MODE;
+
+            float minX = FLT_MAX;
+            float maxX = -FLT_MAX;
+            float minY = FLT_MAX;
+            float maxY = -FLT_MAX;
+            
             for(int i = 0; i < getArrayLength(gameState->clipboard.pixels); i++) {
                 PixelClipboardInfo info = gameState->clipboard.pixels[i];
+                pushArrayItem(&gameState->selectObject.pixels, info, PixelClipboardInfo);
 
-                setCanvasColor(c, info.x, info.y, info.color, gameState->opacity, false);
+                if(info.x < minX) {
+                    minX = info.x;
+                }
+                if(info.x > maxX) {
+                    maxX = info.x;
+                }
+                if(info.y < minY) {
+                    minY = info.y;
+                }
+                if(info.y > maxY) {
+                    maxY = info.y;
+                }
             }
+
+            gameState->selectObject.startCanvasP.x = lerp(minX, maxX, make_lerpTValue(0.5f));
+            gameState->selectObject.startCanvasP.y = lerp(minY, maxY, make_lerpTValue(0.5f));
         }
     }
 

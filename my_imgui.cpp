@@ -336,6 +336,10 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           ImGui::Checkbox("Check Background", &state->checkBackground);
           ImGui::Checkbox("Draw Grid", &state->drawGrid); 
           ImGui::SliderFloat("Eraser", &state->eraserSize, 1.0f, 100.0f);
+          ImGui::SliderFloat("Rotation", &state->selectObject.T.rotation.z, 0, 360);
+          ImGui::SliderFloat("Scale", &state->selectObject.T.scale.x, 1, 10);
+          state->selectObject.T.scale.y = state->selectObject.T.scale.x;
+          
           ImGui::Checkbox("SELECT", &state->selectMode);
 
 
@@ -361,6 +365,12 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             state->interactionMode = CANVAS_DRAW_CIRCLE_MODE;
           }
           if(state->interactionMode == CANVAS_DRAW_CIRCLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+
+          if (ImGui::Button("\uf245")) {
+            //NOTE: select shape shape
+            state->interactionMode = CANVAS_MOVE_SELECT_MODE;
+          }
+          if(state->interactionMode == CANVAS_MOVE_SELECT_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
           
           if (ImGui::Button("\uf0c8")) {
             //NOTE: rectangle shape
@@ -461,9 +471,5 @@ void imguiEndFrame() {
     // Rendering
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-}
-
-bool isInteractingWithIMGUI() {
-  return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
 }
 

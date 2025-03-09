@@ -10,6 +10,11 @@ float4 u32_to_float4_color(u32 c) {
     return make_float4(r, g, b, a);
 }
 
+bool isInteractingWithIMGUI() {
+    return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
+  }
+
+  
 float2 getWorldPFromMouse(GameState *gameState) {
     const float2 plane = scale_float2(0.5f, make_float2(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x));
                 
@@ -279,6 +284,63 @@ void drawCanvas(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab, floa
     if(getArrayLength(canvasTab->selected) > 0) {
         updateCanvasSelectionTexture(gameState->renderer, canvasTab);
         pushSelectionQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvas->w*VOXEL_SIZE_IN_METERS, canvas->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 0.7f));
+    }
+}
+
+void updateSelectObject(GameState *gameState, Canvas *canvas) {
+    if(gameState->selectObject.isActive && gameState->selectObject.pixels && getArrayLength(gameState->selectObject.pixels)) {
+        bool submit = false;
+        if(gameState->keys.keys[KEY_ENTER] == MOUSE_BUTTON_PRESSED) {
+            submit = true;
+        }
+
+        if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+            gameState->selectObject.dragging = true;
+        }
+        if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->selectObject.dragging && !isInteractingWithIMGUI()) {
+            float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+            gameState->selectObject.T.pos.xy = minus_float2(mouseP, gameState->selectObject.startCanvasP);
+        }
+        TransformX TX = gameState->selectObject.T;
+        float16 T = getModelToViewSpace(TX);
+        for(int i = 0; i < getArrayLength(gameState->selectObject.pixels); ++i) {
+            PixelClipboardInfo pixel = gameState->selectObject.pixels[i];
+            float4 canvasP = float16_transform(T, make_float4(pixel.x - gameState->selectObject.startCanvasP.x, pixel.y - gameState->selectObject.startCanvasP.y, 0, 1));
+
+            canvasP.x += gameState->selectObject.startCanvasP.x;
+            canvasP.y += gameState->selectObject.startCanvasP.y;
+
+            int minX = canvasP.x - 0.5f*TX.scale.x;
+            int maxX = canvasP.x + 0.5f*TX.scale.x;
+            int minY = canvasP.y - 0.5f*TX.scale.y;
+            int maxY = canvasP.y + 0.5f*TX.scale.y;
+
+            for(int y = minY; y < maxY; y++) {
+                for(int x = minX; x < maxX; x++) {
+                    if(isValidCanvasRange(canvas, x, y)) {
+                        float4 color4 = u32_to_float4_color(pixel.color);
+
+                        if(color4.w > 0) {
+                            float2 pixelP = canvasCoordToWorldSpace(canvas, round(x), round(y));
+                            pushColoredQuad(gameState->renderer, make_float3(pixelP.x, pixelP.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color4);
+
+                            if(submit) {
+                                setCanvasColor(canvas, round(x), round(y), pixel.color, gameState->opacity);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if(gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED || gameState->mouseLeftBtn == MOUSE_BUTTON_NONE) {
+            gameState->selectObject.dragging = false;
+        }
+
+        if(submit) {
+            gameState->selectObject.isActive = false;
+            gameState->selectObject.clear();
+        }
     }
 }
 

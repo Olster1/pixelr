@@ -47,6 +47,7 @@ enum CanvasInteractionMode {
     CANVAS_DRAW_RECTANGLE_MODE,
     CANVAS_ERASE_MODE,
     CANVAS_SELECT_RECTANGLE_MODE,
+    CANVAS_MOVE_SELECT_MODE,
 
 };
 
@@ -196,6 +197,8 @@ struct GameState {
     bool autoFocus;
     bool selectMode;
     int onionSkinningFrames;
+
+    SelectObject selectObject;
 
     UndoRedoBlock *undoBlockFreeList;
     UndoRedoBlock *undoList;

@@ -103,6 +103,8 @@ void initGameState(GameState *gameState) {
     gameState->selectMode = false;
     gameState->onionSkinningFrames = 0;
 
+    gameState->selectObject = SelectObject();
+
     gameState->drawBlocks = false;
 
     createAOOffsets(gameState);
