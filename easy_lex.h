@@ -374,7 +374,6 @@ EasyToken lexGetToken_(EasyTokenizer *tokenizer, bool advanceWithToken) {
                     if(token.at[0] == '0') {
                         //NOTE: Hexadecimal number
                         at++;
-                        printf("%s\n", at);
                         assert(lexIsHexadecimalNumeric(*at));
                         isHexadecimal = true;
                     }
@@ -434,7 +433,7 @@ EasyToken lexGetToken_(EasyTokenizer *tokenizer, bool advanceWithToken) {
                         if (*endptr != '\0') {
                             printf("Invalid character encountered: %s\n", endptr);
                         } else {
-                            printf("Hexadecimal %s is %ld in decimal\n", a, value);
+                            
                         }
                         token.intVal = value;
 

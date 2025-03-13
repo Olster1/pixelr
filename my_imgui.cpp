@@ -168,14 +168,14 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
       ImGui::SliderInt("Onion Skinning", &state->onionSkinningFrames, 0, MathMax(getArrayLength(canvasTab->frames) - 1, 0));
       
 
-    
+      ImGui::Checkbox("Copy Frame on add", &state->copyFrameOnAdd);
       if (ImGui::Button("Add New Frame +")) {
           Frame f = Frame(canvasTab->w, canvasTab->h);
           pushArrayItem(&canvasTab->frames, f, Frame);
           Frame *activeFrame = getActiveFrame(state);
-          if(activeFrame) {
-            // easyPlatform_copyMemory(f.layers[0].pixels, activeFrame->layers[0].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
-            // updateGpuCanvasTextures(state);
+          if(activeFrame && state->copyFrameOnAdd) {
+            easyPlatform_copyMemory(f.layers[0].pixels, activeFrame->layers[0].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
+            updateGpuCanvasTextures(state);
           }
 
           

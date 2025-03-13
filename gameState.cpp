@@ -198,6 +198,7 @@ struct GameState {
     bool selectMode;
     int onionSkinningFrames;
     bool blueRedFlippedInUI;
+    bool copyFrameOnAdd;
 
     SelectObject selectObject;
 

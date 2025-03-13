@@ -330,7 +330,6 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
             gameState->selectObject.dragging = true;
             float2 canvasP = plus_float2(gameState->selectObject.T.pos.xy, gameState->selectObject.startCanvasP);
-            printf("POS: %f %f\n", canvasP.x, canvasP.y);
             gameState->selectObject.dragOffset = minus_float2(canvasP, mouseP);
         }
         if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->selectObject.dragging && !isInteractingWithIMGUI()) {
