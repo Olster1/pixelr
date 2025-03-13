@@ -23,12 +23,18 @@ struct SelectObject {
     float2 startCanvasP;
     PixelClipboardInfo *pixels;
     bool dragging = false;
+    Rect2f boundsCanvasSpace;
+    float2 dragOffset;
+    float timeAt;
 
     SelectObject() {
         T = initTransformX();
         pixels = initResizeArray(PixelClipboardInfo);
         isActive = false;
         startCanvasP = make_float2(0, 0);
+        boundsCanvasSpace = make_rect2f(0, 0, 0, 0);
+        dragOffset = make_float2(0, 0);
+        timeAt = 0;
     }
 
     void clear() {
@@ -208,6 +214,12 @@ struct CanvasTab {
 
         //TODO:Complete
         // addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
+    }
+
+    void clearSelection() {
+        if(selected) {
+            clearResizeArray(selected);
+        }
     }
 
     void dispose() {

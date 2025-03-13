@@ -197,6 +197,7 @@ struct GameState {
     bool autoFocus;
     bool selectMode;
     int onionSkinningFrames;
+    bool blueRedFlippedInUI;
 
     SelectObject selectObject;
 

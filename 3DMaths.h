@@ -35,6 +35,7 @@ int MathMin(int a, int b) {
 	}
 
 }
+
 int MathMax(int a, int b) {
 	if(a > b) {
 		return a;
@@ -92,6 +93,22 @@ inline float ATan2_0toTau(float Y, float X) {
     
     assert(Result >= 0 && Result <= (TAU32 + 0.00001));
     return Result;
+}
+
+inline float ATan2_0to360(float Y, float X) {
+    float Result = (float)atan2(Y, X);
+    if(Result < 0) {
+        Result += TAU32; // is in the bottom range ie. 180->360. -PI32 being PI32. So we can flip it up by adding TAU32
+    }
+    
+    assert(Result >= 0 && Result <= (TAU32 + 0.00001));
+
+	Result = (Result / TAU32) * 360.0f;
+    return Result;
+}
+
+inline float easeInEaseOut(float x) {
+	return 0.5f*sin(x) + 0.5f;
 }
 
 struct LerpTValue{

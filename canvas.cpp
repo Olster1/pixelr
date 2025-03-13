@@ -204,8 +204,13 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
     }
 }
 
-float2 canvasCoordToWorldSpace(Canvas *canvas, int x, int y) {
-    float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
+float2 canvasCoordToWorldSpace(Canvas *canvas, float x, float y, bool offsetP = true) {
+    float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS);
+
+    if(offsetP) {
+        p.x += 0.5f*VOXEL_SIZE_IN_METERS;
+        p.y += 0.5f*VOXEL_SIZE_IN_METERS;
+    }
     return p;
 }
 
@@ -289,20 +294,61 @@ void drawCanvas(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab, floa
 
 void updateSelectObject(GameState *gameState, Canvas *canvas) {
     if(gameState->selectObject.isActive && gameState->selectObject.pixels && getArrayLength(gameState->selectObject.pixels)) {
+        gameState->selectObject.timeAt += gameState->dt;
         bool submit = false;
         if(gameState->keys.keys[KEY_ENTER] == MOUSE_BUTTON_PRESSED) {
             submit = true;
         }
 
+       
+        TransformX TX = gameState->selectObject.T;
+        float16 T = getModelToViewSpace(TX);
+
+        float2 bounds[4] = {make_float2(gameState->selectObject.boundsCanvasSpace.minX, gameState->selectObject.boundsCanvasSpace.minY),
+                            make_float2(gameState->selectObject.boundsCanvasSpace.minX, gameState->selectObject.boundsCanvasSpace.maxY),
+                            make_float2(gameState->selectObject.boundsCanvasSpace.maxX, gameState->selectObject.boundsCanvasSpace.maxY),
+                            make_float2(gameState->selectObject.boundsCanvasSpace.maxX, gameState->selectObject.boundsCanvasSpace.minY)
+                        };
+
+        float2 bounds1[4] = {};
+
+                    
+        for(int i = 0; i < arrayCount(bounds); ++i) {
+            float2 p = bounds[i];
+            
+            float4 canvasP = float16_transform(T, make_float4(p.x - gameState->selectObject.startCanvasP.x, p.y - gameState->selectObject.startCanvasP.y, 0, 1));
+
+            canvasP.x += gameState->selectObject.startCanvasP.x;
+            canvasP.y += gameState->selectObject.startCanvasP.y;
+
+            bounds1[i] = make_float2(canvasP.x, canvasP.y);
+
+            bounds[i] = canvasCoordToWorldSpace(canvas, canvasP.x, canvasP.y, false);
+        }
+
         if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+            float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
             gameState->selectObject.dragging = true;
+            float2 canvasP = plus_float2(gameState->selectObject.T.pos.xy, gameState->selectObject.startCanvasP);
+            printf("POS: %f %f\n", canvasP.x, canvasP.y);
+            gameState->selectObject.dragOffset = minus_float2(canvasP, mouseP);
         }
         if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->selectObject.dragging && !isInteractingWithIMGUI()) {
             float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
-            gameState->selectObject.T.pos.xy = minus_float2(mouseP, gameState->selectObject.startCanvasP);
+            gameState->selectObject.T.pos.xy = minus_float2(plus_float2(mouseP, gameState->selectObject.dragOffset), gameState->selectObject.startCanvasP);
         }
-        TransformX TX = gameState->selectObject.T;
-        float16 T = getModelToViewSpace(TX);
+
+        //NOTE: Now draw the box
+        for(int i = 0; i < arrayCount(bounds); ++i) {
+
+            int j = i + 1;
+            if(j >= arrayCount(bounds)) {
+                j = 0;
+            }
+
+            pushLineEndToEndWorldSpace(gameState->renderer, bounds[i], bounds[j], lerp_float4(make_float4(0, 1, 0, 1), make_float4(0, 1, 1, 1), easeInEaseOut(3*gameState->selectObject.timeAt)));
+        }
+
         for(int i = 0; i < getArrayLength(gameState->selectObject.pixels); ++i) {
             PixelClipboardInfo pixel = gameState->selectObject.pixels[i];
             float4 canvasP = float16_transform(T, make_float4(pixel.x - gameState->selectObject.startCanvasP.x, pixel.y - gameState->selectObject.startCanvasP.y, 0, 1));
@@ -310,10 +356,10 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             canvasP.x += gameState->selectObject.startCanvasP.x;
             canvasP.y += gameState->selectObject.startCanvasP.y;
 
-            int minX = canvasP.x - 0.5f*TX.scale.x;
-            int maxX = canvasP.x + 0.5f*TX.scale.x;
-            int minY = canvasP.y - 0.5f*TX.scale.y;
-            int maxY = canvasP.y + 0.5f*TX.scale.y;
+            int minX = round(canvasP.x - 0.5f*TX.scale.x);
+            int maxX = round(canvasP.x + 0.5f*TX.scale.x);
+            int minY = round(canvasP.y - 0.5f*TX.scale.y);
+            int maxY = round(canvasP.y + 0.5f*TX.scale.y);
 
             for(int y = minY; y < maxY; y++) {
                 for(int x = minX; x < maxX; x++) {

@@ -14,6 +14,16 @@ TransformX initTransformX() {
     return t;
 }
 
+TransformX initTransformX(float3 scale, float3 rotation, float3 pos) {
+    TransformX t = {};
+
+    t.pos = make_float3(0, 0, 0);
+    t.scale = make_float3(1, 1, 1);
+    t.rotation = make_float3(0, 0, 0);
+
+    return t;
+}
+
 struct SQT {
     float3 scale;
     float4 rotation;

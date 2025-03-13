@@ -103,6 +103,7 @@ void updateGame(GameState *gameState) {
     if(gameState->keys.keys[KEY_C] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
         CanvasTab *t = getActiveCanvasTab(gameState);
         if(t) {
+            gameState->clipboard.clear();
             for(int i = 0; i < getArrayLength(t->selected); i++) {
                 float2 p = t->selected[i];
                 Canvas *c = getActiveCanvas(gameState);
@@ -131,11 +132,16 @@ void updateGame(GameState *gameState) {
 
     if(gameState->keys.keys[KEY_V] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
         Canvas *c = getActiveCanvas(gameState);
-        if(c && gameState->clipboard.hasCopy()) {
+        CanvasTab *t = getActiveCanvasTab(gameState);
+        if(t && c && gameState->clipboard.hasCopy()) {
+
             gameState->selectObject.isActive = true;
+            gameState->selectObject.timeAt = 0;
             gameState->selectObject.T = initTransformX();
             gameState->selectObject.clear();
             gameState->interactionMode = CANVAS_MOVE_SELECT_MODE;
+
+            t->clearSelection();
 
             float minX = FLT_MAX;
             float maxX = -FLT_MAX;
@@ -144,22 +150,29 @@ void updateGame(GameState *gameState) {
             
             for(int i = 0; i < getArrayLength(gameState->clipboard.pixels); i++) {
                 PixelClipboardInfo info = gameState->clipboard.pixels[i];
-                pushArrayItem(&gameState->selectObject.pixels, info, PixelClipboardInfo);
+                if(u32_to_float4_color(info.color).w > 0) {
+                    pushArrayItem(&gameState->selectObject.pixels, info, PixelClipboardInfo);
 
-                if(info.x < minX) {
-                    minX = info.x;
-                }
-                if(info.x > maxX) {
-                    maxX = info.x;
-                }
-                if(info.y < minY) {
-                    minY = info.y;
-                }
-                if(info.y > maxY) {
-                    maxY = info.y;
+                    if(info.x < minX) {
+                        minX = info.x;
+                    }
+                    if(info.x > maxX) {
+                        maxX = info.x;
+                    }
+                    if(info.y < minY) {
+                        minY = info.y;
+                    }
+                    if(info.y > maxY) {
+                        maxY = info.y;
+                    }
                 }
             }
 
+            //NOTE: Account for the max borders are on the outer edge of the pixel, so essentially the next pixel over
+            maxX++;
+            maxY++;
+
+            gameState->selectObject.boundsCanvasSpace = make_rect2f(minX, minY, maxX, maxY);
             gameState->selectObject.startCanvasP.x = lerp(minX, maxX, make_lerpTValue(0.5f));
             gameState->selectObject.startCanvasP.y = lerp(minY, maxY, make_lerpTValue(0.5f));
         }

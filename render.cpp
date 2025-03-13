@@ -317,6 +317,32 @@ InstanceDataWithRotation *pushLine(Renderer *renderer, float16 T, float4 color) 
 
     return c;
 }
+InstanceDataWithRotation *pushLineEndToEndWorldSpace(Renderer *renderer, float2 P1, float2 P2, float4 color) {
+    InstanceDataWithRotation *c = 0;
+    if(renderer->lineCount < arrayCount(renderer->lineData)) {
+        c = &renderer->lineData[renderer->lineCount++];
+    } else {
+        assert(false);
+    }
+    
+    if(c) {
+        float2 offsetPosition = scale_float2(0.5f, plus_float2(P1, P2));
+        float length = float2_magnitude(minus_float2(P2, P1));
+        float3 scale = make_float3(length, 1.0f, 1.0f);
+
+        TransformX T = {};
+        T.pos.xy = offsetPosition;
+        T.scale = scale;
+
+        float2 diff = minus_float2(P2, offsetPosition);
+        T.rotation = make_float3(0, 0, ATan2_0to360(diff.y, diff.x));
+
+        c->M = getModelToViewSpace(T);
+        c->color = color;
+    }
+
+    return c;
+}
 
 
 float2 getUVCoordForBlock(BlockType type) {

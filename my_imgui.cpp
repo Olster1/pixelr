@@ -226,7 +226,13 @@ void updateColorPaletteEnter(GameState *gameState) {
     //NOTE: Create new canvas
     ImGui::Begin("Enter Color Pallete", &gameState->showColorPalleteEnter);       
     
-    ImGui::Text("Enter a comma seperated OxAABBGGRR colors"); 
+    if(gameState->blueRedFlippedInUI) {
+      ImGui::Text("Enter a comma seperated OxAARRGGBB colors (Same as Html color layout)"); 
+    } else {
+      ImGui::Text("Enter a comma seperated OxAABBGGRR colors"); 
+    }
+    ImGui::Checkbox("Flip Red & Blue channels", &gameState->blueRedFlippedInUI);
+    
     ImGui::InputTextMultiline("Comma sperated values", gameState->colorsPalleteBuffer, sizeof(gameState->colorsPalleteBuffer), ImVec2(400, 200), ImGuiInputTextFlags_AllowTabInput);
     if (ImGui::Button("Add")) {
       //NOTE: Add the colors
@@ -242,7 +248,15 @@ void updateColorPaletteEnter(GameState *gameState) {
 
             } else if(t.type == TOKEN_INTEGER) {
               if(gameState->palletteCount < arrayCount(gameState->colorsPallete)) {
-                gameState->colorsPallete[gameState->palletteCount++] = u32_to_float4_color(t.intVal);
+                float4 color = u32_to_float4_color(t.intVal);
+
+                if(gameState->blueRedFlippedInUI) {
+                  float r = color.x;
+                  color.x = color.z;
+                  color.z = r;
+                }
+                
+                gameState->colorsPallete[gameState->palletteCount++] = color;
               }
             }
           }
@@ -348,24 +362,25 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             state->interactionMode = CANVAS_MOVE_MODE;
           } 
           if(state->interactionMode == CANVAS_MOVE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+          ImGui::SameLine();
           if (ImGui::Button("\uf1fc")) {
             //NOTE: BRUSH
             state->interactionMode = CANVAS_DRAW_MODE;
           } 
           if(state->interactionMode == CANVAS_DRAW_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          
+          ImGui::SameLine();
           if (ImGui::Button("\uf575")) {
             //NOTE: FILL
             state->interactionMode = CANVAS_FILL_MODE;
           } 
           if(state->interactionMode == CANVAS_FILL_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          
+          ImGui::SameLine();
           if (ImGui::Button("\uf111")) {
             //NOTE: circle shape
             state->interactionMode = CANVAS_DRAW_CIRCLE_MODE;
           }
           if(state->interactionMode == CANVAS_DRAW_CIRCLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-
+          ImGui::SameLine();
           if (ImGui::Button("\uf245")) {
             //NOTE: select shape shape
             state->interactionMode = CANVAS_MOVE_SELECT_MODE;
@@ -377,18 +392,19 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             state->interactionMode = CANVAS_DRAW_RECTANGLE_MODE;
           }
           if(state->interactionMode == CANVAS_DRAW_RECTANGLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          
+          ImGui::SameLine();
           if (ImGui::Button("\uf12d")) {
             state->interactionMode = CANVAS_ERASE_MODE;
             
           }
           if(state->interactionMode == CANVAS_ERASE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-
+          ImGui::SameLine();
           if (ImGui::Button("\uf068")) {
             state->interactionMode = CANVAS_DRAW_LINE_MODE;
             
           }
           if(state->interactionMode == CANVAS_DRAW_LINE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+          ImGui::SameLine();
           if (ImGui::Button("\uf248")) {
             state->interactionMode = CANVAS_SELECT_RECTANGLE_MODE;
             
