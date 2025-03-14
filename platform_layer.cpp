@@ -264,6 +264,8 @@ int main(int argc, char **argv) {
     gameState->mouseP_01.x = gameState->mouseP_screenSpace.x / w;
     gameState->mouseP_01.y = (gameState->mouseP_screenSpace.y / h) + 1.0f;
 
+   
+
   if(mouseState && SDL_BUTTON(1)) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_NONE) {
       gameState->mouseLeftBtn = MOUSE_BUTTON_PRESSED;
@@ -277,6 +279,26 @@ int main(int argc, char **argv) {
       gameState->mouseLeftBtn = MOUSE_BUTTON_NONE;
     }
   }
+
+  if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+    
+    gameState->mouseCountAt++;
+    if(gameState->mouseCountAt >= arrayCount(gameState->mouseP_01_array)) {
+      gameState->mouseCountAt = arrayCount(gameState->mouseP_01_array);
+    }
+
+    int indexToAddTo = gameState->mouseIndexAt++;
+    if(gameState->mouseIndexAt >= arrayCount(gameState->mouseP_01_array)) {
+      gameState->mouseIndexAt = 0;
+    }
+    assert(indexToAddTo >= 0 && indexToAddTo < arrayCount(gameState->mouseP_01_array));
+    
+    gameState->mouseP_01_array[indexToAddTo] = gameState->mouseP_01;
+  } else {
+    gameState->mouseCountAt = 0;
+    gameState->mouseIndexAt = 0;
+  }
+  
 
     // Clear screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);

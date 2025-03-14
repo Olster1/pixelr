@@ -67,6 +67,10 @@ struct GameState {
 
     float2 mouseP_screenSpace;
     float2 mouseP_01;
+
+    int mouseIndexAt;
+    int mouseCountAt;
+    float2 mouseP_01_array[100];
     float2 lastMouseP;
 
     int particlerCount;
@@ -199,6 +203,7 @@ struct GameState {
     int onionSkinningFrames;
     bool blueRedFlippedInUI;
     bool copyFrameOnAdd;
+    int runningAverageCount;
 
     SelectObject selectObject;
 

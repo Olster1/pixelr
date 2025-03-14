@@ -346,6 +346,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             state->colorsPalletePicked = state->palletteIndexAt;
           }
           ImGui::SliderFloat("Opacity", &state->opacity, 0.0f, 1.0f);
+          ImGui::SliderInt("Running Average", &state->runningAverageCount, 1, arrayCount(state->mouseP_01_array));
           ImGui::ColorEdit3("Background", (float*)&state->bgColor);
           ImGui::Checkbox("Check Background", &state->checkBackground);
           ImGui::Checkbox("Draw Grid", &state->drawGrid); 

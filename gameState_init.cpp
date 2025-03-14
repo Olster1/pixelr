@@ -67,6 +67,7 @@ void initGameState(GameState *gameState) {
     // loadWavFile(&gameState->bgMusic, "./sounds/sweeden.wav", &gameState->audioSpec);
 
     gameState->lastMouseP = gameState->mouseP_screenSpace;
+    gameState->runningAverageCount = 1;
 
     gameState->grassTexture = loadTextureToGPU("./images/grass_block.png");
     Texture breakBlockTexture = loadTextureToGPU("./images/break_block.png");

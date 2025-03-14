@@ -12,14 +12,40 @@ float4 u32_to_float4_color(u32 c) {
 
 bool isInteractingWithIMGUI() {
     return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
-  }
+}
 
+float2 getMouseP01(GameState *gameState) {
+    //NOTE: Running average of the mouse
+    float2 result = make_float2(0, 0);
+
+    int startAt = gameState->mouseIndexAt - 1;
+    int totalCount = MathMin(gameState->runningAverageCount, gameState->mouseCountAt);
+
+    if(totalCount > 0 && gameState->runningAverageCount > 1) {
+        int index = startAt;
+        for(int i = 0; i < totalCount; ++i) {
+            index = ((startAt - i) + gameState->mouseCountAt) % gameState->mouseCountAt;
+
+            assert(index >= 0 && index < gameState->mouseCountAt);
+            result = plus_float2(result, gameState->mouseP_01_array[index]);
+        }
+
+        result.x *= (1.0f / totalCount);
+        result.y *= (1.0f / totalCount);
+    } else {
+        result = gameState->mouseP_01;
+    }
+    
+    return result;
+
+    
+}
   
 float2 getWorldPFromMouse(GameState *gameState) {
     const float2 plane = scale_float2(0.5f, make_float2(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x));
                 
-     const float x = lerp(-plane.x, plane.x, make_lerpTValue(gameState->mouseP_01.x));
-     const float y = lerp(-plane.y, plane.y, make_lerpTValue(gameState->mouseP_01.y));
+     const float x = lerp(-plane.x, plane.x, make_lerpTValue(getMouseP01(gameState).x));
+     const float y = lerp(-plane.y, plane.y, make_lerpTValue(getMouseP01(gameState).y));
 
      float2 worldP = plus_float2(gameState->camera.T.pos.xy, make_float2(x, y));
      return worldP;
@@ -29,8 +55,8 @@ float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h) {
      //NOTE: Try draw on the canvas
      const float2 plane = scale_float2(0.5f, make_float2(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x));
                 
-     const float x = lerp(-plane.x, plane.x, make_lerpTValue(gameState->mouseP_01.x));
-     const float y = lerp(-plane.y, plane.y, make_lerpTValue(gameState->mouseP_01.y));
+     const float x = lerp(-plane.x, plane.x, make_lerpTValue(getMouseP01(gameState).x));
+     const float y = lerp(-plane.y, plane.y, make_lerpTValue(getMouseP01(gameState).y));
 
      float2 worldP = plus_float2(gameState->camera.T.pos.xy, make_float2(x, y));
      float2 result = {};
@@ -463,11 +489,11 @@ void updateCanvasMove(GameState *gameState) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
         //NOTE: Move the canvas
         gameState->draggingCanvas = true;
-        gameState->startDragP = gameState->mouseP_01;
+        gameState->startDragP = getMouseP01(gameState);
     } else if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->draggingCanvas) {
-        float2 diff = scale_float2(gameState->dt*200, minus_float2(gameState->startDragP, gameState->mouseP_01));
+        float2 diff = scale_float2(gameState->dt*200, minus_float2(gameState->startDragP, getMouseP01(gameState)));
         gameState->camera.T.pos.xy = plus_float2(gameState->camera.T.pos.xy, diff);
-        gameState->startDragP = gameState->mouseP_01;
+        gameState->startDragP = getMouseP01(gameState);
     } else {
         gameState->draggingCanvas = false;
     }
