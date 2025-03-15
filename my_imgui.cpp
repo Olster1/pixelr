@@ -287,8 +287,8 @@ void showMainMenuBar(GameState *state)
 
         if (ImGui::BeginMenu("Edit"))
         {
-            if (ImGui::MenuItem("Undo", "Ctrl+Z")) { /* Handle Undo */ }
-            if (ImGui::MenuItem("Redo", "Ctrl+SHIFT+Z")) { /* Handle Redo */ }
+            if (ImGui::MenuItem("Undo", "Ctrl+Z")) { updateUndoState(state, true, false); }
+            if (ImGui::MenuItem("Redo", "Ctrl+SHIFT+Z")) { updateUndoState(state, false, true); }
             ImGui::Separator();
             if (ImGui::MenuItem("Cut", "Ctrl+X")) { /* Handle Cut */ }
             if (ImGui::MenuItem("Copy", "Ctrl+C")) { /* Handle Copy */ }

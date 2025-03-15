@@ -53,8 +53,9 @@ void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int s
     queue.next = queue.prev = &queue; 
 	pushOnFloodFillQueue(&queue, visited, startX, startY, canvas->w, canvas->h);
 
+	CanvasTab *t = getActiveCanvasTab(gameState);
 	if(isSelect) {
-		CanvasTab *t = getActiveCanvasTab(gameState);
+		
 		if(t) {
 			clearSelection(t, gameState);
 		}
@@ -78,7 +79,7 @@ void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int s
 					}
 				} else {
 					//NOTE: Set the color
-					setCanvasColor(canvas, x, y, newColor, gameState->opacity);
+					setCanvasColor(t, canvas, x, y, newColor, gameState->opacity);
 				}
 
 				//push on more directions   

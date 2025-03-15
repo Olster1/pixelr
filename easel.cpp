@@ -32,7 +32,7 @@ struct SelectObject {
     bool dragging = false;
     Rect2f boundsCanvasSpace;
     float2 dragOffset;
-    float timeAt;
+    float timeAt = 0;
 
     SelectObject() {
         T = initTransformX();
@@ -85,19 +85,34 @@ struct Clipboard {
 };
 
 struct UndoRedoBlock {
-    PixelInfo *pixelInfos; //NOTE: Resize array 
+    PixelInfo *pixelInfos = 0; //NOTE: Resize array 
 
-    bool isSentintel;
+    bool isSentintel = false;
 
-    UndoRedoBlock *next;
-    UndoRedoBlock *prev;
+    UndoRedoBlock *next = 0;
+    UndoRedoBlock *prev = 0;
 
     void addPixelInfo(PixelInfo info) {
         if(!pixelInfos) {
             pixelInfos = initResizeArray(PixelInfo);
         }
 
-        pushArrayItem(&pixelInfos, info, PixelInfo);
+        bool found = false;
+        //NOTE: Check if we already have this pixel info
+        for(int i = 0; i < getArrayLength(pixelInfos) && !found; ++i) {
+            PixelInfo infoCheck = pixelInfos[i];
+
+            if(infoCheck.x == info.x && infoCheck.y == info.y) {
+                //NOTE: Don't update this one
+                found = true;
+                break;
+            }
+        }
+        
+
+        if(!found) {
+            pushArrayItem(&pixelInfos, info, PixelInfo);
+        }
     }
 
     void dispose() {
@@ -123,10 +138,8 @@ struct PlayBackAnimation {
 struct Canvas {
     u32 gpuHandle = 0;
     u32 *pixels = 0;
-    int w;
-    int h;
-
-    
+    int w = 0;
+    int h = 0;
 
     Canvas(int w_, int h_) {
         w = w_;
@@ -193,18 +206,18 @@ struct CanvasTab {
     int activeFrame = 0;
 
     PlayBackAnimation playback;
-    int w;
-    int h;
+    int w = 0;
+    int h = 0;
 
     float2 *selected = 0;//NOTE: Resize array 
     u32 selectionGpuHandle = 0;
 
-    char *saveFilePath; //NOTE: Allocated on heap - need to free on dispose
-    char *fileName; //NOTE: Allocated on heap - need to free on dispose
+    char *saveFilePath = 0; //NOTE: Allocated on heap - need to free on dispose
+    char *fileName = 0; //NOTE: Allocated on heap - need to free on dispose
 
-    UndoRedoBlock *undoList;
-    UndoRedoBlock *undoBlockFreeList;
-    UndoRedoBlock *currentUndoBlock;
+    UndoRedoBlock *undoList = 0;
+    UndoRedoBlock *undoBlockFreeList = 0;
+    UndoRedoBlock *currentUndoBlock = 0;
 
     bool isOpen = true; //NOTE: Used to close the tab
 
@@ -226,7 +239,7 @@ struct CanvasTab {
         selected = initResizeArray(float2);
 
         //NOTE:sentintel
-        addUndoRedoBlock(this, true);
+        this->addUndoRedoBlock(this, true);
     }
 
     void clearSelection() {

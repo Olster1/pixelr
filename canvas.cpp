@@ -104,7 +104,7 @@ u32 getCanvasColor(Canvas *canvas, int coordX, int coordY) {
     
 }
 
-void setCanvasColor(Canvas *canvas, int coordX, int coordY, const u32 color, float opacity, bool useOpacity = true) {
+void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, const u32 color, float opacity, bool useOpacity = true) {
     if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
         u32 oldColor = getCanvasColor(canvas, coordX, coordY);
         float4 oldColorF = u32_to_float4_color(oldColor);
@@ -138,6 +138,7 @@ void setCanvasColor(Canvas *canvas, int coordX, int coordY, const u32 color, flo
             c = newColorF;
         }
 
+        tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, float4_to_u32_color(c)));
         canvas->pixels[coordY*canvas->w + coordX] = float4_to_u32_color(c);
     }
 }
@@ -229,6 +230,8 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
     diff.y = abs(diff1.y);
     float4 color = gameState->colorPicked;
 
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+
     float startX = (gameState->drawShapeStart.x < p.x) ? gameState->drawShapeStart.x : p.x;
     float startY = (gameState->drawShapeStart.y < p.y) ? gameState->drawShapeStart.y : p.y;
 
@@ -244,7 +247,7 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
                 if((startX + x) >= 0 && (startY + y) >= 0 && (startX + x) < canvas->w && (startY + y) < canvas->h) {
                     if(fill) {
                         float2 p = make_float2(startX + x,startY + y);
-                        setCanvasColor(canvas, p.x, p.y, float4_to_u32_color(color), gameState->opacity);
+                        setCanvasColor(tab, canvas, p.x, p.y, float4_to_u32_color(color), gameState->opacity);
                     } else {
                         float2 p = make_float2((startX + x)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (startY + y)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
                         color.w = gameState->opacity;
@@ -353,6 +356,8 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             submit = true;
         }
 
+        CanvasTab *tab = getActiveCanvasTab(gameState);
+
        
         TransformX TX = gameState->selectObject.T;
         float16 T = getModelToViewSpace(TX);
@@ -423,7 +428,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
                             pushColoredQuad(gameState->renderer, make_float3(pixelP.x, pixelP.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color4);
 
                             if(submit) {
-                                setCanvasColor(canvas, round(x), round(y), pixel.color, gameState->opacity);
+                                setCanvasColor(tab, canvas, round(x), round(y), pixel.color, gameState->opacity);
                             }
                         }
                     }
@@ -476,25 +481,40 @@ void updateCanvasZoom(GameState *gameState) {
     }
 } 
 
-void updateUndoState(GameState *gameState) {
-    // if(gameState->undoList) {
-    //     if(gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] != MOUSE_BUTTON_DOWN) {
-    //         UndoRedoBlock *block = gameState->undoList;
-    //         if(block->next && !isUndoBlockSentinel(block)) {
-    //             gameState->canvas[block->y*gameState->canvasW + block->x] = block->lastColor;
-    //             gameState->undoList = block->next;
-    //         }
-    //     }
+void updateUndoState(GameState *gameState, bool undo = false, bool redo = false) {
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+    Canvas *canvas = getActiveCanvas(gameState);
 
-    //     if(gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] == MOUSE_BUTTON_DOWN) {
-    //         UndoRedoBlock *block = gameState->undoList;
-    //         if(block->prev) {
-    //             block = block->prev;
-    //             gameState->canvas[block->y*gameState->canvasW + block->x] = block->thisColor;
-    //             gameState->undoList = block;
-    //         }
-    //     }
-    // }
+    if(tab && canvas) {
+        if(tab->undoList) {
+            if(undo || (gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] != MOUSE_BUTTON_DOWN)) {
+                UndoRedoBlock *block = tab->undoList;
+                if(block->next && !isUndoBlockSentinel(block)) {
+                    for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
+                        PixelInfo info = block->pixelInfos[i];
+                        if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
+                            canvas->pixels[info.y*canvas->w + info.x] = info.lastColor;
+                        }
+                    }
+                    tab->undoList = block->next;
+                }
+            }
+
+            if(redo || (gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] == MOUSE_BUTTON_DOWN)) {
+                UndoRedoBlock *block = tab->undoList;
+                if(block->prev) {
+                    block = block->prev;
+                    for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
+                        PixelInfo info = block->pixelInfos[i];
+                        if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
+                            canvas->pixels[info.y*canvas->w + info.x] = info.thisColor;
+                        }
+                    }
+                    tab->undoList = block;
+                }
+            }
+        }
+    }
 }
 
 void updateEraser(GameState *gameState, Canvas *canvas) {
@@ -508,7 +528,7 @@ void updateEraser(GameState *gameState, Canvas *canvas) {
             for(int x = 0; x < gameState->eraserSize; x++) {
                 float px = (canvasP.x - 0.5f*(gameState->eraserSize == 1 ? 0 : gameState->eraserSize)) + x;
                 float py = (canvasP.y - 0.5f*(gameState->eraserSize == 1 ? 0 : gameState->eraserSize)) + y;
-                setCanvasColor(canvas, px, py, 0x00FFFFFF, gameState->opacity, false);
+                setCanvasColor(tab, canvas, px, py, 0x00FFFFFF, gameState->opacity, false);
             }
         }
     }
@@ -595,9 +615,7 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
                  if(y1 >= 0 && x1 >= 0 && y1 < canvas->h && x1 < canvas->w) {
                      if(!(x1 == coordX && y1 == coordY)) 
                      { //NOTE: Don't color the one were about to do after this loop
-                        tab->currentUndoBlock->addPixelInfo(PixelInfo(x1, y1, getCanvasColor(canvas, x1, y1), color));
-                        setCanvasColor(canvas, x1, y1, color, gameState->opacity);
-                         
+                        setCanvasColor(tab, canvas, x1, y1, color, gameState->opacity);
                      }
                  }
 
@@ -608,8 +626,7 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
          if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
              u32 color = float4_to_u32_color(gameState->colorPicked);
              
-             tab->currentUndoBlock->addPixelInfo(PixelInfo(coordX, coordY, getCanvasColor(canvas, coordX, coordY), color));
-             setCanvasColor(canvas, coordX, coordY, color, gameState->opacity);
+             setCanvasColor(tab, canvas, coordX, coordY, color, gameState->opacity);
          }
 
          gameState->paintActive = true;

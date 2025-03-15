@@ -126,7 +126,7 @@ void updateGame(GameState *gameState) {
                 if(c) {
                     u32 color = getCanvasColor(c, (int)p.x, (int)p.y);
                     gameState->clipboard.addPixelInfo((int)p.x, (int)p.y, color);
-                    setCanvasColor(c, p.x, p.y, 0x00FFFFFF, gameState->opacity, false);
+                    setCanvasColor(t, c, p.x, p.y, 0x00FFFFFF, gameState->opacity, false);
                 }
             }
         }
@@ -186,7 +186,7 @@ void updateGame(GameState *gameState) {
         if(t && c) {
             for(int i = 0; i < getArrayLength(t->selected); i++) {
                 float2 p = t->selected[i];
-                setCanvasColor(c, p.x, p.y, 0x00FFFFFF, gameState->opacity, false);
+                setCanvasColor(t, c, p.x, p.y, 0x00FFFFFF, gameState->opacity, false);
             }
         }
     }
