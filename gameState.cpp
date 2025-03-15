@@ -207,9 +207,6 @@ struct GameState {
 
     SelectObject selectObject;
 
-    UndoRedoBlock *undoBlockFreeList;
-    UndoRedoBlock *undoList;
-
     CanvasTab *canvasTabs; //NOTE: resize array
     int activeCanvasTab;
 

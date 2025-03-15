@@ -105,6 +105,7 @@ void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int s
 
 void updateBucket(GameState *gameState, Canvas *canvas, bool isSelect = false) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+		
         //NOTE: Use Flood fill algorithm
         float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
         u32 startColor = getCanvasColor(canvas, canvasP.x, canvasP.y);

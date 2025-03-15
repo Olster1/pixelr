@@ -3,6 +3,13 @@ struct PixelInfo {
     int y;
     u32 lastColor;
     u32 thisColor;
+
+    PixelInfo(int x, int y, u32 lastColor, u32 thisColor) {
+        this->x = x;
+        this->y = y;
+        this->lastColor = lastColor;
+        this->thisColor = thisColor; 
+    }
 };
 
 struct PixelClipboardInfo {
@@ -78,11 +85,6 @@ struct Clipboard {
 };
 
 struct UndoRedoBlock {
-    int x; 
-    int y;
-    u32 lastColor;
-    u32 thisColor;
-    
     PixelInfo *pixelInfos; //NOTE: Resize array 
 
     bool isSentintel;
@@ -90,7 +92,15 @@ struct UndoRedoBlock {
     UndoRedoBlock *next;
     UndoRedoBlock *prev;
 
-    void onDispose() {
+    void addPixelInfo(PixelInfo info) {
+        if(!pixelInfos) {
+            pixelInfos = initResizeArray(PixelInfo);
+        }
+
+        pushArrayItem(&pixelInfos, info, PixelInfo);
+    }
+
+    void dispose() {
         if(pixelInfos) {
             freeResizeArray(pixelInfos);
             pixelInfos = 0;
@@ -193,12 +203,15 @@ struct CanvasTab {
     char *fileName; //NOTE: Allocated on heap - need to free on dispose
 
     UndoRedoBlock *undoList;
+    UndoRedoBlock *undoBlockFreeList;
+    UndoRedoBlock *currentUndoBlock;
 
     bool isOpen = true; //NOTE: Used to close the tab
 
     CanvasTab(int w, int h, char *saveFilePath_) {
         this->w = w;
         this->h = h;
+        currentUndoBlock = 0;
         frames = initResizeArray(Frame);
         Frame f = Frame(w, h);
         pushArrayItem(&frames, f, Frame);
@@ -212,8 +225,8 @@ struct CanvasTab {
         selectionGpuHandle = createGPUTextureRed(w, h).handle;
         selected = initResizeArray(float2);
 
-        //TODO:Complete
-        // addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
+        //NOTE:sentintel
+        addUndoRedoBlock(this, true);
     }
 
     void clearSelection() {
@@ -221,6 +234,56 @@ struct CanvasTab {
             clearResizeArray(selected);
         }
     }
+
+    void addUndoInfo(PixelInfo info) {
+        if(!currentUndoBlock) {
+            addUndoRedoBlock(this);
+        }
+        assert(currentUndoBlock);
+        currentUndoBlock->addPixelInfo(info);
+    }
+
+
+
+void addUndoRedoBlock(CanvasTab *c, bool isSentintel = false) {
+    UndoRedoBlock *block = 0;
+    if(c->undoList) {
+        //NOTE: Remove all of them off to start at a new undo redo point
+        UndoRedoBlock *b = c->undoList->prev;
+        while(b) {
+            b->dispose();
+            b->next = c->undoBlockFreeList;
+            c->undoBlockFreeList = b;
+
+            b = b->prev;
+        }
+        c->undoList->prev = 0;
+    }
+    
+    if(c->undoBlockFreeList) {
+        block = c->undoBlockFreeList;
+        c->undoBlockFreeList = block->next;
+    } else {
+        block = pushStruct(&globalLongTermArena, UndoRedoBlock);
+    }
+
+    assert(block);
+
+    block->isSentintel = isSentintel;
+
+    if(c->undoList) {
+        c->undoList->prev = block;
+    }
+    
+    block->next = c->undoList;
+    block->prev = 0;
+
+    assert(block);
+    c->undoList = block;
+
+    //NOTE: add it as the current block
+    c->currentUndoBlock = block;
+}
 
     void dispose() {
         //TODO: Clear the undo list 

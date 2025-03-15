@@ -73,6 +73,8 @@ void updateGame(GameState *gameState) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_NONE || gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED || gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED) {
         gameState->paintActive = false;
         gameState->drawingShape = false;
+
+        getActiveCanvasTab(gameState)->currentUndoBlock = 0;
     }
 
 

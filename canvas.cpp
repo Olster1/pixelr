@@ -10,6 +10,35 @@ float4 u32_to_float4_color(u32 c) {
     return make_float4(r, g, b, a);
 }
 
+Canvas *getActiveCanvas(GameState *gameState) {
+    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
+    assert(t);
+
+    Frame *f = t->frames + t->activeFrame;
+    assert(f);
+
+    Canvas *canvas = f->layers + f->activeLayer;
+    assert(canvas);
+
+    return canvas;
+
+}
+
+CanvasTab *getActiveCanvasTab(GameState *gameState) {
+    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
+    return t;
+
+}
+
+Frame *getActiveFrame(GameState *gameState) {
+    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
+    Frame *f = t->frames + t->activeFrame;
+    return f;
+
+}
+
+
+
 bool isInteractingWithIMGUI() {
     return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
 }
@@ -37,8 +66,6 @@ float2 getMouseP01(GameState *gameState) {
     }
     
     return result;
-
-    
 }
   
 float2 getWorldPFromMouse(GameState *gameState) {
@@ -471,9 +498,12 @@ void updateUndoState(GameState *gameState) {
 }
 
 void updateEraser(GameState *gameState, Canvas *canvas) {
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN) {
         float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
-        addUndoRedoBlock(gameState, getCanvasColor(canvas, canvasP.x, canvasP.y), 0, canvasP.x, canvasP.y);
+        
+        
         for(int y = 0; y < gameState->eraserSize; y++) {
             for(int x = 0; x < gameState->eraserSize; x++) {
                 float px = (canvasP.x - 0.5f*(gameState->eraserSize == 1 ? 0 : gameState->eraserSize)) + x;
@@ -503,6 +533,7 @@ void updateDrawShape(GameState *gameState, Canvas *canvas) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
         gameState->drawShapeStart = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
         gameState->drawingShape = true;
+
     }
 
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED) {
@@ -540,8 +571,8 @@ void updateCanvasSelect(GameState *gameState, CanvasTab *canvas) {
 }
 
 void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
+    CanvasTab *tab = getActiveCanvasTab(gameState);
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
-                
                
         float2 a = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
 
@@ -564,8 +595,8 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
                  if(y1 >= 0 && x1 >= 0 && y1 < canvas->h && x1 < canvas->w) {
                      if(!(x1 == coordX && y1 == coordY)) 
                      { //NOTE: Don't color the one were about to do after this loop
-                         addUndoRedoBlock(gameState, getCanvasColor(canvas, x1, y1), color, x1, y1);
-                         setCanvasColor(canvas, x1, y1, color, gameState->opacity);
+                        tab->currentUndoBlock->addPixelInfo(PixelInfo(x1, y1, getCanvasColor(canvas, x1, y1), color));
+                        setCanvasColor(canvas, x1, y1, color, gameState->opacity);
                          
                      }
                  }
@@ -577,7 +608,7 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
          if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
              u32 color = float4_to_u32_color(gameState->colorPicked);
              
-             addUndoRedoBlock(gameState, getCanvasColor(canvas, coordX, coordY), color, coordX, coordY);
+             tab->currentUndoBlock->addPixelInfo(PixelInfo(coordX, coordY, getCanvasColor(canvas, coordX, coordY), color));
              setCanvasColor(canvas, coordX, coordY, color, gameState->opacity);
          }
 
@@ -590,35 +621,6 @@ void showNewCanvas(GameState *gameState) {
     gameState->showNewCanvasWindow = true;
     gameState->autoFocus = true;
 }
-
-Canvas *getActiveCanvas(GameState *gameState) {
-    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
-    assert(t);
-
-    Frame *f = t->frames + t->activeFrame;
-    assert(f);
-
-    Canvas *canvas = f->layers + f->activeLayer;
-    assert(canvas);
-
-    return canvas;
-
-}
-
-CanvasTab *getActiveCanvasTab(GameState *gameState) {
-    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
-    return t;
-
-}
-
-Frame *getActiveFrame(GameState *gameState) {
-    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
-    Frame *f = t->frames + t->activeFrame;
-    return f;
-
-}
-
-
 
 void updateFrameGPUHandles(Frame *f, CanvasTab *t) {
    

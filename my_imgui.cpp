@@ -208,12 +208,6 @@ void updateNewCanvasWindow(GameState *gameState) {
     ImGui::InputText("Width", gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0));
     ImGui::InputText("Height", gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1));
     if (ImGui::Button("Create")) {
-      //  gameState->canvasW = atoi(gameState->dimStr0);
-      //  gameState->canvasH = atoi(gameState->dimStr1);
-
-       clearUndoRedoList(gameState);
-       startCanvas(gameState);
-       
        gameState->showNewCanvasWindow = false;
     }
 

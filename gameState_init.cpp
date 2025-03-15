@@ -1,15 +1,5 @@
 
 
-void startCanvas(GameState *gameState) {
-    // addUndoRedoBlock(gameState, 0, 0, -1, -1, true);
-
-    // for(int y = 0; y < gameState->canvasH; ++y) {
-    //     for(int x = 0; x < gameState->canvasW; ++x) {
-    //         gameState->canvas[y*gameState->canvasW + x] = 0x00FFFFFF;
-    //     }
-    // }
-}
-
 void initGameState(GameState *gameState) {
     srand(time(NULL));
     gameState->randomStartUpID = rand();
@@ -35,9 +25,6 @@ void initGameState(GameState *gameState) {
     gameState->eraserSize = 1.0f;
 
     stbi_flip_vertically_on_write(1);
-
-    //NOTE: The sentinel block
-    startCanvas(gameState);
 
     gameState->currentInventoryHotIndex = 0;
 
