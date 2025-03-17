@@ -37,8 +37,6 @@ Frame *getActiveFrame(GameState *gameState) {
 
 }
 
-
-
 bool isInteractingWithIMGUI() {
     return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
 }
@@ -481,22 +479,50 @@ void updateCanvasZoom(GameState *gameState) {
     }
 } 
 
+Canvas *getCanvasForUndoBlock(CanvasTab *tab, UndoRedoBlock *block) {
+    Canvas *canvas = tab->getActiveCanvas();
+    bool found = false;
+    
+    if(canvas && !areEntityIdsEqual(canvas->id, block->canvasId)) {
+        //NOTE: Canvas isn't the active one so find the active one
+        for (int i = 0; i < getArrayLength(tab->frames) && !found; i++) {
+            Frame *frame = tab->frames + i;
+            for (int j = 0; j < getArrayLength(frame->layers) && !found; j++) {
+                Canvas *c = frame->layers + j;
+                if(areEntityIdsEqual(c->id, block->canvasId)) {
+                    canvas = c;
+                    tab->activeFrame = i;
+                    frame->activeLayer = j;
+                    found = true;
+                    break;
+                }
+            }
+        }
+    }
+
+    assert(canvas);
+
+    return canvas;
+}
+
 void updateUndoState(GameState *gameState, bool undo = false, bool redo = false) {
     CanvasTab *tab = getActiveCanvasTab(gameState);
-    Canvas *canvas = getActiveCanvas(gameState);
 
-    if(tab && canvas) {
+    if(tab) {
         if(tab->undoList) {
             if(undo || (gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] != MOUSE_BUTTON_DOWN)) {
                 UndoRedoBlock *block = tab->undoList;
                 if(block->next && !isUndoBlockSentinel(block)) {
-                    for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
-                        PixelInfo info = block->pixelInfos[i];
-                        if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
-                            canvas->pixels[info.y*canvas->w + info.x] = info.lastColor;
+                    Canvas *canvas = getCanvasForUndoBlock(tab, block);
+                    if(canvas) {
+                        for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
+                            PixelInfo info = block->pixelInfos[i];
+                            if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
+                                canvas->pixels[info.y*canvas->w + info.x] = info.lastColor;
+                            }
                         }
+                        tab->undoList = block->next;
                     }
-                    tab->undoList = block->next;
                 }
             }
 
@@ -504,10 +530,13 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                 UndoRedoBlock *block = tab->undoList;
                 if(block->prev) {
                     block = block->prev;
-                    for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
-                        PixelInfo info = block->pixelInfos[i];
-                        if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
-                            canvas->pixels[info.y*canvas->w + info.x] = info.thisColor;
+                    Canvas *canvas = getCanvasForUndoBlock(tab, block);
+                    {
+                        for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
+                            PixelInfo info = block->pixelInfos[i];
+                            if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
+                                canvas->pixels[info.y*canvas->w + info.x] = info.thisColor;
+                            }
                         }
                     }
                     tab->undoList = block;

@@ -1,3 +1,5 @@
+static int globalRandomStartupSeed = 0;
+
 enum EntityType {
     ENTITY_NONE,
     ENTITY_PLAYER,

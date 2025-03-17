@@ -85,12 +85,19 @@ struct Clipboard {
 };
 
 struct UndoRedoBlock {
+    //NOTE: The canvas the block is talking about
+    EntityID canvasId; //NOTE: Lives on the long term storeage
+
     PixelInfo *pixelInfos = 0; //NOTE: Resize array 
 
     bool isSentintel = false;
 
     UndoRedoBlock *next = 0;
     UndoRedoBlock *prev = 0;
+
+    UndoRedoBlock(EntityID canvasId) {
+        this->canvasId = canvasId;
+    }
 
     void addPixelInfo(PixelInfo info) {
         if(!pixelInfos) {
@@ -100,10 +107,11 @@ struct UndoRedoBlock {
         bool found = false;
         //NOTE: Check if we already have this pixel info
         for(int i = 0; i < getArrayLength(pixelInfos) && !found; ++i) {
-            PixelInfo infoCheck = pixelInfos[i];
+            PixelInfo *infoCheck = &pixelInfos[i];
 
-            if(infoCheck.x == info.x && infoCheck.y == info.y) {
-                //NOTE: Don't update this one
+            if(infoCheck->x == info.x && infoCheck->y == info.y) {
+                //NOTE: Update just the next color - we want to keep the last color as the first one to recreate the board the same
+                infoCheck->thisColor = info.thisColor;
                 found = true;
                 break;
             }
@@ -136,12 +144,15 @@ struct PlayBackAnimation {
 
 
 struct Canvas {
+    EntityID id;
+
     u32 gpuHandle = 0;
     u32 *pixels = 0;
     int w = 0;
     int h = 0;
 
     Canvas(int w_, int h_) {
+        id = makeEntityId(globalRandomStartupSeed);
         w = w_;
         h = h_;
         pixels = (u32 *)easyPlatform_allocateMemory(sizeof(u32)*w_*h_);
@@ -201,6 +212,7 @@ struct Frame {
 
 };
 
+
 struct CanvasTab {
     Frame *frames = 0;
     int activeFrame = 0;
@@ -242,6 +254,18 @@ struct CanvasTab {
         this->addUndoRedoBlock(this, true);
     }
 
+
+    Canvas *getActiveCanvas() {
+        Frame *f = this->frames + this->activeFrame;
+        assert(f);
+
+        Canvas *canvas = f->layers + f->activeLayer;
+        assert(canvas);
+
+        return canvas;
+
+    }
+
     void clearSelection() {
         if(selected) {
             clearResizeArray(selected);
@@ -281,6 +305,10 @@ void addUndoRedoBlock(CanvasTab *c, bool isSentintel = false) {
     }
 
     assert(block);
+
+    Canvas *activeCanvas = this->getActiveCanvas();
+
+    *block = UndoRedoBlock(activeCanvas->id);
 
     block->isSentintel = isSentintel;
 
