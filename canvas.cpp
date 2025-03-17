@@ -321,28 +321,29 @@ void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *c
     }
 }
 
-void drawCanvas(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab, float onionSkinOpacity) {
+void drawCanvas(GameState *gameState, Frame *frame, CanvasTab *canvasTab, float onionSkinOpacity) {
      //NOTE: Draw the canvas
-     for(int y = 0; y < canvas->h; ++y) {
-        for(int x = 0; x < canvas->w; ++x) {
-            u32 c = canvas->pixels[y*canvas->w + x];
-            float4 color = u32_to_float4_color(c);
+    //  for(int y = 0; y < canvas->h; ++y) {
+    //     for(int x = 0; x < canvas->w; ++x) {
+    //         u32 c = canvas->pixels[y*canvas->w + x];
+    //         float4 color = u32_to_float4_color(c);
 
-            float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
+    //         float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
 
-            color.w *= onionSkinOpacity;
+    //         color.w *= onionSkinOpacity;
 
-            if(color.w > 0) {
-                pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
-            }
-        }
-    }
+    //         if(color.w > 0) {
+    //             pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+    //         }
+    //     }
+    // }
 
+    pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, onionSkinOpacity), frame->gpuHandle);
 
     //NOTE: Draw selected
     if(getArrayLength(canvasTab->selected) > 0) {
         updateCanvasSelectionTexture(gameState->renderer, canvasTab);
-        pushSelectionQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvas->w*VOXEL_SIZE_IN_METERS, canvas->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 0.7f));
+        pushSelectionQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 0.7f));
     }
 }
 

@@ -34,11 +34,11 @@ void updateGame(GameState *gameState) {
                 Frame *f = t->frames + frameIndex;
                 assert(f);
 
-                Canvas *canvas = f->layers + f->activeLayer;
-                assert(canvas);
+                // Canvas *canvas = f->layers + f->activeLayer;
+                // assert(canvas);
 
                 float onionSkinOpacity = 1.0f / MathMax(i + 1, 1);
-                drawCanvas(gameState, canvas, t, onionSkinOpacity);
+                drawCanvas(gameState, f, t, onionSkinOpacity);
             }
         }
     }

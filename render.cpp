@@ -186,6 +186,7 @@ struct InstanceDataWithRotation {
     float4 uv;
 };
 
+
 struct Renderer {
     uint32_t terrainTextureHandle;
     // uint32_t circleHandle;
@@ -227,6 +228,11 @@ struct Renderer {
 
     int selectionCount;
     InstanceDataWithRotation selectionQuad;
+
+    int canvasCount; 
+    InstanceDataWithRotation canvasQuads[MAX_RENDER_ITEMS_PER_INSTANCE];
+
+    u32 canvasHandles[MAX_RENDER_ITEMS_PER_INSTANCE];
 
     uint32_t selectionTextureHandle;
 
@@ -429,6 +435,26 @@ void pushSelectionQuad(Renderer *renderer, float3 worldP, float2 scale, float4 c
     renderer->selectionQuad.color = color;
     renderer->selectionQuad.uv = make_float4(0, 1, 0, 1);
     renderer->selectionCount++;
+}
+
+void pushCanvasQuad(Renderer *renderer, float3 worldP, float2 scale, float4 color, u32 handle) {
+    int index = -1;
+    InstanceDataWithRotation *c = 0;
+    if(renderer->canvasCount < arrayCount(renderer->canvasQuads)) {
+        index = renderer->canvasCount++;
+        c = &renderer->canvasQuads[index];
+    } else {
+        assert(false);
+    }
+    
+    if(c && index >= 0) {
+        float16 T = eulerAnglesToTransform(0, 0, 0);
+        c->M = float16_set_pos(float16_scale(T, make_float3(scale.x, scale.y, 0)), worldP);
+        c->color = color;
+        c->uv = make_float4(0, 1, 1, 0);
+        
+        renderer->canvasHandles[index] = handle;
+    }
 }
 
 void pushCircleOutline(Renderer *renderer, float3 worldP, float radius, float4 color) {
