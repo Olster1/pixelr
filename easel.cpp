@@ -212,6 +212,17 @@ struct Frame {
 
 };
 
+u32 float4_to_u32_color(float4 c) {
+    return (((u32)(c.w*255.0f)) << 24) | (((u32)(c.z*255.0f)) << 16) | (((u32)(c.y*255.0f)) << 8) | (((u32)(c.x*255.0f)) << 0);
+}
+
+float4 u32_to_float4_color(u32 c) {
+    float a = ((float)((c >> 24) & 0xFF))/255.0f;
+    float b = ((float)((c >> 16) & 0xFF))/255.0f;
+    float g = ((float)((c >> 8) & 0xFF))/255.0f;
+    float r = ((float)((c >> 0) & 0xFF))/255.0f;
+    return make_float4(r, g, b, a);
+}
 
 struct CanvasTab {
     Frame *frames = 0;
@@ -223,6 +234,7 @@ struct CanvasTab {
 
     float2 *selected = 0;//NOTE: Resize array 
     u32 selectionGpuHandle = 0;
+    u32 checkBackgroundHandle = 0; 
 
     char *saveFilePath = 0; //NOTE: Allocated on heap - need to free on dispose
     char *fileName = 0; //NOTE: Allocated on heap - need to free on dispose
@@ -247,6 +259,20 @@ struct CanvasTab {
         saveFilePath = saveFilePath_;
         fileName = getFileLastPortion(saveFilePath);
 
+        u32 *checkData = (u32 *)pushArray(&globalPerFrameArena, w*h, u32);
+
+        //TODO: This should just be a shader that does this
+        for(int y = 0; y < h; ++y) {
+            for(int x = 0; x < w; ++x) {
+                float4 c = make_float4(0.8f, 0.8f, 0.8f, 1);
+                if(((y % 2) == 0 && (x % 2) == 1) || ((y % 2) == 1 && (x % 2) == 0)) {
+                    c = make_float4(0.6f, 0.6f, 0.6f, 1);
+                }
+                checkData[y*w + x] = float4_to_u32_color(c);
+            }
+        }
+
+        checkBackgroundHandle = createGPUTexture(w, h, checkData).handle;
         selectionGpuHandle = createGPUTextureRed(w, h).handle;
         selected = initResizeArray(float2);
 

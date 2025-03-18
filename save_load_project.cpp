@@ -13,6 +13,7 @@ ProjectFile initProjectFile() {
 
 }
 
+
 bool saveProjectFile(GameState *gameState) {
     bool result = false;
 

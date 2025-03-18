@@ -1,14 +1,4 @@
-u32 float4_to_u32_color(float4 c) {
-    return (((u32)(c.w*255.0f)) << 24) | (((u32)(c.z*255.0f)) << 16) | (((u32)(c.y*255.0f)) << 8) | (((u32)(c.x*255.0f)) << 0);
-}
 
-float4 u32_to_float4_color(u32 c) {
-    float a = ((float)((c >> 24) & 0xFF))/255.0f;
-    float b = ((float)((c >> 16) & 0xFF))/255.0f;
-    float g = ((float)((c >> 8) & 0xFF))/255.0f;
-    float r = ((float)((c >> 0) & 0xFF))/255.0f;
-    return make_float4(r, g, b, a);
-}
 
 Canvas *getActiveCanvas(GameState *gameState) {
     CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
@@ -302,22 +292,24 @@ void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
 void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
     if(gameState->checkBackground) {
         //NOTE: Draw the canvas
-        for(int y = 0; y < canvas->h; ++y) {
-            for(int x = 0; x < canvas->w; ++x) {
-                u32 c = canvas->pixels[y*canvas->w + x];
-                float4 color = u32_to_float4_color(c);
+        // for(int y = 0; y < canvas->h; ++y) {
+        //     for(int x = 0; x < canvas->w; ++x) {
+        //         u32 c = canvas->pixels[y*canvas->w + x];
+        //         float4 color = u32_to_float4_color(c);
 
-                float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
+        //         float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
 
-                {
-                    float4 c = make_float4(0.8f, 0.8f, 0.8f, 1);
-                    if(((y % 2) == 0 && (x % 2) == 1) || ((y % 2) == 1 && (x % 2) == 0)) {
-                        c = make_float4(0.6f, 0.6f, 0.6f, 1);
-                    }
-                    pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), c);
-                }
-            }
-        }
+        //         {
+        //             float4 c = make_float4(0.8f, 0.8f, 0.8f, 1);
+        //             if(((y % 2) == 0 && (x % 2) == 1) || ((y % 2) == 1 && (x % 2) == 0)) {
+        //                 c = make_float4(0.6f, 0.6f, 0.6f, 1);
+        //             }
+        //             pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), c);
+        //         }
+        //     }
+        // }
+
+        pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 1), canvasTab->checkBackgroundHandle);
     }
 }
 

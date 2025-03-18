@@ -52,7 +52,11 @@ void drawTabs(GameState *state) {
             
               if (ImGui::BeginTabItem(t->fileName, &t->isOpen))
               {
-                state->activeCanvasTab = i;
+                if (ImGui::IsItemClicked()) 
+                {
+                    state->activeCanvasTab = i;
+                }
+                
               
                   ImGui::EndTabItem();
               }
@@ -278,7 +282,7 @@ void showMainMenuBar(GameState *state)
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("New")) { showNewCanvas(state); }
-            if (ImGui::MenuItem("Open", "Ctrl+O")) { /* Handle Open */ }
+            if (ImGui::MenuItem("Open Image", "Ctrl+O")) { openPlainImage(state); }
             if (ImGui::MenuItem("Save", "Ctrl+S")) { saveProjectFile(state); }
             if (ImGui::MenuItem("Export", "Ctrl+E")) { saveFileToPNG(getActiveCanvas(state)); }
             if (ImGui::MenuItem("Exit")) { state->quit = true;  }
