@@ -375,27 +375,59 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             bounds[i] = canvasCoordToWorldSpace(canvas, canvasP.x, canvasP.y, false);
         }
 
-        if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
-            float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
-            gameState->selectObject.dragging = true;
-            float2 canvasP = plus_float2(gameState->selectObject.T.pos.xy, gameState->selectObject.startCanvasP);
-            gameState->selectObject.dragOffset = minus_float2(canvasP, mouseP);
-        }
-        if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->selectObject.dragging && !isInteractingWithIMGUI()) {
-            float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
-            gameState->selectObject.T.pos.xy = minus_float2(plus_float2(mouseP, gameState->selectObject.dragOffset), gameState->selectObject.startCanvasP);
-        }
 
+        float2 worldMouseP = getWorldPFromMouse(gameState);
         //NOTE: Now draw the box
-        for(int i = 0; i < arrayCount(bounds); ++i) {
+        for(int i = 0; i < arrayCount(bounds) + 1; ++i) {
 
             int j = i + 1;
             if(j >= arrayCount(bounds)) {
                 j = 0;
             }
 
-            pushLineEndToEndWorldSpace(gameState->renderer, bounds[i], bounds[j], lerp_float4(make_float4(0, 1, 0, 1), make_float4(0, 1, 1, 1), easeInEaseOut(3*gameState->selectObject.timeAt)));
+            float2 handleP = bounds[i];
+
+            if(i < arrayCount(bounds)) {
+                pushLineEndToEndWorldSpace(gameState->renderer, bounds[i], bounds[j], lerp_float4(make_float4(0, 1, 0, 1), make_float4(0, 1, 1, 1), easeInEaseOut(3*gameState->selectObject.timeAt)));
+            } else {
+                handleP = lerp_float2(bounds[0], bounds[1], 0.5f);
+            }
+
+            float4 circleColor = make_float4(1, 1, 1, 1);
+            
+            float diameter = 0.1f;
+            if(isInsideCircle(handleP, diameter, worldMouseP)) {
+                circleColor = make_float4(1, 1, 0, 1);
+                if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED && !isInteractingWithIMGUI()) {
+                    assert(!gameState->selectObject.dragging);
+                    gameState->grabbedCornerIndex = i;
+                }
+            }
+
+            if(gameState->grabbedCornerIndex == i) {
+                circleColor = make_float4(1, 0.5, 0, 1);
+
+                if(gameState->grabbedCornerIndex == arrayCount(bounds)) {
+                    //NOTE: Is rotation handle
+                } else {
+                    //NOTE: Scale handles
+                }
+            }
+
+            pushFillCircle(gameState->renderer, make_float3(handleP.x, handleP.y, 0), diameter, circleColor);
         }
+
+        if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+            float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+            gameState->selectObject.dragging = true;
+            float2 canvasP = plus_float2(gameState->selectObject.T.pos.xy, gameState->selectObject.startCanvasP);
+            gameState->selectObject.dragOffset = minus_float2(canvasP, mouseP);
+        }
+        if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->selectObject.dragging && !isInteractingWithIMGUI() && gameState->grabbedCornerIndex < 0) {
+            float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+            gameState->selectObject.T.pos.xy = minus_float2(plus_float2(mouseP, gameState->selectObject.dragOffset), gameState->selectObject.startCanvasP);
+        }
+
 
         for(int i = 0; i < getArrayLength(gameState->selectObject.pixels); ++i) {
             PixelClipboardInfo pixel = gameState->selectObject.pixels[i];

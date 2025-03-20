@@ -116,6 +116,7 @@ struct GameState {
     float16 cameraRotation;
 
     float3 startP;
+    int grabbedCornerIndex;
 
     ThreadsInfo threadsInfo;
 

@@ -323,6 +323,18 @@ static float4 lerp_float4(float4 a, float4 b, float t) {
 	return make_float4((b.x - a.x)*t + a.x, (b.y - a.y)*t + a.y, (b.z - a.z)*t + a.z, (b.w - a.w)*t + a.w);
 }
 
+bool isInsideCircle(float2 center, float diameter, float2 point) {
+	float diff = float2_magnitude(minus_float2(point, center));
+
+	bool result = false;
+	if(diff < 0.5f*diameter) {
+		result = true;
+	}
+
+	return result;
+
+}
+
 static float3 scale_float3(float dt, float3 value) {
 	return make_float3(dt*value.x, dt*value.y, dt*value.z);
 }

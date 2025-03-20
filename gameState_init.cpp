@@ -46,6 +46,7 @@ void initGameState(GameState *gameState) {
     gameState->physicsWorld.positionCorrecting = true;
     gameState->physicsWorld.warmStarting = true;
     gameState->physicsWorld.accumulateImpulses = true;
+    gameState->grabbedCornerIndex = -1;
 
     loadWavFile(&gameState->cardFlipSound[0], "./sounds/cardFlip.wav", &gameState->audioSpec);
     loadWavFile(&gameState->cardFlipSound[1], "./sounds/cardFlip1.wav", &gameState->audioSpec);

@@ -462,7 +462,7 @@ void pushCircleOutline(Renderer *renderer, float3 worldP, float radius, float4 c
 }
 
 void pushFillCircle(Renderer *renderer, float3 worldP, float radius, float4 color) {
-    pushAtlasQuad_(renderer, worldP, make_float3(radius, radius, 1), make_float3(0, 0, 0), make_float4(0, 0.5f, 0.5f, 1.0f), color, true);
+    pushAtlasQuad_(renderer, worldP, make_float3(radius, radius, 1), make_float3(0, 0, 0), make_float4(0, 0.5f, 0.5f, 1.0f), color, false);
 }
 
 void pushCube(Renderer *renderer, float3 worldP, BlockType type, float4 color, uint64_t AOMask) {

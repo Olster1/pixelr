@@ -873,6 +873,16 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
         renderer->blockItemsCount = 0;
     }
+
+    for(int i = 0; i < renderer->canvasCount; ++i) {
+        u32 handle = renderer->canvasHandles[i];
+        updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->canvasQuads[i], sizeof(InstanceDataWithRotation));
+        drawModels(&renderer->quadModel, &renderer->quadTextureShader, handle, 1, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay, 0, -1, GL_TRIANGLES, renderer->timeAccum);
+    }
+
+    renderer->canvasCount = 0;
+
+
     
     // //NOTE: Draw the skybox here
     // glDepthMask(GL_FALSE); //NOTE: Disable WRITING to the depth buffer
@@ -911,14 +921,6 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
         renderer->atlasQuadHUDCount = 0;
     }
 
-    for(int i = 0; i < renderer->canvasCount; ++i) {
-        u32 handle = renderer->canvasHandles[i];
-        updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->canvasQuads[i], sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->quadModel, &renderer->quadTextureShader, handle, 1, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay, 0, -1, GL_TRIANGLES, renderer->timeAccum);
-    }
-
-    renderer->canvasCount = 0;
-
 
     if(renderer->glyphCount > 0) {
         //NOTE: Draw circle oultines
@@ -935,8 +937,6 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
         renderer->lineCount = 0;
     }
-
-    
 
     if(renderer->selectionCount > 0) {
         //NOTE: Draw circle oultines
