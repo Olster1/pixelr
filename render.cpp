@@ -461,6 +461,11 @@ void pushCircleOutline(Renderer *renderer, float3 worldP, float radius, float4 c
     pushAtlasQuad_(renderer, worldP, make_float3(radius, radius, 1), make_float3(0, 0, 0), make_float4(0.5f, 1.0f, 0, 0.5f), color, false);
 }
 
+
+void pushRotationCircle(Renderer *renderer, float3 worldP, float radius, float4 color) {
+    pushAtlasQuad_(renderer, worldP, make_float3(radius, radius, 1), make_float3(0, 0, 0), make_float4(0.75, 1.0f, 0.5f, 0.75f), color, false);
+}
+
 void pushFillCircle(Renderer *renderer, float3 worldP, float radius, float4 color) {
     pushAtlasQuad_(renderer, worldP, make_float3(radius, radius, 1), make_float3(0, 0, 0), make_float4(0, 0.5f, 0.5f, 1.0f), color, false);
 }

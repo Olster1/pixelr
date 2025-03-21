@@ -110,7 +110,7 @@ void initGameState(GameState *gameState) {
     GLint maxUniformBlockSize;
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBlockSize);
     assert((maxUniformBlockSize / sizeof(float16)) > MAX_BONES_PER_MODEL);
-    
+
     createSearchOffsets(gameState);
 
     gameState->perlinTestTexture = createGPUTexture(PERLIN_SIZE, PERLIN_SIZE, 0);
@@ -121,6 +121,8 @@ void initGameState(GameState *gameState) {
     gameState->perlinNoiseValue.z = 0.5f;
 
     gameState->inited = true;
+
+    
 
 }
 

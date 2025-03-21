@@ -24,6 +24,7 @@
 #include "./interaction.cpp"
 #include "./texture_atlas.cpp"
 #include "./easel.cpp"
+#include "./resize_canvas.cpp"
 #include "./gameState.cpp"
 #include "./undo_redo.cpp"
 #include "./gameState_init.cpp"

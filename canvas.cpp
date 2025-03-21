@@ -66,7 +66,7 @@ float2 getWorldPFromMouse(GameState *gameState) {
      return worldP;
 }
 
-float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h) {
+float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h, bool real = false) {
      //NOTE: Try draw on the canvas
      const float2 plane = scale_float2(0.5f, make_float2(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x));
                 
@@ -75,8 +75,15 @@ float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h) {
 
      float2 worldP = plus_float2(gameState->camera.T.pos.xy, make_float2(x, y));
      float2 result = {};
-     result.x = round(((worldP.x * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*w) - 0.5f);
-     result.y = round(((worldP.y * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*h) - 0.5f);
+     
+
+     if(real) {
+        result.x = (worldP.x * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*w;
+        result.y = (worldP.y * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*h;
+     } else {
+        result.x = round(((worldP.x * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*w) - 0.5f);
+        result.y = round(((worldP.y * INVERSE_VOXEL_SIZE_IN_METERS) + 0.5f*h) - 0.5f);
+     }
 
      return result;
 }
@@ -361,6 +368,8 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
 
         float2 bounds1[4] = {};
 
+        Rect2f minBounds = make_rect2f(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
+        
                     
         for(int i = 0; i < arrayCount(bounds); ++i) {
             float2 p = bounds[i];
@@ -373,6 +382,19 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             bounds1[i] = make_float2(canvasP.x, canvasP.y);
 
             bounds[i] = canvasCoordToWorldSpace(canvas, canvasP.x, canvasP.y, false);
+
+            if(bounds[i].x < minBounds.minX) {
+                minBounds.minX = bounds[i].x;
+            }
+            if(bounds[i].y < minBounds.minY) {
+                minBounds.minY = bounds[i].y;
+            }
+            if(bounds[i].x > minBounds.maxX) {
+                minBounds.maxX = bounds[i].x;
+            }
+            if(bounds[i].y > minBounds.maxY) {
+                minBounds.maxY = bounds[i].y;
+            }
         }
 
 
@@ -390,12 +412,12 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             if(i < arrayCount(bounds)) {
                 pushLineEndToEndWorldSpace(gameState->renderer, bounds[i], bounds[j], lerp_float4(make_float4(0, 1, 0, 1), make_float4(0, 1, 1, 1), easeInEaseOut(3*gameState->selectObject.timeAt)));
             } else {
-                handleP = lerp_float2(bounds[0], bounds[1], 0.5f);
+                handleP = lerp_float2(bounds[2], bounds[3], 0.5f);
             }
 
             float4 circleColor = make_float4(1, 1, 1, 1);
             
-            float diameter = 0.1f;
+            float diameter = 0.05f;
             if(isInsideCircle(handleP, diameter, worldMouseP)) {
                 circleColor = make_float4(1, 1, 0, 1);
                 if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED && !isInteractingWithIMGUI()) {
@@ -408,20 +430,46 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
                 circleColor = make_float4(1, 0.5, 0, 1);
 
                 if(gameState->grabbedCornerIndex == arrayCount(bounds)) {
+                    float2 mouseCanvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h, true);
                     //NOTE: Is rotation handle
+                    float2 diff = minus_float2(mouseCanvasP, plus_float2(gameState->selectObject.startCanvasP, gameState->selectObject.T.pos.xy));
+                    float angle = ATan2_0to360(diff.y, diff.x);
+
+                    if(gameState->keys.keys[KEY_SHIFT] != MOUSE_BUTTON_DOWN) {
+                        float angles[] = {0, 90, 180, 270, 360};
+
+                        float offset = 20;
+                        //NOTE: Quick snap
+                        for(int i = 0; i < arrayCount(angles); ++i) {
+                            if(angle > angles[i] - offset && angle < angles[i] + offset) {
+                                angle = angles[i];
+                            }
+                        }
+                    }
+
+                    gameState->selectObject.T.rotation.z = angle;
                 } else {
                     //NOTE: Scale handles
                 }
             }
 
-            pushFillCircle(gameState->renderer, make_float3(handleP.x, handleP.y, 0), diameter, circleColor);
+            if(i == arrayCount(bounds)) {
+                pushRotationCircle(gameState->renderer, make_float3(handleP.x, handleP.y, 0), 2.0f*diameter, circleColor);
+            } else {
+                pushFillCircle(gameState->renderer, make_float3(handleP.x, handleP.y, 0), diameter, circleColor);
+            }
         }
 
         if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
-            float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
-            gameState->selectObject.dragging = true;
-            float2 canvasP = plus_float2(gameState->selectObject.T.pos.xy, gameState->selectObject.startCanvasP);
-            gameState->selectObject.dragOffset = minus_float2(canvasP, mouseP);
+            float2 mousePWorld = getWorldPFromMouse(gameState);
+            //TODO: Fix this. Should be able to handle rotated rect in bounds
+            if(in_rect2f_bounds(minBounds, mousePWorld)) 
+            {
+                float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+                gameState->selectObject.dragging = true;
+                float2 canvasP = plus_float2(gameState->selectObject.T.pos.xy, gameState->selectObject.startCanvasP);
+                gameState->selectObject.dragOffset = minus_float2(canvasP, mouseP);
+            }
         }
         if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->selectObject.dragging && !isInteractingWithIMGUI() && gameState->grabbedCornerIndex < 0) {
             float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);

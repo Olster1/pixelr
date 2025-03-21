@@ -73,9 +73,8 @@ void drawTabs(GameState *state) {
                 
                 if (ImGui::Button("+"))
                 {
-                    CanvasTab tab = CanvasTab(16, 16, easyString_copyToHeap("Untitled"));
-                    pushArrayItem(&state->canvasTabs, tab, CanvasTab);
-                    state->activeCanvasTab = getArrayLength(state->canvasTabs) - 1;
+                    showNewCanvas(state);
+
                 }
           }
       }
@@ -212,6 +211,12 @@ void updateNewCanvasWindow(GameState *gameState) {
     ImGui::InputText("Width", gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0));
     ImGui::InputText("Height", gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1));
     if (ImGui::Button("Create")) {
+      int w = atoi(gameState->dimStr0);
+      int h = atoi(gameState->dimStr1);
+      CanvasTab tab = CanvasTab(w, h, easyString_copyToHeap("Untitled"));
+      pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
+      gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+
        gameState->showNewCanvasWindow = false;
     }
 

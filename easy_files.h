@@ -470,7 +470,7 @@ static HANDLE FindFirstFileInDir(char *dirName, WIN32_FIND_DATAA *fileFindData) 
 }
 #endif
 
-FileNameOfType getDirectoryFilesOfType_(char *dirName, char *copyDir, char **exts, int count, DirTypeOperation opType) { 
+FileNameOfType getDirectoryFilesOfType_(char *dirName, char *copyDir, char **exts, int count, DirTypeOperation opType) {
     FileNameOfType fileNames = {};
     #ifdef __APPLE__
         DIR *directory = opendir(dirName);
@@ -506,7 +506,9 @@ assert(!"not implemented");
                         char *ext = getFileExtension(fileName);
                         switch(opType) {
                             case DIR_FIND_FILE_TYPE: {
-                                if(isInCharList(ext, exts, count)) {
+                                
+                                if(isInCharList(ext, exts, count)) 
+                                {
                                     assert(fileNames.count < arrayCount(fileNames.names));
                                     fileNames.names[fileNames.count++] = fileName;
                                 }

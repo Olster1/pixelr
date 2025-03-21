@@ -121,6 +121,7 @@ void updateGame(GameState *gameState) {
     if(gameState->keys.keys[KEY_X] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
         CanvasTab *t = getActiveCanvasTab(gameState);
         if(t) {
+            gameState->clipboard.clear();
             for(int i = 0; i < getArrayLength(t->selected); i++) {
                 float2 p = t->selected[i];
                 Canvas *c = getActiveCanvas(gameState);
@@ -137,7 +138,7 @@ void updateGame(GameState *gameState) {
         Canvas *c = getActiveCanvas(gameState);
         CanvasTab *t = getActiveCanvasTab(gameState);
         if(t && c && gameState->clipboard.hasCopy()) {
-
+            
             gameState->selectObject.isActive = true;
             gameState->selectObject.timeAt = 0;
             gameState->selectObject.T = initTransformX();
@@ -178,6 +179,7 @@ void updateGame(GameState *gameState) {
             gameState->selectObject.boundsCanvasSpace = make_rect2f(minX, minY, maxX, maxY);
             gameState->selectObject.startCanvasP.x = lerp(minX, maxX, make_lerpTValue(0.5f));
             gameState->selectObject.startCanvasP.y = lerp(minY, maxY, make_lerpTValue(0.5f));
+            
         }
     }
 
