@@ -118,6 +118,9 @@ struct GameState {
     float3 startP;
     int grabbedCornerIndex;
 
+    float scrollDp; //NOTE: velcoity to intergrate for the scroll speed
+    float2 canvasMoveDp; //NOTE: velcoity to intergrate for the move canvas speed
+
     ThreadsInfo threadsInfo;
 
     PlayingSound *miningSoundPlaying;

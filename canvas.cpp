@@ -346,6 +346,12 @@ void drawCanvas(GameState *gameState, Frame *frame, CanvasTab *canvasTab, float 
     }
 }
 
+struct RenderDrawBundle {
+    float4 color;
+    TransformX T;
+    bool isRotationHandle;
+};
+
 void updateSelectObject(GameState *gameState, Canvas *canvas) {
     if(gameState->selectObject.isActive && gameState->selectObject.pixels && getArrayLength(gameState->selectObject.pixels)) {
         gameState->selectObject.timeAt += gameState->dt;
@@ -370,7 +376,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
 
         Rect2f minBounds = make_rect2f(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
         
-                    
+        
         for(int i = 0; i < arrayCount(bounds); ++i) {
             float2 p = bounds[i];
             
@@ -396,8 +402,8 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
                 minBounds.maxY = bounds[i].y;
             }
         }
-
-
+        
+        RenderDrawBundle *drawBundles = pushArray(&globalPerFrameArena, arrayCount(bounds) + 1, RenderDrawBundle);
         float2 worldMouseP = getWorldPFromMouse(gameState);
         //NOTE: Now draw the box
         for(int i = 0; i < arrayCount(bounds) + 1; ++i) {
@@ -449,15 +455,35 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
 
                     gameState->selectObject.T.rotation.z = angle;
                 } else {
+                    
                     //NOTE: Scale handles
+                    float rot = gameState->selectObject.T.rotation.z;
+                    float2 xHat = make_float2(cos(degreesToRadians(rot)), sin(degreesToRadians(rot)));
+                    float2 yHat = float2_perp(xHat);
+                    float2 diff = minus_float2(getWorldPFromMouse(gameState), bounds[i]);
+                    float scaleX = float2_dot(xHat, diff);
+                    float scaleY = float2_dot(yHat, diff);
+
+                    float flipX = 1.0f;
+                    float flipY = 1.0f;
+
+                    if(i == 0 || i == 1) { //NOTE: On the bott
+                        flipX = -1.0f;
+                    }
+                    if(i == 0 || i == 3) { //NOTE: On the bott
+                        flipY = -1.0f;
+                    }
+
+                    gameState->selectObject.T.scale.x += flipX*scaleX;
+                    gameState->selectObject.T.scale.y += flipY*scaleY;
                 }
             }
 
-            if(i == arrayCount(bounds)) {
-                pushRotationCircle(gameState->renderer, make_float3(handleP.x, handleP.y, 0), 2.0f*diameter, circleColor);
-            } else {
-                pushFillCircle(gameState->renderer, make_float3(handleP.x, handleP.y, 0), diameter, circleColor);
-            }
+            drawBundles[i].color = circleColor;
+            drawBundles[i].T.pos = make_float3(handleP.x, handleP.y, 0);
+            drawBundles[i].T.scale.x = 2.0f*diameter;
+            drawBundles[i].isRotationHandle = (i == arrayCount(bounds));
+
         }
 
         if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
@@ -507,6 +533,16 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             }
         }
 
+        //NOTE: So the handles are on top of the select object
+        for(int i = 0; i < arrayCount(bounds) + 1; ++i) {
+            RenderDrawBundle b = drawBundles[i];
+            if(b.isRotationHandle) {
+                pushRotationCircle(gameState->renderer, b.T.pos, b.T.scale.x, b.color);
+            } else {
+                pushFillCircle(gameState->renderer, b.T.pos, b.T.scale.x, b.color);
+            }
+        } 
+
         if(gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED || gameState->mouseLeftBtn == MOUSE_BUTTON_NONE) {
             gameState->selectObject.dragging = false;
         }
@@ -543,12 +579,17 @@ void drawLinedGrid(GameState *gameState, Canvas *canvas) {
 }
 
 void updateCanvasZoom(GameState *gameState) {
+    gameState->scrollDp += gameState->scrollSpeed*gameState->dt;
+
+    //NOTE: Drag
+    gameState->scrollDp *= 0.81f;
+
     //NOTE: Zoom in & out
-    gameState->camera.fov += 50*gameState->scrollSpeed*gameState->dt;
+    gameState->camera.fov *= 1 + gameState->scrollDp;
     
-    float max = 0.01f;
-    if(gameState->camera.fov < max) {
-        gameState->camera.fov = max;
+    float min = 0.01f;
+    if(gameState->camera.fov < min) {
+        gameState->camera.fov = min;
     }
 } 
 
@@ -642,13 +683,21 @@ void updateCanvasMove(GameState *gameState) {
         //NOTE: Move the canvas
         gameState->draggingCanvas = true;
         gameState->startDragP = getMouseP01(gameState);
+        gameState->canvasMoveDp = make_float2(0, 0);
     } else if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->draggingCanvas) {
-        float2 diff = scale_float2(gameState->dt*200, minus_float2(gameState->startDragP, getMouseP01(gameState)));
-        gameState->camera.T.pos.xy = plus_float2(gameState->camera.T.pos.xy, diff);
-        gameState->startDragP = getMouseP01(gameState);
+        float2 diff = scale_float2(100*gameState->dt, minus_float2(gameState->startDragP, getMouseP01(gameState)));
+        gameState->canvasMoveDp = diff;
     } else {
         gameState->draggingCanvas = false;
     }
+    
+    if(!gameState->draggingCanvas) {
+        gameState->canvasMoveDp.x *= 0.9f;
+        gameState->canvasMoveDp.y *= 0.9f;
+    }
+
+    gameState->camera.T.pos.xy = plus_float2(gameState->camera.T.pos.xy, gameState->canvasMoveDp);
+    gameState->startDragP = getMouseP01(gameState);
 }
 
 void updateDrawShape(GameState *gameState, Canvas *canvas) {

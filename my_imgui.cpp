@@ -354,9 +354,6 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           ImGui::Checkbox("Check Background", &state->checkBackground);
           ImGui::Checkbox("Draw Grid", &state->drawGrid); 
           ImGui::SliderFloat("Eraser", &state->eraserSize, 1.0f, 100.0f);
-          ImGui::SliderFloat("Rotation", &state->selectObject.T.rotation.z, 0, 360);
-          ImGui::SliderFloat("Scale", &state->selectObject.T.scale.x, 1, 10);
-          state->selectObject.T.scale.y = state->selectObject.T.scale.x;
           
           ImGui::Checkbox("SELECT", &state->selectMode);
 
