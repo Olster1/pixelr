@@ -198,6 +198,41 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
     }
 }
 
+void exportWindow(GameState *gameState) {
+  if(gameState->showExportWindow) {
+    //NOTE: Create new canvas
+    ImGui::Begin("Export Sprite Sheet", &gameState->showExportWindow);       
+    
+    ImGui::Text("How many rows & columns?"); 
+    if(gameState->autoFocus) {
+       ImGui::SetKeyboardFocusHere();
+       gameState->autoFocus = false;
+    }
+    ImGui::InputText("Columns", gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0), (gameState->maxColumnsExport) ? ImGuiInputTextFlags_ReadOnly : 0); 
+    ImGui::SameLine();
+    if(ImGui::Checkbox("Max", &gameState->maxColumnsExport)) {
+      if(gameState->maxColumnsExport) {
+        CanvasTab *tab = getActiveCanvasTab(gameState);
+        if(tab) {
+          snprintf(gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0), "%d", getArrayLength(tab->frames));
+          snprintf(gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1), "%d", 1);
+        }
+      }
+    }
+    ImGui::InputText("Rows", gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1), (gameState->maxColumnsExport) ? ImGuiInputTextFlags_ReadOnly : 0);
+    if (ImGui::Button("Export")) {
+      int w = atoi(gameState->dimStr0);
+      int h = atoi(gameState->dimStr1);
+
+      saveSpriteSheetToPNG(getActiveCanvasTab(gameState), w, h);
+
+       gameState->showExportWindow = false;
+    }
+
+    ImGui::End();
+  }
+}
+
 void updateNewCanvasWindow(GameState *gameState) {
   if(gameState->showNewCanvasWindow) {
     //NOTE: Create new canvas
@@ -289,7 +324,8 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("New")) { showNewCanvas(state); }
             if (ImGui::MenuItem("Open Image", "Ctrl+O")) { openPlainImage(state); }
             if (ImGui::MenuItem("Save", "Ctrl+S")) { saveProjectFile(state); }
-            if (ImGui::MenuItem("Export", "Ctrl+E")) { saveFileToPNG(getActiveCanvas(state)); }
+            if (ImGui::MenuItem("Export Image", "Ctrl+E")) { saveFileToPNG(getActiveCanvas(state)); }
+            if (ImGui::MenuItem("Export Sprite Sheet", "")) { state->showExportWindow = true; }
             if (ImGui::MenuItem("Exit")) { state->quit = true;  }
             ImGui::EndMenu();
         }
@@ -352,6 +388,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           ImGui::SliderInt("Running Average", &state->runningAverageCount, 1, arrayCount(state->mouseP_01_array));
           ImGui::ColorEdit3("Background", (float*)&state->bgColor);
           ImGui::Checkbox("Check Background", &state->checkBackground);
+          ImGui::Checkbox("nearest", &state->nearest);
           ImGui::Checkbox("Draw Grid", &state->drawGrid); 
           ImGui::SliderFloat("Eraser", &state->eraserSize, 1.0f, 100.0f);
           
@@ -471,6 +508,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       }
 
       showMainMenuBar(state);
+      exportWindow(state);
       updateNewCanvasWindow(state);
       updateColorPaletteEnter(state);
       drawTabs(state);

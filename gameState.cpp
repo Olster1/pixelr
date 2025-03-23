@@ -120,6 +120,7 @@ struct GameState {
 
     float scrollDp; //NOTE: velcoity to intergrate for the scroll speed
     float2 canvasMoveDp; //NOTE: velcoity to intergrate for the move canvas speed
+    bool nearest;
 
     ThreadsInfo threadsInfo;
 
@@ -192,6 +193,8 @@ struct GameState {
     // int canvasW;
     // int canvasH;
     bool showNewCanvasWindow;
+    bool showExportWindow;
+    bool maxColumnsExport;
     float scrollSpeed;
     bool draggingCanvas;
     float2 startDragP;

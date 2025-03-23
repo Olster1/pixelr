@@ -1,3 +1,17 @@
+
+u32 float4_to_u32_color(float4 c) {
+    return (((u32)(c.w*255.0f)) << 24) | (((u32)(c.z*255.0f)) << 16) | (((u32)(c.y*255.0f)) << 8) | (((u32)(c.x*255.0f)) << 0);
+}
+
+float4 u32_to_float4_color(u32 c) {
+    float a = ((float)((c >> 24) & 0xFF))/255.0f;
+    float b = ((float)((c >> 16) & 0xFF))/255.0f;
+    float g = ((float)((c >> 8) & 0xFF))/255.0f;
+    float r = ((float)((c >> 0) & 0xFF))/255.0f;
+    return make_float4(r, g, b, a);
+}
+
+
 struct PixelInfo {
     int x; 
     int y;
@@ -28,7 +42,9 @@ struct SelectObject {
     bool isActive = false;
     TransformX T;
     float2 startCanvasP;
-    PixelClipboardInfo *pixels;
+    float2 origin; //NOTE: Bottom left corner
+    float2 wh;
+    u32 *pixels;
     bool dragging = false;
     Rect2f boundsCanvasSpace;
     float2 dragOffset;
@@ -36,23 +52,40 @@ struct SelectObject {
 
     SelectObject() {
         T = initTransformX();
-        pixels = initResizeArray(PixelClipboardInfo);
+        pixels = 0;
         isActive = false;
         startCanvasP = make_float2(0, 0);
         boundsCanvasSpace = make_rect2f(0, 0, 0, 0);
         dragOffset = make_float2(0, 0);
+        origin = make_float2(0, 0);
         timeAt = 0;
+        wh = make_float2(0, 0);
+    }
+
+    float4 getColor(float2 xy) {
+        int x = xy.x;
+        int y = xy.y;
+        float4 result = make_float4(1, 1, 1, 0);
+        if(pixels && x >= 0 && x < wh.x && y >= 0 && y < wh.y) {
+            float4 a = u32_to_float4_color(pixels[y*(int)wh.x + x]);
+            if(a.w > 0) {
+                result = a;
+            }
+        }
+        return result;
     }
 
     void clear() {
         if(pixels) {
-            clearResizeArray(pixels);
+            easyPlatform_freeMemory(pixels);
+            pixels = 0;
         }
     }
 
     void dispose() {
         if(pixels) {
-            freeResizeArray(pixels);
+            easyPlatform_freeMemory(pixels);
+            pixels = 0;
         }
     }
 };
@@ -211,18 +244,6 @@ struct Frame {
     }
 
 };
-
-u32 float4_to_u32_color(float4 c) {
-    return (((u32)(c.w*255.0f)) << 24) | (((u32)(c.z*255.0f)) << 16) | (((u32)(c.y*255.0f)) << 8) | (((u32)(c.x*255.0f)) << 0);
-}
-
-float4 u32_to_float4_color(u32 c) {
-    float a = ((float)((c >> 24) & 0xFF))/255.0f;
-    float b = ((float)((c >> 16) & 0xFF))/255.0f;
-    float g = ((float)((c >> 8) & 0xFF))/255.0f;
-    float r = ((float)((c >> 0) & 0xFF))/255.0f;
-    return make_float4(r, g, b, a);
-}
 
 struct CanvasTab {
     Frame *frames = 0;

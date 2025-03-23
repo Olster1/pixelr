@@ -13,6 +13,58 @@ void saveFileToPNG(Canvas *canvas) {
     int writeResult = stbi_write_png(name, canvas->w, canvas->h, 4, canvas->pixels, stride_in_bytes);
 }
 
+void saveSpriteSheetToPNG(CanvasTab *canvas, int columns, int rows) {
+    char const * result = tinyfd_saveFileDialog (
+    "Save File",
+    "",
+    0,
+    NULL,
+    NULL);
+
+    // columns = min getArrayLength(canvas->frames) / rows;
+
+    int totalWidth = columns*canvas->w;
+    int totalHeight = rows*canvas->h;
+    u32 *totalPixels = pushArray(&globalPerFrameArena, totalWidth*totalHeight, u32);
+
+    int x = 0;
+    int y = 0;
+
+    for(int i = 0; i < getArrayLength(canvas->frames); ++i) {
+        Frame *frame = canvas->frames + i;
+        Canvas *c = &frame->layers[0];
+
+        for(int k = 0; k < canvas->h; ++k) {
+            for(int j = 0; j < canvas->w; ++j) {
+                
+                int tempX = x + j;
+                int tempY = y + k;
+
+                if (tempX < totalWidth && tempY < totalHeight) {
+                    totalPixels[tempY * totalWidth + tempX] = c->pixels[k * canvas->w + j];
+                }
+            }
+        }
+        
+        x += canvas->w;
+
+        if(((i + 1) % columns) == 0) {
+            y += canvas->h;
+            x = 0;
+        }
+        
+    }
+
+    size_t bytesPerPixel = sizeof(uint32_t);
+    int stride_in_bytes = bytesPerPixel*totalWidth;
+
+
+    char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
+    int writeResult = stbi_write_png(name, totalWidth, totalHeight, 4, totalPixels, stride_in_bytes);
+}
+
+
+
 
 void openPlainImage(GameState *gameState) {
     const char *filterPatterns[] = { "*.png",};

@@ -353,7 +353,7 @@ struct RenderDrawBundle {
 };
 
 void updateSelectObject(GameState *gameState, Canvas *canvas) {
-    if(gameState->selectObject.isActive && gameState->selectObject.pixels && getArrayLength(gameState->selectObject.pixels)) {
+    if(gameState->selectObject.isActive && gameState->selectObject.pixels) {
         gameState->selectObject.timeAt += gameState->dt;
         bool submit = false;
         if(gameState->keys.keys[KEY_ENTER] == MOUSE_BUTTON_PRESSED) {
@@ -375,7 +375,11 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
         float2 bounds1[4] = {};
 
         Rect2f minBounds = make_rect2f(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
-        
+        Rect2f minBounds1 = make_rect2f(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+        float rot = gameState->selectObject.T.rotation.z;
+        float2 xHat = make_float2(cos(degreesToRadians(rot)), sin(degreesToRadians(rot)));
+        float2 yHat = float2_perp(xHat);
         
         for(int i = 0; i < arrayCount(bounds); ++i) {
             float2 p = bounds[i];
@@ -400,6 +404,19 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             }
             if(bounds[i].y > minBounds.maxY) {
                 minBounds.maxY = bounds[i].y;
+            }
+
+            if(bounds1[i].x < minBounds1.minX) {
+                minBounds1.minX = bounds1[i].x;
+            }
+            if(bounds1[i].y < minBounds1.minY) {
+                minBounds1.minY = bounds1[i].y;
+            }
+            if(bounds1[i].x > minBounds1.maxX) {
+                minBounds1.maxX = bounds1[i].x;
+            }
+            if(bounds1[i].y > minBounds1.maxY) {
+                minBounds1.maxY = bounds1[i].y;
             }
         }
         
@@ -441,7 +458,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
                     float2 diff = minus_float2(mouseCanvasP, plus_float2(gameState->selectObject.startCanvasP, gameState->selectObject.T.pos.xy));
                     float angle = ATan2_0to360(diff.y, diff.x);
 
-                    if(gameState->keys.keys[KEY_SHIFT] != MOUSE_BUTTON_DOWN) {
+                    if(gameState->keys.keys[KEY_SHIFT] == MOUSE_BUTTON_DOWN) {
                         float angles[] = {0, 90, 180, 270, 360};
 
                         float offset = 20;
@@ -457,9 +474,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
                 } else {
                     
                     //NOTE: Scale handles
-                    float rot = gameState->selectObject.T.rotation.z;
-                    float2 xHat = make_float2(cos(degreesToRadians(rot)), sin(degreesToRadians(rot)));
-                    float2 yHat = float2_perp(xHat);
+                    
                     float2 diff = minus_float2(getWorldPFromMouse(gameState), bounds[i]);
                     float scaleX = float2_dot(xHat, diff);
                     float scaleY = float2_dot(yHat, diff);
@@ -503,30 +518,52 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
         }
 
 
-        for(int i = 0; i < getArrayLength(gameState->selectObject.pixels); ++i) {
-            PixelClipboardInfo pixel = gameState->selectObject.pixels[i];
-            float4 canvasP = float16_transform(T, make_float4(pixel.x - gameState->selectObject.startCanvasP.x, pixel.y - gameState->selectObject.startCanvasP.y, 0, 1));
+        float2 scale = gameState->selectObject.T.scale.xy;
+        int w = minBounds1.maxX - minBounds1.minX;
+        int h = minBounds1.maxY - minBounds1.minY;
+        float2 origin_bottom_left = bounds1[0];
 
-            canvasP.x += gameState->selectObject.startCanvasP.x;
-            canvasP.y += gameState->selectObject.startCanvasP.y;
+        for(int y = minBounds1.minY; y < minBounds1.maxY; y++) {
+            for(int x = minBounds1.minX; x < minBounds1.maxX; x++) {
+                float2 canvasP = make_float2(x, y);
+                
+                if(isValidCanvasRange(canvas, canvasP.x, canvasP.y)) {
+                    float2 pixelP =  canvasP;
+                    pixelP.x += 0.5f;
+                    pixelP.y += 0.5f;
+    
+                    // //NOTE: Now get the actual color and see if there is a pixel here
+                    float2 uvCoords = minus_float2(pixelP, origin_bottom_left);
+                    float2 uv_ = float2_transform(uvCoords, xHat, yHat);
+                    float2 uv = make_float2(floor(uv_.x), floor(uv_.y));
+                    float2 uvNext = make_float2(ceil(uv_.x), ceil(uv_.y));
+                    float2 uvNext1 = make_float2(uvNext.x, uv.y);
+                    float2 uvNext2 = make_float2(uv.x, uvNext.y);
+                    float2 filterOffset =  make_float2(uvNext.x - uv_.x, uvNext.y - uv_.y);
+                    filterOffset.x = 1.0f - filterOffset.x;
+                    filterOffset.y = 1.0f - filterOffset.y;
+                    
 
-            int minX = round(canvasP.x - 0.5f*TX.scale.x);
-            int maxX = round(canvasP.x + 0.5f*TX.scale.x);
-            int minY = round(canvasP.y - 0.5f*TX.scale.y);
-            int maxY = round(canvasP.y + 0.5f*TX.scale.y);
+                    float4 color0 = gameState->selectObject.getColor(uv);
+                    float4 color1 = gameState->selectObject.getColor(uvNext1);
+                    float4 color2 = gameState->selectObject.getColor(uvNext2);
+                    float4 color3 = gameState->selectObject.getColor(uvNext);
 
-            for(int y = minY; y < maxY; y++) {
-                for(int x = minX; x < maxX; x++) {
-                    if(isValidCanvasRange(canvas, x, y)) {
-                        float4 color4 = u32_to_float4_color(pixel.color);
+                    float4 colorA = lerp_float4(color0, color1, filterOffset.x);
+                    float4 colorB = lerp_float4(color2, color3, filterOffset.x);
+                    float4 colorC = lerp_float4(colorA, colorB, filterOffset.y);
 
-                        if(color4.w > 0) {
-                            float2 pixelP = canvasCoordToWorldSpace(canvas, round(x), round(y));
-                            pushColoredQuad(gameState->renderer, make_float3(pixelP.x, pixelP.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color4);
+                    if(gameState->nearest) {
+                        colorC = color0;
+                    }
+                    
 
-                            if(submit) {
-                                setCanvasColor(tab, canvas, round(x), round(y), pixel.color, gameState->opacity);
-                            }
+                    if(colorC.w > 0) {
+                        float2 worldP = canvasCoordToWorldSpace(canvas, round(canvasP.x), round(canvasP.y));
+                        pushColoredQuad(gameState->renderer, make_float3(worldP.x, worldP.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), colorC);
+
+                        if(submit) {
+                            setCanvasColor(tab, canvas, round(x), round(y), float4_to_u32_color(colorC), colorC.w*gameState->opacity);
                         }
                     }
                 }
@@ -685,15 +722,15 @@ void updateCanvasMove(GameState *gameState) {
         gameState->startDragP = getMouseP01(gameState);
         gameState->canvasMoveDp = make_float2(0, 0);
     } else if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->draggingCanvas) {
-        float2 diff = scale_float2(100*gameState->dt, minus_float2(gameState->startDragP, getMouseP01(gameState)));
+        float2 diff = scale_float2(200*gameState->dt, minus_float2(gameState->startDragP, getMouseP01(gameState)));
         gameState->canvasMoveDp = diff;
     } else {
         gameState->draggingCanvas = false;
     }
     
     if(!gameState->draggingCanvas) {
-        gameState->canvasMoveDp.x *= 0.9f;
-        gameState->canvasMoveDp.y *= 0.9f;
+        gameState->canvasMoveDp.x *= 0.8f;
+        gameState->canvasMoveDp.y *= 0.8f;
     }
 
     gameState->camera.T.pos.xy = plus_float2(gameState->camera.T.pos.xy, gameState->canvasMoveDp);

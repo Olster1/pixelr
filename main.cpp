@@ -155,7 +155,7 @@ void updateGame(GameState *gameState) {
             for(int i = 0; i < getArrayLength(gameState->clipboard.pixels); i++) {
                 PixelClipboardInfo info = gameState->clipboard.pixels[i];
                 if(u32_to_float4_color(info.color).w > 0) {
-                    pushArrayItem(&gameState->selectObject.pixels, info, PixelClipboardInfo);
+                    // pushArrayItem(&gameState->selectObject.pixels, info, PixelClipboardInfo);
 
                     if(info.x < minX) {
                         minX = info.x;
@@ -176,9 +176,29 @@ void updateGame(GameState *gameState) {
             maxX++;
             maxY++;
 
+            int w = maxX - minX;
+            int h = maxY - minY;
+            gameState->selectObject.clear();
+            gameState->selectObject.pixels = (u32 *)easyPlatform_allocateMemory(sizeof(u32)*w*h);
+
+            for(int i = 0; i < getArrayLength(gameState->clipboard.pixels); i++) {
+                PixelClipboardInfo info = gameState->clipboard.pixels[i];
+                if(u32_to_float4_color(info.color).w > 0) {
+                    int x = info.x - minX;
+                    int y = info.y - minY;
+                    
+                    assert(x >= 0 && x < w);
+                    assert(y >= 0 && y < h);
+
+                    gameState->selectObject.pixels[y*w + x] = info.color;
+                }
+            }
+
             gameState->selectObject.boundsCanvasSpace = make_rect2f(minX, minY, maxX, maxY);
             gameState->selectObject.startCanvasP.x = lerp(minX, maxX, make_lerpTValue(0.5f));
             gameState->selectObject.startCanvasP.y = lerp(minY, maxY, make_lerpTValue(0.5f));
+            gameState->selectObject.origin = make_float2(minX, minY);
+            gameState->selectObject.wh = make_float2(w, h);
             
         }
     }

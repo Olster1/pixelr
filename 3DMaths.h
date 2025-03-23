@@ -256,6 +256,15 @@ static float2 float2_transform(float2 a, float2 xAxis, float2 yAxis) {
 	return result;
 }
 
+static float2 float2_project(float2 a, float2 xAxis, float2 yAxis) {
+	float2 x = scale_float2(a.x, xAxis);
+	float2 y = scale_float2(a.y, yAxis);
+
+	float2 result = plus_float2(x, y);
+
+	return result;
+}
+
 static float2 lerp_float2(float2 a, float2 b, float t) {
 	return make_float2((b.x - a.x)*t + a.x, (b.y - a.y)*t + a.y);
 }
@@ -289,6 +298,16 @@ static float3 float3_crossProduct(float3 v1, float3 v2) {
 
 	return result;
 
+}
+
+
+static float2 float2_hadamard(float2 a, float2 b) {
+	float2 result = {};
+
+	result.x = a.x * b.x;
+	result.y = a.y * b.y;
+
+	return result;
 }
 
 static float3 float3_hadamard(float3 a, float3 b) {
