@@ -448,6 +448,12 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             
           }
           if(state->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+          ImGui::SameLine();
+          if (ImGui::Button("\uf5bd")) {
+            state->interactionMode = CANVAS_SPRAY_CAN;
+            
+          }
+          if(state->interactionMode == CANVAS_SPRAY_CAN) { ImGui::SameLine(); ImGui::Text("\uf00c");}
 
           ImGui::Text("Select a Color:");
           float size = 30.0f;  // Square size

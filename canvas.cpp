@@ -591,6 +591,40 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
     }
 }
 
+void updateSprayCan(GameState *gameState, Canvas *canvas) {
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+
+    if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+        gameState->sprayTimeAt = 0;
+    }
+
+    if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN) {
+        gameState->sprayTimeAt += gameState->dt;
+
+        float radius = 0.5f*gameState->eraserSize;
+        float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+        float offset = 0.5f*(gameState->eraserSize == 1 ? 0 : gameState->eraserSize);
+        float2 origin = make_float2(offset, offset);
+        for(int y = 0; y < gameState->eraserSize; y++) {
+            for(int x = 0; x < gameState->eraserSize; x++) {
+                float2 xy = make_float2(x, y);
+                //NOTE: To make the circle shape
+                if(float2_magnitude(minus_float2(xy, origin)) <= radius) {
+                    float px = (canvasP.x - offset) + x;
+                    float py = (canvasP.y - offset) + y;
+
+                    float perlin = mapSimplexNoiseTo01(SimplexNoise_fractal_2d(16, px + gameState->sprayTimeAt, py + gameState->sprayTimeAt, 0.8f));
+                    if(perlin > 0.5f) {
+                        u32 color = float4_to_u32_color(gameState->colorPicked);
+                        setCanvasColor(tab, canvas, px, py, color, gameState->opacity);
+                    }
+                }
+            }
+        }
+    }
+    
+}
+
 void drawLinedGrid(GameState *gameState, Canvas *canvas) {
     float4 greyColor = make_float4(0.6, 0.6, 0.6, 1);
     for(int x = 0; x < canvas->h + 1; ++x) {

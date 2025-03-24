@@ -62,6 +62,8 @@ void updateGame(GameState *gameState) {
             updateCanvasMove(gameState);
         } else if(gameState->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) {
             updateCanvasSelect(gameState, getActiveCanvasTab(gameState));
+        } else if(gameState->interactionMode == CANVAS_SPRAY_CAN) {
+            updateSprayCan(gameState, getActiveCanvas(gameState));
         }
 
         updateGpuCanvasTextures(gameState);

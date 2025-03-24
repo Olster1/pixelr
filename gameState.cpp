@@ -48,6 +48,8 @@ enum CanvasInteractionMode {
     CANVAS_ERASE_MODE,
     CANVAS_SELECT_RECTANGLE_MODE,
     CANVAS_MOVE_SELECT_MODE,
+    CANVAS_SPRAY_CAN,
+
 
 };
 
@@ -101,6 +103,8 @@ struct GameState {
     //NOTE: First 8 are what player as equipped in the hotbar
     int inventoryCount;
     InventoryItem playerInventory[64];
+
+    float sprayTimeAt;
 
     float3 cameraOffset;
 
