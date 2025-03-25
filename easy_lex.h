@@ -14,6 +14,7 @@ bool lexIsNumeric(char charValue) {
 
 bool lexIsHexadecimalNumeric(char charValue) {
     bool result = (charValue >= '0' && charValue <= '9') || (charValue >= 'a' && charValue <= 'f') || (charValue >= 'A' && charValue <= 'F');
+    printf("%c %d\n", charValue, result);
     return result;
 }
 
@@ -375,6 +376,7 @@ EasyToken lexGetToken_(EasyTokenizer *tokenizer, bool advanceWithToken) {
                         //NOTE: Hexadecimal number
                         at++;
                         assert(lexIsHexadecimalNumeric(*at));
+                        printf("IS HEXA\n");
                         isHexadecimal = true;
                     }
                 }
@@ -388,7 +390,7 @@ EasyToken lexGetToken_(EasyTokenizer *tokenizer, bool advanceWithToken) {
                         }
                     }
                     
-                    if(*at == 'E' || *at == 'e') {
+                    if(!isHexadecimal && (*at == 'E' || *at == 'e')) {
                         assert(!hadENotation);
                         token.type = TOKEN_FLOAT;
                         char *a = nullTerminateArena(token.at, (at - token.at), &globalPerFrameArena);
@@ -419,12 +421,11 @@ EasyToken lexGetToken_(EasyTokenizer *tokenizer, bool advanceWithToken) {
                     } else {
                         at++;
                     }
-                    
-                    
                 }
                 
                 if(!hadENotation) {
                     char *a = nullTerminateArena(token.at, (at - token.at), &globalPerFrameArena);
+                    
                     if(isHexadecimal) {
 
                         char *endptr;

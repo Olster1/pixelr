@@ -64,6 +64,8 @@ void updateGame(GameState *gameState) {
             updateCanvasSelect(gameState, getActiveCanvasTab(gameState));
         } else if(gameState->interactionMode == CANVAS_SPRAY_CAN) {
             updateSprayCan(gameState, getActiveCanvas(gameState));
+        } else if(gameState->interactionMode == CANVAS_COLOR_DROPPER) {
+            updateColorDropper(gameState, getActiveCanvas(gameState));
         }
 
         updateGpuCanvasTextures(gameState);

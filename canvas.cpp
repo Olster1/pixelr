@@ -591,6 +591,28 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
     }
 }
 
+void updateColorDropper(GameState *gameState, Canvas *canvas) {
+    float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+
+    if(isValidCanvasRange(canvas, round(canvasP.x), round(canvasP.x))) {
+        float4 color = u32_to_float4_color(getCanvasColor(canvas, round(canvasP.x), round(canvasP.y)));
+
+        if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+            gameState->colorPicked = color;
+
+            if(gameState->palletteCount < arrayCount(gameState->colorsPallete)) {
+                gameState->colorsPallete[gameState->palletteCount++] = color;
+            }
+        }
+        float2 worldMouseP = getWorldPFromMouse(gameState);
+        pushFillCircle(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), 0.5f, color);
+        pushCircleOutline(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), 0.5f, make_float4(1, 1, 1, 1));
+    }
+
+
+    
+}
+
 void updateSprayCan(GameState *gameState, Canvas *canvas) {
     CanvasTab *tab = getActiveCanvasTab(gameState);
 

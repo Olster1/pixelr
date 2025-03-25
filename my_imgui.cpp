@@ -285,6 +285,7 @@ void updateColorPaletteEnter(GameState *gameState) {
             } else if(t.type == TOKEN_COMMA) {
 
             } else if(t.type == TOKEN_INTEGER) {
+              printf(":COLOR\n");
               if(gameState->palletteCount < arrayCount(gameState->colorsPallete)) {
                 float4 color = u32_to_float4_color(t.intVal);
 
@@ -454,6 +455,13 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             
           }
           if(state->interactionMode == CANVAS_SPRAY_CAN) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+
+          ImGui::SameLine();
+          if (ImGui::Button("\uf1fb")) {
+            state->interactionMode = CANVAS_COLOR_DROPPER;
+            
+          }
+          if(state->interactionMode == CANVAS_COLOR_DROPPER) { ImGui::SameLine(); ImGui::Text("\uf00c");}
 
           ImGui::Text("Select a Color:");
           float size = 30.0f;  // Square size
