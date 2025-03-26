@@ -12,4 +12,4 @@ clear
 #     -rpath /Library/Frameworks -I/Library/Frameworks/SDL2.framework/Headers -I/Library/Frameworks/SDL2_image.framework/Headers -F/Library/Frameworks -framework OpenGL -framework SDL2 -framework SDL2_image \
 #     -o ./libs/libimgui.dylib
 
-gcc -std=c++11 -o Pixelr -I ../imgui  -I ../imgui/backends/ ./platform_layer.cpp -Wno-deprecated-declarations -Wno-writable-strings -Wno-c++11-compat-deprecated-writable-strings -L./libs -limgui -rpath ./ -rpath /Library/Frameworks -I/Library/Frameworks/SDL2.framework/Headers -I/Library/Frameworks/SDL2_image.framework/Headers -F/Library/Frameworks -framework OpenGL -framework SDL2 -framework SDL2_image
+gcc -g -std=c++11 -o Pixelr -I ../imgui  -I ../imgui/backends/ ./platform_layer.cpp -Wno-deprecated-declarations -Wno-writable-strings -Wno-c++11-compat-deprecated-writable-strings -L./libs -limgui -rpath ./ -rpath /Library/Frameworks -I/Library/Frameworks/SDL2.framework/Headers -I/Library/Frameworks/SDL2_image.framework/Headers -F/Library/Frameworks -framework OpenGL -framework SDL2 -framework SDL2_image

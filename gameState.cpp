@@ -115,6 +115,7 @@ struct GameState {
     WavFile bgMusic;
     WavFile fallBigSound;
     WavFile pickupSound;
+    bool openSpriteSheetWindow;
 
     float16 cameraRotation;
 

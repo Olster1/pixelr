@@ -259,6 +259,39 @@ void updateNewCanvasWindow(GameState *gameState) {
   }
 }
 
+void setDefaultSpriteSize(GameState *gameState) {
+  assert(IM_ARRAYSIZE(gameState->dimStr0) >= 3);
+  gameState->dimStr0[0] = '1';
+  gameState->dimStr0[1] = '6';
+  gameState->dimStr0[2] = '\0';
+
+  assert(IM_ARRAYSIZE(gameState->dimStr1) >= 3);
+  gameState->dimStr1[0] = '1';
+  gameState->dimStr1[1] = '6';
+  gameState->dimStr1[2] = '\0';
+  
+}
+
+void updateSpriteSheetWindow(GameState *gameState) {
+  if(gameState->openSpriteSheetWindow) {
+    //NOTE: Create new canvas
+    ImGui::Begin("Load Sprite Sheet", &gameState->openSpriteSheetWindow);       
+
+    ImGui::Text("Individual Sprite size?"); 
+    ImGui::InputText("Width", gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0));
+    ImGui::InputText("Height", gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1));
+    if (ImGui::Button("Load")) {
+      int w = atoi(gameState->dimStr0);
+      int h = atoi(gameState->dimStr1);
+
+      openSpriteSheet(gameState, w, h);
+    }
+
+    ImGui::End();
+  }
+}
+
+
 void updateColorPaletteEnter(GameState *gameState) {
   if(gameState->showColorPalleteEnter) {
     //NOTE: Create new canvas
@@ -324,6 +357,7 @@ void showMainMenuBar(GameState *state)
         {
             if (ImGui::MenuItem("New")) { showNewCanvas(state); }
             if (ImGui::MenuItem("Open Image", "Ctrl+O")) { openPlainImage(state); }
+            if (ImGui::MenuItem("Load Sprite Sheet", "")) { setDefaultSpriteSize(state); state->openSpriteSheetWindow = true; }
             if (ImGui::MenuItem("Save", "Ctrl+S")) { saveProjectFile(state); }
             if (ImGui::MenuItem("Export Image", "Ctrl+E")) { saveFileToPNG(getActiveCanvas(state)); }
             if (ImGui::MenuItem("Export Sprite Sheet", "")) { state->showExportWindow = true; }
@@ -525,6 +559,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       exportWindow(state);
       updateNewCanvasWindow(state);
       updateColorPaletteEnter(state);
+      updateSpriteSheetWindow(state);
       drawTabs(state);
 
       drawAnimationTimeline(state, state->dt);

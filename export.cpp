@@ -13,6 +13,76 @@ void saveFileToPNG(Canvas *canvas) {
     int writeResult = stbi_write_png(name, canvas->w, canvas->h, 4, canvas->pixels, stride_in_bytes);
 }
 
+void openSpriteSheet(GameState *gameState, int w, int h) {
+    const char *filterPatterns[] = { "*.png",};
+    const char *filePath = tinyfd_openFileDialog(
+        "Open an image",         // Dialog title
+        "",                    // Default path
+        1,                     // Number of filters
+        filterPatterns,        // Filters
+        "PNG files only",    // Filter description
+        0                      // Allow multiple selection (0 = No, 1 = Yes)
+    );
+    
+    if (filePath) {
+            printf("HEY\n");
+            stbi_set_flip_vertically_on_load(1);
+            int totalW = 0;
+            int totalH = 0;
+            int nrChannels = 0;
+            u32 *data = (u32 *)stbi_load(filePath, &totalW, &totalH, &nrChannels, STBI_rgb_alpha);
+
+            if(data) {
+                char *name = getFileLastPortionWithoutExtension((char *)filePath);
+                CanvasTab tab_ = CanvasTab(w, h, name);
+                CanvasTab *tab = pushArrayItem(&gameState->canvasTabs, tab_, CanvasTab);
+                gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+
+                int wCount = totalW / w;
+                int hCount = totalH / h;
+
+                int canvasIndex = 0;
+
+                for(int y = 0; y < hCount; ++y) {
+                    for(int x = 0; x < wCount; ++x) {
+                        Canvas *canvas = 0;
+                        if(canvasIndex == 0) {
+                            //NOTE: Resuse the canvas that got allocated when we create the canvas tab
+                            canvas = getActiveCanvas(gameState);
+                        } else {
+                            canvas = tab->addEmptyCanvas();
+                        }
+                        
+                        if(canvas) {
+                            for(int y1 = 0; y1 < h; ++y1) {
+                                for(int x1 = 0; x1 < w; ++x1) {
+                                    int xTemp = x1 + x*w;
+                                    int yTemp = y1 + y*h;
+                                    int index = yTemp*totalW + xTemp;
+                                    assert(index < (totalW*totalH));
+                                    u32 color = data[index];
+                                    canvas->pixels[y1*w + x1] = color;
+
+                                }
+                            }
+                        }
+
+                        canvasIndex++;
+                    }
+                }
+                updateGpuCanvasTextures(gameState);
+                stbi_image_free(data);
+            }
+            stbi_set_flip_vertically_on_load(0);
+
+            gameState->showNewCanvasWindow = false;
+    } else {
+        printf("No file selected.\n");
+    }
+
+   
+}
+
 void saveSpriteSheetToPNG(CanvasTab *canvas, int columns, int rows) {
     char const * result = tinyfd_saveFileDialog (
     "Save File",

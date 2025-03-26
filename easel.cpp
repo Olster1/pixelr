@@ -313,6 +313,13 @@ struct CanvasTab {
 
     }
 
+    Canvas *addEmptyCanvas() {
+        Frame f_ = Frame(w, h);
+        Frame *f = pushArrayItem(&frames, f_, Frame);
+
+        return &f->layers[0];
+    }
+
     void clearSelection() {
         if(selected) {
             clearResizeArray(selected);
