@@ -20,7 +20,6 @@ void initGameState(GameState *gameState) {
     gameState->camera.shakeTimer = -1;
     gameState->camera.runShakeTimer = -1;
 
-    gameState->colorPicked = make_float4(1, 0, 0, 1);
     gameState->bgColor = make_float4(0.3f,0, 0.3f, 1); //make_float4(1, 1, 1, 1); //
     gameState->drawGrid = false;
     gameState->opacity = 1;

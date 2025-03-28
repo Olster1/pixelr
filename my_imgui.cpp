@@ -318,17 +318,17 @@ void updateColorPaletteEnter(GameState *gameState) {
             } else if(t.type == TOKEN_COMMA) {
 
             } else if(t.type == TOKEN_INTEGER) {
-              printf(":COLOR\n");
-              if(gameState->palletteCount < arrayCount(gameState->colorsPallete)) {
-                float4 color = u32_to_float4_color(t.intVal);
+              float4 color = u32_to_float4_color(t.intVal);
 
-                if(gameState->blueRedFlippedInUI) {
-                  float r = color.x;
-                  color.x = color.z;
-                  color.z = r;
-                }
-                
-                gameState->colorsPallete[gameState->palletteCount++] = color;
+              if(gameState->blueRedFlippedInUI) {
+                float r = color.x;
+                color.x = color.z;
+                color.z = r;
+              }
+              
+              CanvasTab *tab = getActiveCanvasTab(gameState);
+              if(tab) {
+                tab->addColorToPalette(float4_to_u32_color(color));
               }
             }
           }
@@ -359,6 +359,9 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("Open Image", "Ctrl+O")) { openPlainImage(state); }
             if (ImGui::MenuItem("Load Sprite Sheet", "")) { setDefaultSpriteSize(state); state->openSpriteSheetWindow = true; }
             if (ImGui::MenuItem("Save", "Ctrl+S")) { saveProjectFile(state); }
+            if (ImGui::MenuItem("Save Pallete", "")) { savePallete(state); }
+            if (ImGui::MenuItem("Load Pallete", "")) { loadPallete(state); }
+            
             if (ImGui::MenuItem("Export Image", "Ctrl+E")) { saveFileToPNG(getActiveCanvas(state)); }
             if (ImGui::MenuItem("Export Sprite Sheet", "")) { state->showExportWindow = true; }
             if (ImGui::MenuItem("Exit")) { state->quit = true;  }
@@ -388,184 +391,163 @@ void showMainMenuBar(GameState *state)
 void updateMyImgui(GameState *state, ImGuiIO& io) {
 
       CanvasInteractionMode startMode = state->interactionMode;
+
+      CanvasTab *tab = getActiveCanvasTab(state);
+
+      if(tab) {
   
-      // Start the Dear ImGui frame
-      ImGui_ImplOpenGL3_NewFrame();
-      ImGui_ImplSDL2_NewFrame();
-      ImGui::NewFrame();
+        // Start the Dear ImGui frame
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplSDL2_NewFrame();
+        ImGui::NewFrame();
 
-      bool show_demo_window = true;
+        bool show_demo_window = true;
 
-      ImVec2 window_pos = ImVec2(10.0f, io.DisplaySize.y - 10.0f); // Offset slightly from edges
-      ImVec2 window_pivot = ImVec2(0, 1.0f); // Bottom-right corner
+        ImVec2 window_pos = ImVec2(10.0f, io.DisplaySize.y - 10.0f); // Offset slightly from edges
+        ImVec2 window_pivot = ImVec2(0, 1.0f); // Bottom-right corner
 
-      ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
-      ImGui::SetNextWindowBgAlpha(0.35f); // Optional: Make it semi-transparent
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
+        ImGui::SetNextWindowBgAlpha(0.35f); // Optional: Make it semi-transparent
 
-      // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-      // ImGui::ShowDemoWindow(&show_demo_window);
+        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+        // ImGui::ShowDemoWindow(&show_demo_window);
 
-      {
-          ImGui::Begin("Color Palette");
-          ImGui::ColorEdit3("Brush", (float*)&state->colorPicked);
-          // Detect when the color picker is closed after changes
-          if (ImGui::IsItemDeactivatedAfterEdit()) {
-            state->palletteCount++;
-            state->palletteIndexAt++;
-            if(state->palletteIndexAt > arrayCount(state->colorsPallete)) {
-              state->palletteIndexAt = 0;
-              state->palletteCount = arrayCount(state->colorsPallete);
+        {
+            ImGui::Begin("Color Palette");
+            ImGui::ColorEdit3("Brush", (float*)&tab->colorPicked);
+            // Detect when the color picker is closed after changes
+            ImGui::SliderFloat("Opacity", &state->opacity, 0.0f, 1.0f);
+            ImGui::SliderInt("Running Average", &state->runningAverageCount, 1, arrayCount(state->mouseP_01_array));
+            ImGui::ColorEdit3("Background", (float*)&state->bgColor);
+            ImGui::Checkbox("Check Background", &state->checkBackground);
+            ImGui::Checkbox("nearest", &state->nearest);
+            ImGui::Checkbox("Draw Grid", &state->drawGrid); 
+            ImGui::SliderFloat("Eraser", &state->eraserSize, 1.0f, 100.0f);
+            
+            ImGui::Checkbox("SELECT", &state->selectMode);
+
+
+            if (ImGui::Button("\uf0b2")) {
+              //NOTE: MOVE
+              state->interactionMode = CANVAS_MOVE_MODE;
+            } 
+            if(state->interactionMode == CANVAS_MOVE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            ImGui::SameLine();
+            if (ImGui::Button("\uf1fc")) {
+              //NOTE: BRUSH
+              state->interactionMode = CANVAS_DRAW_MODE;
+            } 
+            if(state->interactionMode == CANVAS_DRAW_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            ImGui::SameLine();
+            if (ImGui::Button("\uf575")) {
+              //NOTE: FILL
+              state->interactionMode = CANVAS_FILL_MODE;
+            } 
+            if(state->interactionMode == CANVAS_FILL_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            ImGui::SameLine();
+            if (ImGui::Button("\uf111")) {
+              //NOTE: circle shape
+              state->interactionMode = CANVAS_DRAW_CIRCLE_MODE;
             }
-            state->colorsPallete[state->palletteIndexAt] = state->colorPicked;
-            state->colorsPalletePicked = state->palletteIndexAt;
-          }
-          ImGui::SliderFloat("Opacity", &state->opacity, 0.0f, 1.0f);
-          ImGui::SliderInt("Running Average", &state->runningAverageCount, 1, arrayCount(state->mouseP_01_array));
-          ImGui::ColorEdit3("Background", (float*)&state->bgColor);
-          ImGui::Checkbox("Check Background", &state->checkBackground);
-          ImGui::Checkbox("nearest", &state->nearest);
-          ImGui::Checkbox("Draw Grid", &state->drawGrid); 
-          ImGui::SliderFloat("Eraser", &state->eraserSize, 1.0f, 100.0f);
+            if(state->interactionMode == CANVAS_DRAW_CIRCLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            ImGui::SameLine();
+            if (ImGui::Button("\uf245")) {
+              //NOTE: select shape shape
+              state->interactionMode = CANVAS_MOVE_SELECT_MODE;
+            }
+            if(state->interactionMode == CANVAS_MOVE_SELECT_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            
+            if (ImGui::Button("\uf0c8")) {
+              //NOTE: rectangle shape
+              state->interactionMode = CANVAS_DRAW_RECTANGLE_MODE;
+            }
+            if(state->interactionMode == CANVAS_DRAW_RECTANGLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            ImGui::SameLine();
+            if (ImGui::Button("\uf12d")) {
+              state->interactionMode = CANVAS_ERASE_MODE;
+              
+            }
+            if(state->interactionMode == CANVAS_ERASE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            ImGui::SameLine();
+            if (ImGui::Button("\uf068")) {
+              state->interactionMode = CANVAS_DRAW_LINE_MODE;
+              
+            }
+            if(state->interactionMode == CANVAS_DRAW_LINE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            ImGui::SameLine();
+            if (ImGui::Button("\uf248")) {
+              state->interactionMode = CANVAS_SELECT_RECTANGLE_MODE;
+              
+            }
+            if(state->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            ImGui::SameLine();
+            if (ImGui::Button("\uf5bd")) {
+              state->interactionMode = CANVAS_SPRAY_CAN;
+              
+            }
+            if(state->interactionMode == CANVAS_SPRAY_CAN) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+
+            ImGui::SameLine();
+            if (ImGui::Button("\uf1fb")) {
+              state->interactionMode = CANVAS_COLOR_DROPPER;
+              
+            }
+            if(state->interactionMode == CANVAS_COLOR_DROPPER) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+
+            ImGui::Text("Select a Color:");
+            float size = 30.0f;  // Square size
+            float spacing = 5.0f; // Spacing between squares
+
+            CanvasTab *tab = getActiveCanvasTab(state);
+        
+            if(tab) {
+              for (int i = 0; i < tab->palletteCount; ++i) {
+                  ImGui::PushID(i);  // Ensure unique ID for each color
           
-          ImGui::Checkbox("SELECT", &state->selectMode);
-
-
-          if (ImGui::Button("\uf0b2")) {
-            //NOTE: MOVE
-            state->interactionMode = CANVAS_MOVE_MODE;
-          } 
-          if(state->interactionMode == CANVAS_MOVE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          ImGui::SameLine();
-          if (ImGui::Button("\uf1fc")) {
-            //NOTE: BRUSH
-            state->interactionMode = CANVAS_DRAW_MODE;
-          } 
-          if(state->interactionMode == CANVAS_DRAW_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          ImGui::SameLine();
-          if (ImGui::Button("\uf575")) {
-            //NOTE: FILL
-            state->interactionMode = CANVAS_FILL_MODE;
-          } 
-          if(state->interactionMode == CANVAS_FILL_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          ImGui::SameLine();
-          if (ImGui::Button("\uf111")) {
-            //NOTE: circle shape
-            state->interactionMode = CANVAS_DRAW_CIRCLE_MODE;
-          }
-          if(state->interactionMode == CANVAS_DRAW_CIRCLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          ImGui::SameLine();
-          if (ImGui::Button("\uf245")) {
-            //NOTE: select shape shape
-            state->interactionMode = CANVAS_MOVE_SELECT_MODE;
-          }
-          if(state->interactionMode == CANVAS_MOVE_SELECT_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+                  // Get cursor position for drawing the square
+                  ImVec2 pos = ImGui::GetCursorScreenPos();
+                  ImDrawList* drawList = ImGui::GetWindowDrawList();
           
-          if (ImGui::Button("\uf0c8")) {
-            //NOTE: rectangle shape
-            state->interactionMode = CANVAS_DRAW_RECTANGLE_MODE;
-          }
-          if(state->interactionMode == CANVAS_DRAW_RECTANGLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          ImGui::SameLine();
-          if (ImGui::Button("\uf12d")) {
-            state->interactionMode = CANVAS_ERASE_MODE;
-            
-          }
-          if(state->interactionMode == CANVAS_ERASE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          ImGui::SameLine();
-          if (ImGui::Button("\uf068")) {
-            state->interactionMode = CANVAS_DRAW_LINE_MODE;
-            
-          }
-          if(state->interactionMode == CANVAS_DRAW_LINE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          ImGui::SameLine();
-          if (ImGui::Button("\uf248")) {
-            state->interactionMode = CANVAS_SELECT_RECTANGLE_MODE;
-            
-          }
-          if(state->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-          ImGui::SameLine();
-          if (ImGui::Button("\uf5bd")) {
-            state->interactionMode = CANVAS_SPRAY_CAN;
-            
-          }
-          if(state->interactionMode == CANVAS_SPRAY_CAN) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+                  // Create an invisible button for the selectable color square
+                  if (ImGui::InvisibleButton("color_btn", ImVec2(size, size))) {
+                    tab->colorPicked = u32_to_float4_color(tab->colorsPallete[i]);
+                  }
+                  u32 a = tab->colorsPallete[i];
 
-          ImGui::SameLine();
-          if (ImGui::Button("\uf1fb")) {
-            state->interactionMode = CANVAS_COLOR_DROPPER;
-            
+                  // Draw color square
+                  drawList->AddRectFilled(pos, ImVec2(pos.x + size, pos.y + size), (a));
+          
+                  // Draw border if selected
+                  if (float4_to_u32_color(tab->colorPicked) == a) {
+                      drawList->AddRect(pos, ImVec2(pos.x + size, pos.y + size), IM_COL32(255, 255, 255, 255), 0.0f, 0, 3.0f);
+                  }
+          
+                  ImGui::PopID();
+          
+                  // Layout: Move to next row if needed
+                  if ((i + 1) % 5 != 0) {
+                      ImGui::SameLine(0, spacing);
+                  }
+            }
           }
-          if(state->interactionMode == CANVAS_COLOR_DROPPER) { ImGui::SameLine(); ImGui::Text("\uf00c");}
 
-          ImGui::Text("Select a Color:");
-          float size = 30.0f;  // Square size
-          float spacing = 5.0f; // Spacing between squares
+            
 
-        //   uint32_t colors[16] = {
-        //     0xFF1B1D23,  // Darkest Gray-Blue
-        //     0xFF2F3E46,  // Deep Teal
-        //     0xFF4F6D7A,  // Muted Blue
-        //     0xFF7396A5,  // Soft Blue
-        //     0xFF91AAB7,  // Grayish Blue
-        //     0xFFD9DCD6,  // Light Gray
-        //     0xFF735A3A,  // Dark Brown
-        //     0xFFB08968,  // Warm Tan
-        //     0xFFDAB38A,  // Pale Sand
-        //     0xFF7A3E3E,  // Deep Red
-        //     0xFFA84B4B,  // Rusty Red
-        //     0xFFD98E73,  // Warm Peach
-        //     0xFF4D7A4E,  // Forest Green
-        //     0xFF6FAF6F,  // Vibrant Green
-        //     0xFFF6D55C,  // Golden Yellow
-        //     0xFFFFB563   // Soft Orange
-        // };
-      
-          for (int i = 0; i < state->palletteCount; ++i) {
-              ImGui::PushID(i);  // Ensure unique ID for each color
-      
-              // Get cursor position for drawing the square
-              ImVec2 pos = ImGui::GetCursorScreenPos();
-              ImDrawList* drawList = ImGui::GetWindowDrawList();
-      
-              // Create an invisible button for the selectable color square
-              if (ImGui::InvisibleButton("color_btn", ImVec2(size, size))) {
-                state->colorPicked = state->colorsPallete[i];
-                state->colorsPalletePicked = i;
-              }
-              float4 a = state->colorsPallete[i];
-
-              // Draw color square
-              drawList->AddRectFilled(pos, ImVec2(pos.x + size, pos.y + size), float4_to_u32_color(a));
-      
-              // Draw border if selected
-              if (state->colorsPalletePicked == i) {
-                  drawList->AddRect(pos, ImVec2(pos.x + size, pos.y + size), IM_COL32(255, 255, 255, 255), 0.0f, 0, 3.0f);
-              }
-      
-              ImGui::PopID();
-      
-              // Layout: Move to next row if needed
-              if ((i + 1) % 5 != 0) {
-                  ImGui::SameLine(0, spacing);
-              }
+            ImGui::End();
         }
 
-          
+        showMainMenuBar(state);
+        exportWindow(state);
+        updateNewCanvasWindow(state);
+        updateColorPaletteEnter(state);
+        updateSpriteSheetWindow(state);
+        drawTabs(state);
 
-          ImGui::End();
-      }
+        drawAnimationTimeline(state, state->dt);
 
-      showMainMenuBar(state);
-      exportWindow(state);
-      updateNewCanvasWindow(state);
-      updateColorPaletteEnter(state);
-      updateSpriteSheetWindow(state);
-      drawTabs(state);
-
-      drawAnimationTimeline(state, state->dt);
-
-      if(startMode != state->interactionMode) {
-        clearSelection(getActiveCanvasTab(state));
+        if(startMode != state->interactionMode) {
+          clearSelection(tab);
+        }
       }
 }
 

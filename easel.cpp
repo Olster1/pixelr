@@ -263,13 +263,18 @@ struct CanvasTab {
     UndoRedoBlock *undoList = 0;
     UndoRedoBlock *undoBlockFreeList = 0;
     UndoRedoBlock *currentUndoBlock = 0;
+    int palletteCount = 0;
+    u32 colorsPallete[1028];
+    float4 colorPicked;
 
     bool isOpen = true; //NOTE: Used to close the tab
 
     CanvasTab(int w, int h, char *saveFilePath_) {
         this->w = w;
         this->h = h;
+        colorPicked = make_float4(1, 1, 1, 1);
         currentUndoBlock = 0;
+        palletteCount = 0;
         frames = initResizeArray(Frame);
         Frame f = Frame(w, h);
         pushArrayItem(&frames, f, Frame);
@@ -326,9 +331,26 @@ struct CanvasTab {
         }
     }
 
+    void addColorToPalette(u32 color) {
+        if(this->palletteCount < arrayCount(this->colorsPallete)) {
+            bool isNew = true;
+            for(int i = 0; i < this->palletteCount && isNew; ++i) {
+                if(this->colorsPallete[i] == color) {
+                    isNew = false;
+                    break;
+                }
+            }
+            if(isNew) {
+                this->colorsPallete[this->palletteCount++] = color;
+            }
+            
+        }
+    }
+
     void addUndoInfo(PixelInfo info) {
         if(!currentUndoBlock) {
             addUndoRedoBlock(this);
+            addColorToPalette(float4_to_u32_color(colorPicked));
         }
         assert(currentUndoBlock);
         currentUndoBlock->addPixelInfo(info);

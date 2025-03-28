@@ -188,8 +188,6 @@ struct GameState {
     SkeletalModel foxModel;
     float3 modelLocation;
 
-
-    float4 colorPicked;
     float4 bgColor;
     char dimStr0[256];
     char dimStr1[256];
@@ -221,13 +219,9 @@ struct GameState {
     CanvasTab *canvasTabs; //NOTE: resize array
     int activeCanvasTab;
 
-    int palletteCount;
-    int palletteIndexAt;
-    int colorsPalletePicked;
-    float4 colorsPallete[256];
     bool showColorPalleteEnter;
 
-    char colorsPalleteBuffer[10000];
+    char colorsPalleteBuffer[10000]; //NOTE: This is a string for the imgui text box to use
 
     Clipboard clipboard;
 

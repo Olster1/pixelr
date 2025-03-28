@@ -25,7 +25,7 @@ void openSpriteSheet(GameState *gameState, int w, int h) {
     );
     
     if (filePath) {
-            printf("HEY\n");
+            
             stbi_set_flip_vertically_on_load(1);
             int totalW = 0;
             int totalH = 0;

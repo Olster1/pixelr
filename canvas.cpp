@@ -198,7 +198,7 @@ void drawSelectShape(GameState *gameState, CanvasTab *canvas, CanvasInteractionM
     float2 diff = diff1;
     diff.x = abs(diff1.x);
     diff.y = abs(diff1.y);
-    float4 color = gameState->colorPicked;
+    float4 color = canvas->colorPicked;
 
     float startX = (gameState->drawShapeStart.x < p.x) ? gameState->drawShapeStart.x : p.x;
     float startY = (gameState->drawShapeStart.y < p.y) ? gameState->drawShapeStart.y : p.y;
@@ -218,37 +218,40 @@ void drawSelectShape(GameState *gameState, CanvasTab *canvas, CanvasInteractionM
 }
 
 void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode mode, bool fill = false) {
-    float2 p = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
-    float2 diff1 = minus_float2(p, gameState->drawShapeStart);
-    float2 diff = diff1;
-    diff.x = abs(diff1.x);
-    diff.y = abs(diff1.y);
-    float4 color = gameState->colorPicked;
-
     CanvasTab *tab = getActiveCanvasTab(gameState);
+    if(tab) {
+        float2 p = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+        float2 diff1 = minus_float2(p, gameState->drawShapeStart);
+        float2 diff = diff1;
+        diff.x = abs(diff1.x);
+        diff.y = abs(diff1.y);
 
-    float startX = (gameState->drawShapeStart.x < p.x) ? gameState->drawShapeStart.x : p.x;
-    float startY = (gameState->drawShapeStart.y < p.y) ? gameState->drawShapeStart.y : p.y;
+        CanvasTab *tab = getActiveCanvasTab(gameState);
+        float4 color = tab->colorPicked;
 
-    float2 middle = make_float2(startX + 0.5f*diff.x, startY + 0.5f*diff.y);
-    
-    int w = round(diff.x);
-    int h = round(diff.y);
+        float startX = (gameState->drawShapeStart.x < p.x) ? gameState->drawShapeStart.x : p.x;
+        float startY = (gameState->drawShapeStart.y < p.y) ? gameState->drawShapeStart.y : p.y;
 
-    for(int y = 0; y <= h; ++y) {
-        for(int x = 0; x <= w; ++x) {
-            float2 offset = make_float2((startX + x) - gameState->drawShapeStart.x, (startY + y) - gameState->drawShapeStart.y);
-            if(isInShape((mode == CANVAS_DRAW_LINE_MODE) ? round(offset.x) : x, (mode == CANVAS_DRAW_LINE_MODE) ? round(offset.y) : y, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.x) : w, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.y) : h, mode)) {
-                if((startX + x) >= 0 && (startY + y) >= 0 && (startX + x) < canvas->w && (startY + y) < canvas->h) {
-                    if(fill) {
-                        float2 p = make_float2(startX + x,startY + y);
-                        setCanvasColor(tab, canvas, p.x, p.y, float4_to_u32_color(color), gameState->opacity);
-                    } else {
-                        float2 p = make_float2((startX + x)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (startY + y)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
-                        color.w = gameState->opacity;
-                        pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+        float2 middle = make_float2(startX + 0.5f*diff.x, startY + 0.5f*diff.y);
+        
+        int w = round(diff.x);
+        int h = round(diff.y);
+
+        for(int y = 0; y <= h; ++y) {
+            for(int x = 0; x <= w; ++x) {
+                float2 offset = make_float2((startX + x) - gameState->drawShapeStart.x, (startY + y) - gameState->drawShapeStart.y);
+                if(isInShape((mode == CANVAS_DRAW_LINE_MODE) ? round(offset.x) : x, (mode == CANVAS_DRAW_LINE_MODE) ? round(offset.y) : y, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.x) : w, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.y) : h, mode)) {
+                    if((startX + x) >= 0 && (startY + y) >= 0 && (startX + x) < canvas->w && (startY + y) < canvas->h) {
+                        if(fill) {
+                            float2 p = make_float2(startX + x,startY + y);
+                            setCanvasColor(tab, canvas, p.x, p.y, float4_to_u32_color(color), gameState->opacity);
+                        } else {
+                            float2 p = make_float2((startX + x)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (startY + y)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
+                            color.w = gameState->opacity;
+                            pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+                        }
+
                     }
-
                 }
             }
         }
@@ -591,26 +594,25 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
     }
 }
 
+
 void updateColorDropper(GameState *gameState, Canvas *canvas) {
-    float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+    if(tab) {
+        float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
 
-    if(isValidCanvasRange(canvas, round(canvasP.x), round(canvasP.x))) {
-        float4 color = u32_to_float4_color(getCanvasColor(canvas, round(canvasP.x), round(canvasP.y)));
+        if(isValidCanvasRange(canvas, round(canvasP.x), round(canvasP.x))) {
+            float4 color = u32_to_float4_color(getCanvasColor(canvas, round(canvasP.x), round(canvasP.y)));
 
-        if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
-            gameState->colorPicked = color;
+            if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+                tab->colorPicked = color;
 
-            if(gameState->palletteCount < arrayCount(gameState->colorsPallete)) {
-                gameState->colorsPallete[gameState->palletteCount++] = color;
+                tab->addColorToPalette(float4_to_u32_color(color));
             }
+            float2 worldMouseP = getWorldPFromMouse(gameState);
+            pushFillCircle(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), 0.5f, color);
+            pushCircleOutline(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), 0.5f, make_float4(1, 1, 1, 1));
         }
-        float2 worldMouseP = getWorldPFromMouse(gameState);
-        pushFillCircle(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), 0.5f, color);
-        pushCircleOutline(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), 0.5f, make_float4(1, 1, 1, 1));
     }
-
-
-    
 }
 
 void updateSprayCan(GameState *gameState, Canvas *canvas) {
@@ -637,7 +639,7 @@ void updateSprayCan(GameState *gameState, Canvas *canvas) {
 
                     float perlin = mapSimplexNoiseTo01(SimplexNoise_fractal_2d(16, px + gameState->sprayTimeAt, py + gameState->sprayTimeAt, 0.8f));
                     if(perlin > 0.5f) {
-                        u32 color = float4_to_u32_color(gameState->colorPicked);
+                        u32 color = float4_to_u32_color(tab->colorPicked);
                         setCanvasColor(tab, canvas, px, py, color, gameState->opacity);
                     }
                 }
@@ -852,7 +854,7 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
 
              float2 startP = plus_float2(gameState->lastPaintP, addend);//NOTE: Move past the one we just did last turn
              
-             u32 color = float4_to_u32_color(gameState->colorPicked);
+             u32 color = float4_to_u32_color(tab->colorPicked);
              while(float2_dot(minus_float2(startP, endP), minus_float2(gameState->lastPaintP, endP)) >= 0 && (float2_magnitude(addend) > 0)) {
                  int x1 = startP.x;
                  int y1 = startP.y;
@@ -868,7 +870,7 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
          }
            
          if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
-             u32 color = float4_to_u32_color(gameState->colorPicked);
+             u32 color = float4_to_u32_color(tab->colorPicked);
              
              setCanvasColor(tab, canvas, coordX, coordY, color, gameState->opacity);
          }
