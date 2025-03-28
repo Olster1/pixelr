@@ -393,25 +393,23 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       CanvasInteractionMode startMode = state->interactionMode;
 
       CanvasTab *tab = getActiveCanvasTab(state);
-
-      if(tab) {
   
-        // Start the Dear ImGui frame
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
-        ImGui::NewFrame();
+      // Start the Dear ImGui frame
+      ImGui_ImplOpenGL3_NewFrame();
+      ImGui_ImplSDL2_NewFrame();
+      ImGui::NewFrame();
 
-        bool show_demo_window = true;
+      bool show_demo_window = true;
 
-        ImVec2 window_pos = ImVec2(10.0f, io.DisplaySize.y - 10.0f); // Offset slightly from edges
-        ImVec2 window_pivot = ImVec2(0, 1.0f); // Bottom-right corner
+      ImVec2 window_pos = ImVec2(10.0f, io.DisplaySize.y - 10.0f); // Offset slightly from edges
+      ImVec2 window_pivot = ImVec2(0, 1.0f); // Bottom-right corner
 
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
-        ImGui::SetNextWindowBgAlpha(0.35f); // Optional: Make it semi-transparent
+      ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
+      ImGui::SetNextWindowBgAlpha(0.35f); // Optional: Make it semi-transparent
 
-        // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
-        // ImGui::ShowDemoWindow(&show_demo_window);
-
+      // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
+      // ImGui::ShowDemoWindow(&show_demo_window);
+      if(tab) {
         {
             ImGui::Begin("Color Palette");
             ImGui::ColorEdit3("Brush", (float*)&tab->colorPicked);
