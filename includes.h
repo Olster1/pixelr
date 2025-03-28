@@ -23,6 +23,8 @@
 #include "./SimplexNoise.cpp"
 #include "./interaction.cpp"
 #include "./texture_atlas.cpp"
+#include "./easel.h"
+#include "./save_load_project.cpp"
 #include "./easel.cpp"
 #include "./resize_canvas.cpp"
 #include "./gameState.cpp"
@@ -42,6 +44,6 @@
 #include "./canvas.cpp"
 #include "./export.cpp"
 #include "./flood_fill.cpp"
-#include "./save_load_project.cpp"
+
 #include "./my_imgui.cpp"
 

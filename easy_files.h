@@ -120,6 +120,11 @@ typedef struct {
     bool HasErrors;
 }  game_file_handle;
 
+char *getPlatformSaveFilePath() {
+    char* filePath = SDL_GetPrefPath("edgeeffectmedia", "pixelr");
+    return filePath;
+}
+
 size_t GetFileSize(SDL_RWops *FileHandle) {
     long Result = SDL_RWseek(FileHandle, 0, RW_SEEK_END);
     if(Result < 0) {

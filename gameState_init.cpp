@@ -103,6 +103,7 @@ void initGameState(GameState *gameState) {
     gameState->particlerCount = 0;
 
     initThreadQueue(&gameState->threadsInfo);
+    globalThreadInfo = &gameState->threadsInfo;
 
     gameState->spriteTextureAtlas = readTextureAtlas("./texture_atlas.json", "./texture_atlas.png");
     
@@ -118,6 +119,8 @@ void initGameState(GameState *gameState) {
     gameState->perlinNoiseValue.x = 0.5f;
     gameState->perlinNoiseValue.y = 0.5f;
     gameState->perlinNoiseValue.z = 0.5f;
+
+    loadPalleteDefault_(&gameState->canvasTabs[0]);
 
     gameState->inited = true;
 

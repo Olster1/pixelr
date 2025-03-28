@@ -116,6 +116,18 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
           anim->elapsedTime = 0.0f;
           anim->playing = false;
       }
+      ImGui::SameLine();
+      if (ImGui::Button("\uf1f8 Delete Frame")) {
+          if(getArrayLength(canvasTab->frames) > 1) {
+            //TODO: Delete the frame add to undo list
+            canvasTab->frames[canvasTab->activeFrame].dispose();
+            removeArrayAtIndex(canvasTab->frames, canvasTab->activeFrame);
+            canvasTab->activeFrame--;
+            if(canvasTab->activeFrame < 0) {
+              canvasTab->activeFrame = 0;
+            }
+          }
+      }
 
       ImGui::Separator();
 
@@ -358,9 +370,9 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("New")) { showNewCanvas(state); }
             if (ImGui::MenuItem("Open Image", "Ctrl+O")) { openPlainImage(state); }
             if (ImGui::MenuItem("Load Sprite Sheet", "")) { setDefaultSpriteSize(state); state->openSpriteSheetWindow = true; }
-            if (ImGui::MenuItem("Save", "Ctrl+S")) { saveProjectFile(state); }
-            if (ImGui::MenuItem("Save Pallete", "")) { savePallete(state); }
-            if (ImGui::MenuItem("Load Pallete", "")) { loadPallete(state); }
+            if (ImGui::MenuItem("Save", "Ctrl+S")) {  }
+            if (ImGui::MenuItem("Save Pallete", "")) {  }
+            if (ImGui::MenuItem("Load Pallete", "")) {  }
             
             if (ImGui::MenuItem("Export Image", "Ctrl+E")) { saveFileToPNG(getActiveCanvas(state)); }
             if (ImGui::MenuItem("Export Sprite Sheet", "")) { state->showExportWindow = true; }

@@ -66,8 +66,10 @@ bool removeArrayAtIndex(void *array, int index) {
             //NOTE: Move everything down
             u8 *a = (u8 *)array;
             for(int i = index; i < (header->elementsCount - 1); ++i) {
-                *(a + (i * header->sizeOfElement)) = *(a + ((i + 1) * header->sizeOfElement));
-                
+                u8 *to = a + (i * header->sizeOfElement);
+                u8 *from = a + ((i + 1) * header->sizeOfElement);
+
+                easyPlatform_copyMemory(to, from, header->sizeOfElement);
             }
 
             header->elementsCount--;

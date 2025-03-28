@@ -2,6 +2,8 @@
 struct ProjectFile {
     u32 version;
     u32 brushColor;
+    int palletteCount;
+    u32 colorsPallete[MAX_PALETTE_COUNT];
 };
 #pragma pack(pop) 
 
@@ -13,26 +15,96 @@ ProjectFile initProjectFile() {
 
 }
 
-
-bool saveProjectFile(GameState *gameState) {
+bool loadProjectFile_(CanvasTab *tab, char *filePath) {
     bool result = false;
 
-    ProjectFile file = initProjectFile();
-    // file.brushColor[0] = gameState->colorPicked.E[0];
-    // file.brushColor[1] = gameState->colorPicked.E[1];
-    // file.brushColor[2] = gameState->colorPicked.E[2];
-    // file.brushColor[3] = gameState->colorPicked.E[3];
+    if(tab) {
+        FileContents file = platformReadEntireFile(filePath, false);
+        assert(file.valid);
+        if(file.valid && file.memory) {
+            ProjectFile *project = (ProjectFile *)file.memory;
+
+            assert(project->version == PROJECT_FILE_LATEST_VERSION);
+            tab->colorPicked = u32_to_float4_color(project->brushColor);
+
+            tab->palletteCount = project->palletteCount;
+            for(int i = 0; i < project->palletteCount; ++i) {
+                tab->colorsPallete[i] = project->colorsPallete[i];
+            }
+
+
+            easyPlatform_freeMemory(file.memory);
+        }
+    }
+    return result;
+}
+
+bool saveProjectFile_(CanvasTab *tab, char *filePath) {
+    bool result = false;
+
+    if(tab) {
+        ProjectFile data = initProjectFile();
+        data.brushColor = float4_to_u32_color(tab->colorPicked);
+
+        data.palletteCount = tab->palletteCount;
+        for(int i = 0; i < tab->palletteCount; ++i) {
+            data.colorsPallete[i] = tab->colorsPallete[i];
+        }
+        
+        game_file_handle file = platformBeginFileWrite((char *)filePath);
+        assert(!file.HasErrors);
+        
+        size_t offset = platformWriteFile(&file, &data, sizeof(ProjectFile), 0);
+
+        platformEndFile(file);
+
+    }
 
     return result;
 
 }
 
-void loadProjectFile(GameState *gameState) {
+void savePalleteDefault_(void *data) {
+    CanvasTab *tab = (CanvasTab *)data;
+    char *filePath = getPlatformSaveFilePath();
 
+    if(filePath) {
+        char *strToWrite = easy_createString_printf(&globalPerFrameArena, "%sdefault.project", (char *)filePath);
+
+        saveProjectFile_(tab, strToWrite);
+
+        easyPlatform_freeMemory(filePath);
+    }
 }
 
-void savePallete(GameState *state) {
-    CanvasTab *tab = getActiveCanvasTab(state);
+void savePalleteDefaultThreaded(ThreadsInfo *threadsInfo, CanvasTab *tab) {
+    MemoryBarrier();
+    ReadWriteBarrier();
+
+    //NOTE: Multi-threaded
+    pushWorkOntoQueue(threadsInfo, savePalleteDefault_, tab);
+}
+
+void loadPalleteDefault_(void *data) {
+    CanvasTab *tab = (CanvasTab *)data;
+    char *filePath = getPlatformSaveFilePath();
+
+    if(filePath) {
+        char *strToWrite = easy_createString_printf(&globalPerFrameArena, "%sdefault.project", (char *)filePath);
+        loadProjectFile_(tab, strToWrite);
+        easyPlatform_freeMemory(filePath);
+    }
+}
+
+void loadPalleteDefaultThreaded(ThreadsInfo *threadsInfo, CanvasTab *tab) {
+    MemoryBarrier();
+    ReadWriteBarrier();
+
+    //NOTE: Multi-threaded
+    pushWorkOntoQueue(threadsInfo, loadPalleteDefault_, tab);
+}
+
+void savePallete(CanvasTab *tab) {
     if(tab) {
         char const *fileName = tinyfd_saveFileDialog (
             "Save File",
@@ -60,7 +132,7 @@ void savePallete(GameState *state) {
     }
 }
 
-void loadPallete(GameState *gameState) {
+void loadPallete() {
     const char *filterPatterns[] = { "*.palette",};
     const char *filePath = tinyfd_openFileDialog(
         "Open palette",         // Dialog title

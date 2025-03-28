@@ -8,6 +8,7 @@
 #include "./3DMaths.h"
 #include <cstdio>
 #include "./threads.cpp"
+static ThreadsInfo *globalThreadInfo = 0;
 
 #define ENUM(value) value,
 #define STRING(value) #value,
