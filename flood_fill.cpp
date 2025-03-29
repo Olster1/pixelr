@@ -79,7 +79,7 @@ void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int s
 					}
 				} else {
 					//NOTE: Set the color
-					setCanvasColor(t, canvas, x, y, newColor, gameState->opacity);
+					setCanvasColor(t, canvas, x, y, newColor, t->opacity);
 				}
 
 				//push on more directions   

@@ -69,6 +69,8 @@ enum KeyTypes {
   KEY_6,
   KEY_7,
   KEY_8,
+  KEY_9,
+  KEY_0,
   KEY_COMMAND,
 
   ///////////
@@ -138,7 +140,7 @@ int main(int argc, char **argv) {
 
   GameState *gameState = (GameState *)malloc(sizeof(GameState));
   memset(gameState, 0, sizeof(GameState));
-  gameState->screenWidth = 0.5f*1920;
+  gameState->screenWidth = 0.7f*1920;
   gameState->aspectRatio_y_over_x = (1080.f / 1920.0f);
   gameState->mouseLeftBtn = MOUSE_BUTTON_NONE;
   gameState->quit = false;
@@ -248,6 +250,8 @@ int main(int argc, char **argv) {
     updateKeyState(gameState, KEY_6, currentKeyStates[SDL_SCANCODE_6] == 1);
     updateKeyState(gameState, KEY_7, currentKeyStates[SDL_SCANCODE_7] == 1);
     updateKeyState(gameState, KEY_8, currentKeyStates[SDL_SCANCODE_8] == 1);
+    updateKeyState(gameState, KEY_9, currentKeyStates[SDL_SCANCODE_9] == 1);
+    updateKeyState(gameState, KEY_0, currentKeyStates[SDL_SCANCODE_0] == 1);
     int w; 
     int h;
     SDL_GetWindowSize(window, &w, &h);

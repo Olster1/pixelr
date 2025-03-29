@@ -303,6 +303,86 @@ void updateSpriteSheetWindow(GameState *gameState) {
   }
 }
 
+void updateEditPaletteWindow (GameState *gameState) {
+  if(gameState->showEditPalette) {
+    //NOTE: Edit palette 
+    ImGui::Begin("Edit Palette", &gameState->showEditPalette);       
+
+    float size = 30.0f;  // Square size
+    float spacing = 5.0f; // Spacing between squares
+
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+
+    u32 colorPicked = 0x00000000;
+
+    if(gameState->editPaletteIndex >= tab->palletteCount) {
+      gameState->editPaletteIndex = tab->palletteCount - 1;
+    }
+
+      if(tab) {
+        for (int i = 0; i < tab->palletteCount; ++i) {
+            ImGui::PushID(i);  // Ensure unique ID for each color
+    
+            // Get cursor position for drawing the square
+            ImVec2 pos = ImGui::GetCursorScreenPos();
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+    
+            // Create an invisible button for the selectable color square
+            if (ImGui::InvisibleButton("color_btn", ImVec2(size, size))) {
+              colorPicked = tab->colorsPallete[i];
+              gameState->editPaletteIndex = i;
+            }
+            u32 a = tab->colorsPallete[i];
+
+            // Draw color square
+            drawList->AddRectFilled(pos, ImVec2(pos.x + size, pos.y + size), (a));
+    
+            // Draw border if selected
+            if (i == gameState->editPaletteIndex) {
+                drawList->AddRect(pos, ImVec2(pos.x + size, pos.y + size), IM_COL32(255, 255, 255, 255), 0.0f, 0, 3.0f);
+            }
+    
+            ImGui::PopID();
+    
+            // Layout: Move to next row if needed
+            if ((i + 1) % 5 != 0) {
+                if(i < tab->palletteCount -1) {
+                  ImGui::SameLine(0, spacing);
+                }
+                
+            }
+      }
+    }
+   
+    
+    if (ImGui::Button("Delete Color")) {
+      if(gameState->editPaletteIndex >= 0) {
+        for(int i = gameState->editPaletteIndex; i < (tab->palletteCount - 1); ++i) {
+          tab->colorsPallete[i] = tab->colorsPallete[i + 1];
+        }
+        gameState->editPaletteIndex--;
+        tab->palletteCount--;
+        if(tab->palletteCount < 0) {
+          tab->palletteCount = 0;
+        }
+        savePalleteDefaultThreaded(globalThreadInfo, tab);
+      }
+      
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Save Palette")) {
+      savePallete(tab);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Add Bulk")) {
+      gameState->showColorPalleteEnter = true;
+    }
+    
+
+    ImGui::End();
+  } 
+}
+
 
 void updateColorPaletteEnter(GameState *gameState) {
   if(gameState->showColorPalleteEnter) {
@@ -400,6 +480,22 @@ void showMainMenuBar(GameState *state)
     }
 }
 
+void addModeSelection(GameState *state, char *unicodeIcon, CanvasInteractionMode mode) {
+  bool pushStyle = false;
+  if (state->interactionMode == mode) {
+    pushStyle = true;
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow color
+  }
+
+  if (ImGui::Button(unicodeIcon)) {
+      state->interactionMode = mode;
+  }
+
+  if (pushStyle) {
+      ImGui::PopStyleColor();
+  }
+}
+
 void updateMyImgui(GameState *state, ImGuiIO& io) {
 
       CanvasInteractionMode startMode = state->interactionMode;
@@ -413,7 +509,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
       bool show_demo_window = true;
 
-      ImVec2 window_pos = ImVec2(10.0f, io.DisplaySize.y - 10.0f); // Offset slightly from edges
+      ImVec2 window_pos = ImVec2(0, io.DisplaySize.y); // Offset slightly from edges
       ImVec2 window_pivot = ImVec2(0, 1.0f); // Bottom-right corner
 
       ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
@@ -426,85 +522,42 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             ImGui::Begin("Color Palette");
             ImGui::ColorEdit3("Brush", (float*)&tab->colorPicked);
             // Detect when the color picker is closed after changes
-            ImGui::SliderFloat("Opacity", &state->opacity, 0.0f, 1.0f);
-            ImGui::SliderInt("Running Average", &state->runningAverageCount, 1, arrayCount(state->mouseP_01_array));
-            ImGui::ColorEdit3("Background", (float*)&state->bgColor);
+            ImGui::SliderFloat("Opacity", &tab->opacity, 0.0f, 1.0f);
+            // ImGui::ColorEdit3("Background", (float*)&state->bgColor);
             ImGui::Checkbox("Check Background", &state->checkBackground);
-            ImGui::Checkbox("nearest", &state->nearest);
-            ImGui::Checkbox("Draw Grid", &state->drawGrid); 
+            // ImGui::Checkbox("nearest", &state->nearest);
+            // ImGui::Checkbox("Draw Grid", &state->drawGrid); 
             ImGui::SliderFloat("Eraser", &state->eraserSize, 1.0f, 100.0f);
             
             ImGui::Checkbox("SELECT", &state->selectMode);
 
+            addModeSelection(state, "\uf0b2", CANVAS_MOVE_MODE);
+            ImGui::SameLine();
+            addModeSelection(state, "\uf1fc", CANVAS_DRAW_MODE);
+            ImGui::SameLine();
+            addModeSelection(state, "\uf575", CANVAS_FILL_MODE);
+            ImGui::SameLine();
+            addModeSelection(state, "\uf111", CANVAS_DRAW_CIRCLE_MODE);
+            ImGui::SameLine();
+            addModeSelection(state, "\uf245", CANVAS_MOVE_SELECT_MODE);
 
-            if (ImGui::Button("\uf0b2")) {
-              //NOTE: MOVE
-              state->interactionMode = CANVAS_MOVE_MODE;
-            } 
-            if(state->interactionMode == CANVAS_MOVE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            addModeSelection(state, "\uf0c8", CANVAS_DRAW_RECTANGLE_MODE);
             ImGui::SameLine();
-            if (ImGui::Button("\uf1fc")) {
-              //NOTE: BRUSH
-              state->interactionMode = CANVAS_DRAW_MODE;
-            } 
-            if(state->interactionMode == CANVAS_DRAW_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            addModeSelection(state, "\uf12d", CANVAS_ERASE_MODE);
             ImGui::SameLine();
-            if (ImGui::Button("\uf575")) {
-              //NOTE: FILL
-              state->interactionMode = CANVAS_FILL_MODE;
-            } 
-            if(state->interactionMode == CANVAS_FILL_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            addModeSelection(state, "\uf068", CANVAS_DRAW_LINE_MODE);
             ImGui::SameLine();
-            if (ImGui::Button("\uf111")) {
-              //NOTE: circle shape
-              state->interactionMode = CANVAS_DRAW_CIRCLE_MODE;
-            }
-            if(state->interactionMode == CANVAS_DRAW_CIRCLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            addModeSelection(state, "\uf248", CANVAS_SELECT_RECTANGLE_MODE);
             ImGui::SameLine();
-            if (ImGui::Button("\uf245")) {
-              //NOTE: select shape shape
-              state->interactionMode = CANVAS_MOVE_SELECT_MODE;
-            }
-            if(state->interactionMode == CANVAS_MOVE_SELECT_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-            
-            if (ImGui::Button("\uf0c8")) {
-              //NOTE: rectangle shape
-              state->interactionMode = CANVAS_DRAW_RECTANGLE_MODE;
-            }
-            if(state->interactionMode == CANVAS_DRAW_RECTANGLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-            ImGui::SameLine();
-            if (ImGui::Button("\uf12d")) {
-              state->interactionMode = CANVAS_ERASE_MODE;
-              
-            }
-            if(state->interactionMode == CANVAS_ERASE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-            ImGui::SameLine();
-            if (ImGui::Button("\uf068")) {
-              state->interactionMode = CANVAS_DRAW_LINE_MODE;
-              
-            }
-            if(state->interactionMode == CANVAS_DRAW_LINE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-            ImGui::SameLine();
-            if (ImGui::Button("\uf248")) {
-              state->interactionMode = CANVAS_SELECT_RECTANGLE_MODE;
-              
-            }
-            if(state->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-            ImGui::SameLine();
-            if (ImGui::Button("\uf5bd")) {
-              state->interactionMode = CANVAS_SPRAY_CAN;
-              
-            }
-            if(state->interactionMode == CANVAS_SPRAY_CAN) { ImGui::SameLine(); ImGui::Text("\uf00c");}
-
-            ImGui::SameLine();
-            if (ImGui::Button("\uf1fb")) {
-              state->interactionMode = CANVAS_COLOR_DROPPER;
-              
-            }
-            if(state->interactionMode == CANVAS_COLOR_DROPPER) { ImGui::SameLine(); ImGui::Text("\uf00c");}
+            addModeSelection(state, "\uf1fb", CANVAS_COLOR_DROPPER);
+            addModeSelection(state, "\uf5bd", CANVAS_SPRAY_CAN);
 
             ImGui::Text("Select a Color:");
+            ImGui::SameLine();
+            if (ImGui::Button("\uf141")) {
+              state->showEditPalette = true;
+              
+            }
             float size = 30.0f;  // Square size
             float spacing = 5.0f; // Spacing between squares
 
@@ -551,6 +604,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
         updateNewCanvasWindow(state);
         updateColorPaletteEnter(state);
         updateSpriteSheetWindow(state);
+        updateEditPaletteWindow(state);
         drawTabs(state);
 
         drawAnimationTimeline(state, state->dt);

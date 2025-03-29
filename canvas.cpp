@@ -27,6 +27,10 @@ Frame *getActiveFrame(GameState *gameState) {
 
 }
 
+bool inIMGUIActive() {
+    return (ImGui::IsAnyItemActive());
+}
+
 bool isInteractingWithIMGUI() {
     return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
 }
@@ -226,7 +230,6 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
         diff.x = abs(diff1.x);
         diff.y = abs(diff1.y);
 
-        CanvasTab *tab = getActiveCanvasTab(gameState);
         float4 color = tab->colorPicked;
 
         float startX = (gameState->drawShapeStart.x < p.x) ? gameState->drawShapeStart.x : p.x;
@@ -244,10 +247,10 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
                     if((startX + x) >= 0 && (startY + y) >= 0 && (startX + x) < canvas->w && (startY + y) < canvas->h) {
                         if(fill) {
                             float2 p = make_float2(startX + x,startY + y);
-                            setCanvasColor(tab, canvas, p.x, p.y, float4_to_u32_color(color), gameState->opacity);
+                            setCanvasColor(tab, canvas, p.x, p.y, float4_to_u32_color(color), tab->opacity);
                         } else {
                             float2 p = make_float2((startX + x)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (startY + y)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
-                            color.w = gameState->opacity;
+                            color.w = tab->opacity;
                             pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
                         }
 
@@ -365,7 +368,6 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
 
         CanvasTab *tab = getActiveCanvasTab(gameState);
 
-       
         TransformX TX = gameState->selectObject.T;
         float16 T = getModelToViewSpace(TX);
 
@@ -566,7 +568,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
                         pushColoredQuad(gameState->renderer, make_float3(worldP.x, worldP.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), colorC);
 
                         if(submit) {
-                            setCanvasColor(tab, canvas, round(x), round(y), float4_to_u32_color(colorC), colorC.w*gameState->opacity);
+                            setCanvasColor(tab, canvas, round(x), round(y), float4_to_u32_color(colorC), colorC.w*tab->opacity);
                         }
                     }
                 }
@@ -588,6 +590,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
         }
 
         if(submit) {
+            tab->opacity = tab->savedOpacity;
             gameState->selectObject.isActive = false;
             gameState->selectObject.clear();
         }
@@ -640,7 +643,7 @@ void updateSprayCan(GameState *gameState, Canvas *canvas) {
                     float perlin = mapSimplexNoiseTo01(SimplexNoise_fractal_2d(16, px + gameState->sprayTimeAt, py + gameState->sprayTimeAt, 0.8f));
                     if(perlin > 0.5f) {
                         u32 color = float4_to_u32_color(tab->colorPicked);
-                        setCanvasColor(tab, canvas, px, py, color, gameState->opacity);
+                        setCanvasColor(tab, canvas, px, py, color, tab->opacity);
                     }
                 }
             }
@@ -766,7 +769,7 @@ void updateEraser(GameState *gameState, Canvas *canvas) {
             for(int x = 0; x < gameState->eraserSize; x++) {
                 float px = (canvasP.x - 0.5f*(gameState->eraserSize == 1 ? 0 : gameState->eraserSize)) + x;
                 float py = (canvasP.y - 0.5f*(gameState->eraserSize == 1 ? 0 : gameState->eraserSize)) + y;
-                setCanvasColor(tab, canvas, px, py, 0x00FFFFFF, gameState->opacity, false);
+                setCanvasColor(tab, canvas, px, py, 0x00FFFFFF, tab->opacity, false);
             }
         }
     }
@@ -861,7 +864,7 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
                  if(y1 >= 0 && x1 >= 0 && y1 < canvas->h && x1 < canvas->w) {
                      if(!(x1 == coordX && y1 == coordY)) 
                      { //NOTE: Don't color the one were about to do after this loop
-                        setCanvasColor(tab, canvas, x1, y1, color, gameState->opacity);
+                        setCanvasColor(tab, canvas, x1, y1, color, tab->opacity);
                      }
                  }
 
@@ -872,7 +875,7 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
          if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
              u32 color = float4_to_u32_color(tab->colorPicked);
              
-             setCanvasColor(tab, canvas, coordX, coordY, color, gameState->opacity);
+             setCanvasColor(tab, canvas, coordX, coordY, color, tab->opacity);
          }
 
          gameState->paintActive = true;

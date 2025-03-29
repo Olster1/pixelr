@@ -203,7 +203,6 @@ struct GameState {
     bool paintActive;
     float2 lastPaintP;
     bool drawGrid;
-    float opacity;
     float2 drawShapeStart;
     bool drawingShape;
     float eraserSize;
@@ -220,6 +219,8 @@ struct GameState {
     int activeCanvasTab;
 
     bool showColorPalleteEnter;
+    bool showEditPalette;
+    int editPaletteIndex;
 
     char colorsPalleteBuffer[10000]; //NOTE: This is a string for the imgui text box to use
 

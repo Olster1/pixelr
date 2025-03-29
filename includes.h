@@ -44,6 +44,6 @@
 #include "./canvas.cpp"
 #include "./export.cpp"
 #include "./flood_fill.cpp"
-
 #include "./my_imgui.cpp"
+#include "./hot_keys.cpp"
 

@@ -20,9 +20,8 @@ void initGameState(GameState *gameState) {
     gameState->camera.shakeTimer = -1;
     gameState->camera.runShakeTimer = -1;
 
-    gameState->bgColor = make_float4(0.3f,0, 0.3f, 1); //make_float4(1, 1, 1, 1); //
+    gameState->bgColor = make_float4(0.3f,0, 0.3f, 1); //u32_to_float4_color(0xFF6D5F72)
     gameState->drawGrid = false;
-    gameState->opacity = 1;
     gameState->eraserSize = 1.0f;
 
     stbi_flip_vertically_on_write(1);
@@ -46,6 +45,7 @@ void initGameState(GameState *gameState) {
     gameState->physicsWorld.warmStarting = true;
     gameState->physicsWorld.accumulateImpulses = true;
     gameState->grabbedCornerIndex = -1;
+    gameState->nearest = true; 
 
     loadWavFile(&gameState->cardFlipSound[0], "./sounds/cardFlip.wav", &gameState->audioSpec);
     loadWavFile(&gameState->cardFlipSound[1], "./sounds/cardFlip1.wav", &gameState->audioSpec);
@@ -68,6 +68,8 @@ void initGameState(GameState *gameState) {
         pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
         gameState->activeCanvasTab = 0;
     }
+
+    gameState->editPaletteIndex = -1;
 
     gameState->currentMiningBlock = 0;
 
