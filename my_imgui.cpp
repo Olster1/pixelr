@@ -453,7 +453,6 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("Save", "Ctrl+S")) {  }
             if (ImGui::MenuItem("Save Pallete", "")) {  }
             if (ImGui::MenuItem("Load Pallete", "")) {  }
-            
             if (ImGui::MenuItem("Export Image", "Ctrl+E")) { saveFileToPNG(getActiveCanvas(state)); }
             if (ImGui::MenuItem("Export Sprite Sheet", "")) { state->showExportWindow = true; }
             if (ImGui::MenuItem("Exit")) { state->quit = true;  }
@@ -468,6 +467,7 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("Cut", "Ctrl+X")) { /* Handle Cut */ }
             if (ImGui::MenuItem("Copy", "Ctrl+C")) { /* Handle Copy */ }
             if (ImGui::MenuItem("Paste", "Ctrl+V")) { /* Handle Paste */ }
+            if (ImGui::MenuItem("Outline Image", "")) { outlineCanvas(state); }
             if (ImGui::MenuItem("Add Color Pallete", "")) { 
               state->colorsPalleteBuffer[0] = '\0';
               state->showColorPalleteEnter = true; 
@@ -495,7 +495,28 @@ void addModeSelection(GameState *state, char *unicodeIcon, CanvasInteractionMode
       ImGui::PopStyleColor();
   }
 }
+void Spinner(const char* label, float radius, int thickness, ImU32 color) {
+  ImGuiIO& io = ImGui::GetIO();
+  ImDrawList* draw_list = ImGui::GetWindowDrawList();
 
+  ImVec2 pos = ImGui::GetCursorScreenPos();
+  float time = ImGui::GetTime();
+  int num_segments = 30;
+  float start_angle = time * 100.0f;  // Controls rotation speed
+
+  for (int i = 0; i < num_segments; i++) {
+      float angle = start_angle + ((float)i / num_segments) * 2.0f * PI32;
+      float x = cos(angle) * radius;
+      float y = sin(angle) * radius;
+      float alpha = (float)i / num_segments;
+
+      ImU32 col = ImGui::GetColorU32(ImVec4(1.0f, 1.0f, 1.0f, alpha));
+      
+      draw_list->AddLine(ImVec2(pos.x + radius + x, pos.y + radius + y),
+                         ImVec2(pos.x + radius + x * 0.6f, pos.y + radius + y * 0.6f),
+                         col, thickness);
+  }
+}
 void updateMyImgui(GameState *state, ImGuiIO& io) {
 
       CanvasInteractionMode startMode = state->interactionMode;
@@ -607,6 +628,8 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
         updateEditPaletteWindow(state);
         drawTabs(state);
 
+      
+      
         drawAnimationTimeline(state, state->dt);
 
         if(startMode != state->interactionMode) {

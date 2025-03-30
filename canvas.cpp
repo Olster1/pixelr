@@ -35,6 +35,62 @@ bool isInteractingWithIMGUI() {
     return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
 }
 
+u32 getCanvasColor(Canvas *canvas, int coordX, int coordY) {
+    u32 result = 0;
+    if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
+        result = canvas->pixels[coordY*canvas->w + coordX];    
+    } 
+
+    return result;
+    
+}
+
+void outlineCanvas(GameState *gameState) {
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+    Canvas *canvas = getActiveCanvas(gameState);
+    if(tab && canvas) {
+        int w = tab->w;
+        int h = tab->h;
+        u32 mask = 0xFF000000;
+        u32 *tempImage = (u32 *)pushArray(&globalPerFrameArena, w*h, u32);
+         memcpy(tempImage, canvas->pixels, w * h * sizeof(u32));
+
+        for(int y = 0; y < h; ++y) {
+            for(int x = 0; x < w; ++x) {
+                u32 color = getCanvasColor(canvas, x, y);
+
+                if((mask & color) == 0) { //NOTE: Check if it has alpha
+                    float2 offsets[] = {make_float2(1, 0), make_float2(0, 1), make_float2(-1, 0), make_float2(0, -1)};
+
+                    bool found = false;
+                    for(int k = 0; k < arrayCount(offsets) && !found; ++k) {
+                        int xTemp = x + offsets[k].x;
+                        int yTemp = y + offsets[k].y;
+
+                        if(xTemp >= 0 && xTemp < w && yTemp >= 0 && yTemp < h) { 
+                            u32 color = canvas->pixels[yTemp*w + xTemp];
+                            if((mask & color) != 0) { //NOTE: Check if it has alpha
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if(found) {
+                        //NOTE: Add black into the temp image
+                        tempImage[y*w + x] = 0xFF000000;
+                    }
+                }
+            }
+        }
+
+       
+       // Copy back in one pass
+       memcpy(canvas->pixels, tempImage, w * h * sizeof(u32));
+
+    }
+}
+
 float2 getMouseP01(GameState *gameState) {
     //NOTE: Running average of the mouse
     float2 result = make_float2(0, 0);
@@ -93,15 +149,7 @@ float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h, bool real = f
 }
 
 
-u32 getCanvasColor(Canvas *canvas, int coordX, int coordY) {
-    u32 result = 0;
-    if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
-        result = canvas->pixels[coordY*canvas->w + coordX];    
-    } 
 
-    return result;
-    
-}
 
 void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, const u32 color, float opacity, bool useOpacity = true) {
     if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
