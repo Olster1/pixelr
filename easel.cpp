@@ -157,6 +157,9 @@ void CanvasTab::dispose() {
     if(selectionGpuHandle > 0) {
         deleteTextureHandle(selectionGpuHandle);
     }
+    if(checkBackgroundHandle > 0) {
+        deleteTextureHandle(checkBackgroundHandle);
+    }
     
     if(selected) {
         freeResizeArray(selected);

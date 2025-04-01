@@ -223,7 +223,7 @@ int main(int argc, char **argv) {
 
     const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
     
-    updateKeyState(gameState, KEY_UP, currentKeyStates[SDL_SCANCODE_UP] == 1 || currentKeyStates[SDL_SCANCODE_W] == 1);
+    updateKeyState(gameState, KEY_UP, currentKeyStates[SDL_SCANCODE_UP] == 1);
     updateKeyState(gameState, KEY_E, currentKeyStates[SDL_SCANCODE_E] == 1);
     updateKeyState(gameState, KEY_N, currentKeyStates[SDL_SCANCODE_N] == 1);
     updateKeyState(gameState, KEY_S, currentKeyStates[SDL_SCANCODE_S] == 1);
@@ -233,9 +233,9 @@ int main(int argc, char **argv) {
     updateKeyState(gameState, KEY_X, currentKeyStates[SDL_SCANCODE_X] == 1);
     updateKeyState(gameState, KEY_A, currentKeyStates[SDL_SCANCODE_A] == 1);
     updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_SCANCODE_LGUI] == 1);
-    updateKeyState(gameState, KEY_DOWN, currentKeyStates[SDL_SCANCODE_DOWN] == 1 || currentKeyStates[SDL_SCANCODE_S] == 1);
-    updateKeyState(gameState, KEY_LEFT, currentKeyStates[SDL_SCANCODE_LEFT] == 1 || currentKeyStates[SDL_SCANCODE_A] == 1);
-    updateKeyState(gameState, KEY_RIGHT, currentKeyStates[SDL_SCANCODE_RIGHT] == 1 || currentKeyStates[SDL_SCANCODE_D] == 1);
+    updateKeyState(gameState, KEY_DOWN, currentKeyStates[SDL_SCANCODE_DOWN] == 1);
+    updateKeyState(gameState, KEY_LEFT, currentKeyStates[SDL_SCANCODE_LEFT] == 1);
+    updateKeyState(gameState, KEY_RIGHT, currentKeyStates[SDL_SCANCODE_RIGHT] == 1);
     updateKeyState(gameState, KEY_SPACE, currentKeyStates[SDL_SCANCODE_SPACE] == 1);
     updateKeyState(gameState, KEY_SHIFT, currentKeyStates[SDL_SCANCODE_LSHIFT] == 1);
     updateKeyState(gameState, KEY_ESCAPE, currentKeyStates[SDL_SCANCODE_ESCAPE] == 1);

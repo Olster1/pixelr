@@ -27,8 +27,41 @@ void updateHotKeys(GameState *gameState) {
             showNewCanvas(gameState);
         }
 
+        //NOTEL: Update Frame change
+        if(gameState->keys.keys[KEY_LEFT] == MOUSE_BUTTON_PRESSED) {
+            CanvasTab *t = getActiveCanvasTab(gameState);
+            if(t) {
+                t->activeFrame--;
+                if(t->activeFrame < 0) {
+                    t->activeFrame = getArrayLength(t->frames) - 1;
+                }
+            }
+        }
+        if(gameState->keys.keys[KEY_RIGHT] == MOUSE_BUTTON_PRESSED) {
+            CanvasTab *t = getActiveCanvasTab(gameState);
+            if(t) {
+                t->activeFrame++;
+                if(t->activeFrame >= getArrayLength(t->frames)) {
+                    t->activeFrame = 0;
+                }
+            }
+        }
+
+        if(gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_PRESSED) {
+            CanvasTab *t = getActiveCanvasTab(gameState);
+            if(t) {
+                PlayBackAnimation *anim = &t->playback;
+                anim->playing = !anim->playing;
+            }
+        }
+
+        
+
         if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
-            saveFileToPNG(getActiveCanvas(gameState));
+            CanvasTab *t = getActiveCanvasTab(gameState);
+            if(t) {
+                saveFileToPNG(getActiveCanvas(gameState));
+            }
         }
 
         if(gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED) {

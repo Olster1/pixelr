@@ -505,10 +505,12 @@ struct Texture {
 
 void deleteTexture(Texture *t) {
     glDeleteTextures(1, &t->handle);
+    renderCheckError();
 }
 
 void deleteTextureHandle(u32 handle) {
     glDeleteTextures(1, &handle);
+    renderCheckError();
 }
 
 Texture createGPUTextureRed(int width, int height, void *data = 0) {
@@ -518,15 +520,21 @@ Texture createGPUTextureRed(int width, int height, void *data = 0) {
 
     unsigned int texture;
     glGenTextures(1, &texture);
+    renderCheckError();
     glBindTexture(GL_TEXTURE_2D, texture);
+    renderCheckError();
 
     
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, data);
+    renderCheckError();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    renderCheckError();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    renderCheckError();
 
     glBindTexture(GL_TEXTURE_2D, 0); 
+    renderCheckError();
 
     result.handle = texture;   
 
@@ -540,15 +548,21 @@ Texture createGPUTexture(int width, int height, void *data = 0) {
 
     unsigned int texture;
     glGenTextures(1, &texture);
+    renderCheckError();
     glBindTexture(GL_TEXTURE_2D, texture);
+    renderCheckError();
 
     
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
+    renderCheckError();
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    renderCheckError();
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    renderCheckError();
 
     glBindTexture(GL_TEXTURE_2D, 0); 
+    renderCheckError();
 
     result.handle = texture;   
 
@@ -864,8 +878,6 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
         renderer->cubeCount = 0;
     }
-
-
    
     if(renderer->blockItemsCount > 0) {
         updateInstanceData(renderer->blockModelWithInstancedT.instanceBufferhandle, renderer->blockItemsData, renderer->blockItemsCount*sizeof(InstanceDataWithRotation));
@@ -874,10 +886,14 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
         renderer->blockItemsCount = 0;
     }
 
+    renderCheckError();
     for(int i = 0; i < renderer->canvasCount; ++i) {
         u32 handle = renderer->canvasHandles[i];
+        renderCheckError();
         updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->canvasQuads[i], sizeof(InstanceDataWithRotation));
+        renderCheckError();
         drawModels(&renderer->quadModel, &renderer->quadTextureShader, handle, 1, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay, 0, -1, GL_TRIANGLES, renderer->timeAccum);
+        renderCheckError();
     }
 
     renderer->canvasCount = 0;
@@ -946,7 +962,7 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
         renderer->selectionCount = 0;
     }
 
-
+    renderCheckError();
     
 
     

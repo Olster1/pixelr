@@ -1,29 +1,31 @@
 
 
-Canvas *getActiveCanvas(GameState *gameState) {
-    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
-    assert(t);
-
-    Frame *f = t->frames + t->activeFrame;
-    assert(f);
-
-    Canvas *canvas = f->layers + f->activeLayer;
-    assert(canvas);
-
-    return canvas;
-
-}
-
 CanvasTab *getActiveCanvasTab(GameState *gameState) {
-    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
+    CanvasTab *t = 0; 
+    if(getArrayLength(gameState->canvasTabs) > 0) {
+        t = gameState->canvasTabs + gameState->activeCanvasTab;
+    }
     return t;
-
 }
 
 Frame *getActiveFrame(GameState *gameState) {
-    CanvasTab *t = gameState->canvasTabs + gameState->activeCanvasTab;
-    Frame *f = t->frames + t->activeFrame;
+    CanvasTab *t = getActiveCanvasTab(gameState);
+    Frame *f = 0;
+    if(t && getArrayLength(t->frames) > 0) {
+        f = t->frames + t->activeFrame;
+    } 
     return f;
+
+}
+
+Canvas *getActiveCanvas(GameState *gameState) {
+    Canvas *canvas = 0;
+    Frame *f = getActiveFrame(gameState);
+    if(f && getArrayLength(f->layers) > 0) {
+        canvas = f->layers + f->activeLayer;
+    }
+
+    return canvas;
 
 }
 
@@ -352,45 +354,11 @@ void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
 
 void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
     if(gameState->checkBackground) {
-        //NOTE: Draw the canvas
-        // for(int y = 0; y < canvas->h; ++y) {
-        //     for(int x = 0; x < canvas->w; ++x) {
-        //         u32 c = canvas->pixels[y*canvas->w + x];
-        //         float4 color = u32_to_float4_color(c);
-
-        //         float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
-
-        //         {
-        //             float4 c = make_float4(0.8f, 0.8f, 0.8f, 1);
-        //             if(((y % 2) == 0 && (x % 2) == 1) || ((y % 2) == 1 && (x % 2) == 0)) {
-        //                 c = make_float4(0.6f, 0.6f, 0.6f, 1);
-        //             }
-        //             pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), c);
-        //         }
-        //     }
-        // }
-
         pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 1), canvasTab->checkBackgroundHandle);
     }
 }
 
 void drawCanvas(GameState *gameState, Frame *frame, CanvasTab *canvasTab, float onionSkinOpacity) {
-     //NOTE: Draw the canvas
-    //  for(int y = 0; y < canvas->h; ++y) {
-    //     for(int x = 0; x < canvas->w; ++x) {
-    //         u32 c = canvas->pixels[y*canvas->w + x];
-    //         float4 color = u32_to_float4_color(c);
-
-    //         float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
-
-    //         color.w *= onionSkinOpacity;
-
-    //         if(color.w > 0) {
-    //             pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
-    //         }
-    //     }
-    // }
-
     pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, onionSkinOpacity), frame->gpuHandle);
 
     //NOTE: Draw selected

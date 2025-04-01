@@ -83,17 +83,23 @@ void drawTabs(GameState *state) {
       for(int i = 0; i < getArrayLength(state->canvasTabs); ) {
         CanvasTab *t = state->canvasTabs + i;
 
-        
-
         if(!t->isOpen) {
           t->dispose();
           //NOTE: Remove from the list
           bool found = removeArrayAtIndex(state->canvasTabs, i);
           assert(found);
+
+          if(i == state->activeCanvasTab)  {
+            state->activeCanvasTab--;
+            if(state->activeCanvasTab < 0) {
+              state->activeCanvasTab = 0;
+            }
+          }
         } else {
           ++i;
         }
       }
+      
   
 }
 
@@ -443,18 +449,20 @@ void updateColorPaletteEnter(GameState *gameState) {
 
 void showMainMenuBar(GameState *state)
 {
+  CanvasTab *tab = getActiveCanvasTab(state);
     if (ImGui::BeginMainMenuBar()) // Creates the top bar
     {
         if (ImGui::BeginMenu("File"))
         {
+            bool dummy = false;
             if (ImGui::MenuItem("New")) { showNewCanvas(state); }
             if (ImGui::MenuItem("Open Image", "Ctrl+O")) { openPlainImage(state); }
             if (ImGui::MenuItem("Load Sprite Sheet", "")) { setDefaultSpriteSize(state); state->openSpriteSheetWindow = true; }
-            if (ImGui::MenuItem("Save", "Ctrl+S")) {  }
-            if (ImGui::MenuItem("Save Pallete", "")) {  }
+            if (ImGui::MenuItem("Save", "Ctrl+S", &dummy, tab)) {  }
+            if (ImGui::MenuItem("Save Pallete", "", &dummy, tab)) {  }
             if (ImGui::MenuItem("Load Pallete", "")) {  }
-            if (ImGui::MenuItem("Export Image", "Ctrl+E")) { saveFileToPNG(getActiveCanvas(state)); }
-            if (ImGui::MenuItem("Export Sprite Sheet", "")) { state->showExportWindow = true; }
+            if (ImGui::MenuItem("Export Image", "Ctrl+E", &dummy, tab)) { saveFileToPNG(getActiveCanvas(state)); }
+            if (ImGui::MenuItem("Export Sprite Sheet", "", &dummy, tab)) { state->showExportWindow = true; }
             if (ImGui::MenuItem("Exit")) { state->quit = true;  }
             ImGui::EndMenu();
         }
@@ -538,6 +546,10 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
       // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
       // ImGui::ShowDemoWindow(&show_demo_window);
+      showMainMenuBar(state);
+      updateNewCanvasWindow(state);
+      updateSpriteSheetWindow(state);
+      drawTabs(state);
       if(tab) {
         {
             ImGui::Begin("Color Palette");
@@ -620,22 +632,17 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             ImGui::End();
         }
 
-        showMainMenuBar(state);
+        
         exportWindow(state);
-        updateNewCanvasWindow(state);
         updateColorPaletteEnter(state);
-        updateSpriteSheetWindow(state);
         updateEditPaletteWindow(state);
-        drawTabs(state);
-
-      
-      
         drawAnimationTimeline(state, state->dt);
-
+        
         if(startMode != state->interactionMode) {
           clearSelection(tab);
         }
       }
+      
 }
 
 
