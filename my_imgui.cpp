@@ -183,18 +183,18 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
       ImGui::Separator();
 
       ImGui::SliderFloat("Time per Frame", &anim->frameTime, 0.01f, 2.0f);
-      if(state->onionSkinningFrames > (getArrayLength(canvasTab->frames) - 1)) {
-        state->onionSkinningFrames = getArrayLength(canvasTab->frames) - 1;
+      if(canvasTab->onionSkinningFrames > (getArrayLength(canvasTab->frames) - 1)) {
+        canvasTab->onionSkinningFrames = getArrayLength(canvasTab->frames) - 1;
       }
-      ImGui::SliderInt("Onion Skinning", &state->onionSkinningFrames, 0, MathMax(getArrayLength(canvasTab->frames) - 1, 0));
+      ImGui::SliderInt("Onion Skinning", &canvasTab->onionSkinningFrames, 0, MathMax(getArrayLength(canvasTab->frames) - 1, 0));
       
 
-      ImGui::Checkbox("Copy Frame on add", &state->copyFrameOnAdd);
+      ImGui::Checkbox("Copy Frame on add", &canvasTab->copyFrameOnAdd);
       if (ImGui::Button("Add New Frame +")) {
           Frame f = Frame(canvasTab->w, canvasTab->h);
           pushArrayItem(&canvasTab->frames, f, Frame);
           Frame *activeFrame = getActiveFrame(state);
-          if(activeFrame && state->copyFrameOnAdd) {
+          if(activeFrame && canvasTab->copyFrameOnAdd) {
             easyPlatform_copyMemory(f.layers[0].pixels, activeFrame->layers[0].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
             updateGpuCanvasTextures(state);
           }
@@ -447,6 +447,12 @@ void updateColorPaletteEnter(GameState *gameState) {
   }
 }
 
+void loadProjectAndStoreTab(GameState *gameState) {
+  CanvasTab tab = loadProjectFromFile();
+  pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
+  gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+}
+
 void showMainMenuBar(GameState *state)
 {
   CanvasTab *tab = getActiveCanvasTab(state);
@@ -458,7 +464,8 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("New")) { showNewCanvas(state); }
             if (ImGui::MenuItem("Open Image", "Ctrl+O")) { openPlainImage(state); }
             if (ImGui::MenuItem("Load Sprite Sheet", "")) { setDefaultSpriteSize(state); state->openSpriteSheetWindow = true; }
-            if (ImGui::MenuItem("Save", "Ctrl+S", &dummy, tab)) {  }
+            if (ImGui::MenuItem("Save Project", "Ctrl+S", &dummy, tab)) { saveProjectToFile(tab); }
+            if (ImGui::MenuItem("Open Project", "Ctrl+O")) { loadProjectAndStoreTab(state); }
             if (ImGui::MenuItem("Save Pallete", "", &dummy, tab)) {  }
             if (ImGui::MenuItem("Load Pallete", "")) {  }
             if (ImGui::MenuItem("Export Image", "Ctrl+E", &dummy, tab)) { saveFileToPNG(getActiveCanvas(state)); }
@@ -538,18 +545,17 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
       bool show_demo_window = true;
 
-      ImVec2 window_pos = ImVec2(0, io.DisplaySize.y); // Offset slightly from edges
-      ImVec2 window_pivot = ImVec2(0, 1.0f); // Bottom-right corner
+      ImVec2 window_pos = ImVec2(0, io.DisplaySize.y);
+      ImVec2 window_pivot = ImVec2(0, 1.0f);
 
       ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
-      ImGui::SetNextWindowBgAlpha(0.35f); // Optional: Make it semi-transparent
+      ImGui::SetNextWindowBgAlpha(0.35f);
 
-      // 1. Show the big demo window (Most of the sample code is in ImGui::ShowDemoWindow()! You can browse its code to learn more about Dear ImGui!).
       // ImGui::ShowDemoWindow(&show_demo_window);
+      drawTabs(state); //NOTE: This has to be at the start because they can remove a canvas tab here
       showMainMenuBar(state);
       updateNewCanvasWindow(state);
       updateSpriteSheetWindow(state);
-      drawTabs(state);
       if(tab) {
         {
             ImGui::Begin("Color Palette");
@@ -557,10 +563,10 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             // Detect when the color picker is closed after changes
             ImGui::SliderFloat("Opacity", &tab->opacity, 0.0f, 1.0f);
             // ImGui::ColorEdit3("Background", (float*)&state->bgColor);
-            ImGui::Checkbox("Check Background", &state->checkBackground);
+            ImGui::Checkbox("Check Background", &tab->checkBackground);
             // ImGui::Checkbox("nearest", &state->nearest);
             // ImGui::Checkbox("Draw Grid", &state->drawGrid); 
-            ImGui::SliderFloat("Eraser", &state->eraserSize, 1.0f, 100.0f);
+            ImGui::SliderFloat("Eraser", &tab->eraserSize, 1.0f, 100.0f);
             
             ImGui::Checkbox("SELECT", &state->selectMode);
 

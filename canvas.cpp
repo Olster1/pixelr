@@ -353,7 +353,7 @@ void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
 }
 
 void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
-    if(gameState->checkBackground) {
+    if(canvasTab->checkBackground) {
         pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 1), canvasTab->checkBackgroundHandle);
     }
 }
@@ -644,12 +644,12 @@ void updateSprayCan(GameState *gameState, Canvas *canvas) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN) {
         gameState->sprayTimeAt += gameState->dt;
 
-        float radius = 0.5f*gameState->eraserSize;
+        float radius = 0.5f*tab->eraserSize;
         float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
-        float offset = 0.5f*(gameState->eraserSize == 1 ? 0 : gameState->eraserSize);
+        float offset = 0.5f*(tab->eraserSize == 1 ? 0 : tab->eraserSize);
         float2 origin = make_float2(offset, offset);
-        for(int y = 0; y < gameState->eraserSize; y++) {
-            for(int x = 0; x < gameState->eraserSize; x++) {
+        for(int y = 0; y < tab->eraserSize; y++) {
+            for(int x = 0; x < tab->eraserSize; x++) {
                 float2 xy = make_float2(x, y);
                 //NOTE: To make the circle shape
                 if(float2_magnitude(minus_float2(xy, origin)) <= radius) {
@@ -781,10 +781,10 @@ void updateEraser(GameState *gameState, Canvas *canvas) {
         float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
         
         
-        for(int y = 0; y < gameState->eraserSize; y++) {
-            for(int x = 0; x < gameState->eraserSize; x++) {
-                float px = (canvasP.x - 0.5f*(gameState->eraserSize == 1 ? 0 : gameState->eraserSize)) + x;
-                float py = (canvasP.y - 0.5f*(gameState->eraserSize == 1 ? 0 : gameState->eraserSize)) + y;
+        for(int y = 0; y < tab->eraserSize; y++) {
+            for(int x = 0; x < tab->eraserSize; x++) {
+                float px = (canvasP.x - 0.5f*(tab->eraserSize == 1 ? 0 : tab->eraserSize)) + x;
+                float py = (canvasP.y - 0.5f*(tab->eraserSize == 1 ? 0 : tab->eraserSize)) + y;
                 setCanvasColor(tab, canvas, px, py, 0x00FFFFFF, tab->opacity, false);
             }
         }

@@ -26,7 +26,7 @@ void updateGame(GameState *gameState) {
         
             if(t && getArrayLength(t->frames) > 0) {
                 
-                for(int i = gameState->onionSkinningFrames; i >= 0; --i) {
+                for(int i = t->onionSkinningFrames; i >= 0; --i) {
                     int frameIndex = t->activeFrame - i;
                     if(frameIndex < 0) {
                         frameIndex = getArrayLength(t->frames) + frameIndex;

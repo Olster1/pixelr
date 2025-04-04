@@ -22,7 +22,6 @@ void initGameState(GameState *gameState) {
 
     gameState->bgColor = make_float4(0.3f,0, 0.3f, 1); //u32_to_float4_color(0xFF6D5F72)
     gameState->drawGrid = false;
-    gameState->eraserSize = 1.0f;
 
     stbi_flip_vertically_on_write(1);
 
@@ -32,7 +31,7 @@ void initGameState(GameState *gameState) {
     memset(gameState->chunks, 0, arrayCount(gameState->chunks)*sizeof(Chunk *));
 
     gameState->interactionMode = CANVAS_DRAW_MODE;
-    gameState->checkBackground = true;
+    
     
     gameState->entitiesToAddCount = 0;
 
@@ -93,7 +92,6 @@ void initGameState(GameState *gameState) {
 
     gameState->clipboard = Clipboard();
     gameState->selectMode = false;
-    gameState->onionSkinningFrames = 0;
 
     gameState->selectObject = SelectObject();
 

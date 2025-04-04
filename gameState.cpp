@@ -137,8 +137,6 @@ struct GameState {
     Renderer *renderer;
 
     SDL_AudioSpec audioSpec;
-    bool checkBackground;
-
     Camera camera;
 
     float timeOfDay; //NOTE: 0 - 1 is one day
@@ -205,12 +203,10 @@ struct GameState {
     bool drawGrid;
     float2 drawShapeStart;
     bool drawingShape;
-    float eraserSize;
     bool autoFocus;
     bool selectMode;
-    int onionSkinningFrames;
     bool blueRedFlippedInUI;
-    bool copyFrameOnAdd;
+    
     int runningAverageCount;
 
     SelectObject selectObject;

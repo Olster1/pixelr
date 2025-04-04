@@ -140,7 +140,7 @@ int main(int argc, char **argv) {
 
   GameState *gameState = (GameState *)malloc(sizeof(GameState));
   memset(gameState, 0, sizeof(GameState));
-  gameState->screenWidth = 0.7f*1920;
+  gameState->screenWidth = 0.5f*1920;
   gameState->aspectRatio_y_over_x = (1080.f / 1920.0f);
   gameState->mouseLeftBtn = MOUSE_BUTTON_NONE;
   gameState->quit = false;
