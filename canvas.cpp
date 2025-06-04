@@ -799,15 +799,17 @@ void updateCanvasMove(GameState *gameState) {
         gameState->startDragP = getMouseP01(gameState);
         gameState->canvasMoveDp = make_float2(0, 0);
     } else if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->draggingCanvas) {
-        float2 diff = scale_float2(200*gameState->dt, minus_float2(gameState->startDragP, getMouseP01(gameState)));
+        float panPower = 30*gameState->camera.fov; //NOTE: Scale with how far out we're looking
+        
+        float2 diff = scale_float2(panPower*gameState->dt, minus_float2(gameState->startDragP, getMouseP01(gameState)));
         gameState->canvasMoveDp = diff;
     } else {
         gameState->draggingCanvas = false;
     }
     
     if(!gameState->draggingCanvas) {
-        gameState->canvasMoveDp.x *= 0.8f;
-        gameState->canvasMoveDp.y *= 0.8f;
+        gameState->canvasMoveDp.x *= 0.86f;
+        gameState->canvasMoveDp.y *= 0.86f;
     }
 
     gameState->camera.T.pos.xy = plus_float2(gameState->camera.T.pos.xy, gameState->canvasMoveDp);

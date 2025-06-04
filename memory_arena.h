@@ -6,7 +6,6 @@
 #define easyMemory_zeroStruct(memory, type) easyMemory_zeroSize(memory, sizeof(type))
 #define easyMemory_zeroArray(array) easyMemory_zeroSize(array, sizeof(array))
 
-
 uint64_t getBitWiseFlag(uint64_t bitWise) {
     return ((uint64_t)1 << bitWise);
 }

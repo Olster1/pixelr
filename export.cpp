@@ -13,6 +13,53 @@ void saveFileToPNG(Canvas *canvas) {
     int writeResult = stbi_write_png(name, canvas->w, canvas->h, 4, canvas->pixels, stride_in_bytes);
 }
 
+void saveFileToPNG() {
+    char const * result = tinyfd_saveFileDialog (
+    "Save File",
+    "",
+    0,
+    NULL,
+    NULL);
+
+    stbi_set_flip_vertically_on_load(1);
+
+    int totalWidth = 896;
+    int totalHeight = 512;
+
+    size_t bytesPerPixel = sizeof(uint32_t);
+    int stride_in_bytes = bytesPerPixel*totalWidth;
+
+    u32 *data = (u32 *)pushArray(&globalPerFrameArena, totalWidth*totalHeight, u32);
+
+    int widthA;
+    int heightA;
+    int nrChannelsA;
+    int widthB;
+    int heightB;
+    int nrChannelsB;
+
+    u32 *a = (u32 *)stbi_load("./images/tileMapFlat.png", &widthA, &heightA, &nrChannelsA, STBI_rgb_alpha);
+    u32 *b = (u32 *)stbi_load("./images/tileMapElevation.png", &widthB, &heightB, &nrChannelsB, STBI_rgb_alpha);
+
+    for(int y = 0; y < heightA; ++y) {
+        for(int x = 0; x < widthA; ++x) {
+            data[(totalHeight - y)*totalWidth + x] = a[(heightA - y)*widthA + x];
+        }
+    }
+
+    for(int y = 0; y < heightB; ++y) {
+        for(int x = 0; x < widthB; ++x) {
+            int index = y*totalWidth + (x + widthA);
+            data[index] = b[y*widthB + x];
+        }
+    }
+
+    char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
+    int writeResult = stbi_write_png(name, totalWidth, totalHeight, 4, data, stride_in_bytes);
+
+    stbi_set_flip_vertically_on_load(0);
+}
+
 void openSpriteSheet(GameState *gameState, int w, int h) {
     const char *filterPatterns[] = { "*.png",};
     const char *filePath = tinyfd_openFileDialog(
