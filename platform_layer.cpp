@@ -149,10 +149,6 @@ int main(int argc, char **argv) {
       gameState->keys.keys[i] = MOUSE_BUTTON_NONE;
     } 
 
-  globalSoundState = (EasySound_SoundState *)malloc(sizeof(EasySound_SoundState));
-
-  initAudioSpec(&gameState->audioSpec, 44100);
-  initAudio(&gameState->audioSpec);
 
   SDL_Window *window = SDL_CreateWindow("Pixelr",  SDL_WINDOWPOS_CENTERED,  SDL_WINDOWPOS_CENTERED, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x, flags);
 

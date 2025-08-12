@@ -19,7 +19,6 @@
 #include "./particles.cpp"
 #include "./load_gltf.cpp"
 #include "./init_render.cpp"
-#include "./sound.cpp"
 #include "./SimplexNoise.cpp"
 #include "./interaction.cpp"
 #include "./texture_atlas.cpp"

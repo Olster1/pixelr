@@ -57,7 +57,6 @@ CanvasTab loadProjectFromFile() {
     );    
 
     FileContents file = platformReadEntireFile((char *)filePath, false);
-    assert(file.valid);
     if(file.valid && file.memory) {
         ProjectFile *data = (ProjectFile *)file.memory;
 

@@ -1073,7 +1073,6 @@ void updateEntities(GameState *gameState) {
                     gameState->entitiesToDelete[gameState->entityToDeleteCount++] = i;
                     e->flags |= ENTITY_DELETED;
 
-                    playSound(&gameState->pickupSound);
                     
                 }
             } else {

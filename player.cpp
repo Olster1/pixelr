@@ -144,7 +144,6 @@ void updatePlayerPhysics(GameState *gameState, Entity *e, float3 movementForFram
             if((e->dP.y < -15 && float3_dot(make_float3(0, 1, 0), shortestNormalVector) > 0.0f) && gameState->camera.followingPlayer) {
                 //NOTE: Big fall so shake the camera
                 gameState->camera.shakeTimer = MAX_SHAKE_TIMER;
-                playSound(&gameState->fallBigSound);
             }
             
 
@@ -184,12 +183,8 @@ void updatePlayerPhysics(GameState *gameState, Entity *e, float3 movementForFram
 void cancelMiningInteraction(GameState *gameState) {
     gameState->currentMiningBlock->timeLeft = getBlockTime((BlockType)gameState->currentMiningBlock->type);
     gameState->currentMiningBlock = 0;
-
-    if(gameState->miningSoundPlaying) {
-        gameState->miningSoundPlaying->shouldEnd = true;
-        gameState->miningSoundPlaying = 0;
-    }
 }
+
 
 void invalidateSurroundingAoValues(GameState *gs, int worldX, int worldY, int worldZ) {
     for(int z = -1; z <= 1; z++) {
@@ -245,7 +240,6 @@ bool placeBlock(GameState *gameState, float3 lookingAxis, Entity *e, BlockType b
                             nxtBlock.chunk->blocks[blockIndex] = spawnBlock(localX, localY, localZ, blockType);
                             placed = true;
                             invalidateSurroundingAoValues(gameState, worldX, worldY, worldZ);
-                            playSound(&gameState->blockFinishSound);
                         } else {
                             assert(false);
                         }
@@ -303,12 +297,7 @@ void mineBlock(GameState *gameState, float3 lookingAxis, Entity *e) {
     BlockChunkPartner b = castRayAgainstBlock(gameState, lookingAxis, DISTANCE_CAN_PLACE_BLOCK, cameraPos, BLOCK_FLAGS_MINEABLE);
 
         if(b.block) {
-            //NOTE: Play sound
-            if(!gameState->miningSoundPlaying) {
-                gameState->miningSoundPlaying = playSound(&gameState->blockBreakSound);
-                gameState->miningSoundPlaying->nextSound = gameState->miningSoundPlaying;
-            }
-
+          
             // b.block->hitBlock = true;
             b.block->timeLeft -= gameState->dt;
 
@@ -350,7 +339,6 @@ void mineBlock(GameState *gameState, float3 lookingAxis, Entity *e) {
                 b.chunk->blocks[b.blockIndex].exists = false;
 
                 if(gameState->camera.followingPlayer) {
-                    playSound(&gameState->blockFinishSound);
                 }
 
                 float3 worldP = blockWorldP;

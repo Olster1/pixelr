@@ -95,7 +95,6 @@ struct GameState {
     float mineBlockTimer;
     float showCircleTimer;
 
-    WavFile cardFlipSound[2];
 
     int currentInventoryHotIndex;
 
@@ -110,11 +109,7 @@ struct GameState {
     ChunkVertexToCreate *meshesToCreate;
     ChunkVertexToCreate *meshesToCreateFreeList;
 
-    WavFile blockBreakSound;
-    WavFile blockFinishSound;
-    WavFile bgMusic;
-    WavFile fallBigSound;
-    WavFile pickupSound;
+   
     bool openSpriteSheetWindow;
 
     float16 cameraRotation;
@@ -128,7 +123,6 @@ struct GameState {
 
     ThreadsInfo threadsInfo;
 
-    PlayingSound *miningSoundPlaying;
 
     //NOTE: linked hash maps
     Chunk *chunks[CHUNK_LIST_SIZE];

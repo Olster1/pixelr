@@ -301,7 +301,7 @@ FileContents platformReadEntireFile(char *FileName, bool nullTerminate) {
         Result.valid = false;
         const char *Error = SDL_GetError();
         printf("%s\n", Error);
-        assert(!"Couldn't open file");
+        // assert(!"Couldn't open file");
     }
     return Result;
 }

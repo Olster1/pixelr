@@ -46,14 +46,6 @@ void initGameState(GameState *gameState) {
     gameState->grabbedCornerIndex = -1;
     gameState->nearest = true; 
 
-    loadWavFile(&gameState->cardFlipSound[0], "./sounds/cardFlip.wav", &gameState->audioSpec);
-    loadWavFile(&gameState->cardFlipSound[1], "./sounds/cardFlip1.wav", &gameState->audioSpec);
-    loadWavFile(&gameState->blockBreakSound, "./sounds/blockBreak.wav", &gameState->audioSpec);
-    loadWavFile(&gameState->blockFinishSound, "./sounds/blockFinish.wav", &gameState->audioSpec);
-    loadWavFile(&gameState->fallBigSound, "./sounds/fallbig.wav", &gameState->audioSpec);
-    loadWavFile(&gameState->pickupSound, "./sounds/pop.wav", &gameState->audioSpec);
-    // loadWavFile(&gameState->bgMusic, "./sounds/sweeden.wav", &gameState->audioSpec);
-
     gameState->lastMouseP = gameState->mouseP_screenSpace;
     gameState->runningAverageCount = 1;
 
@@ -88,7 +80,6 @@ void initGameState(GameState *gameState) {
     gameState->inventoryCount = 0;
     gameState->entityToDeleteCount = 0;
 
-    playSound(&gameState->bgMusic);
 
     gameState->clipboard = Clipboard();
     gameState->selectMode = false;
