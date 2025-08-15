@@ -378,11 +378,21 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
     if(gameState->selectObject.isActive && gameState->selectObject.pixels) {
         gameState->selectObject.timeAt += gameState->dt;
         bool submit = false;
+         CanvasTab *tab = getActiveCanvasTab(gameState);
+
+         if(!tab) {
+            return;
+         }
+
         if(gameState->keys.keys[KEY_ENTER] == MOUSE_BUTTON_PRESSED) {
             submit = true;
+        } else if(gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED || gameState->keys.keys[KEY_DELETE] == MOUSE_BUTTON_PRESSED || gameState->keys.keys[KEY_BACKSPACE] == MOUSE_BUTTON_PRESSED) {
+            tab->opacity = tab->savedOpacity;
+            gameState->selectObject.isActive = false;
+            gameState->selectObject.clear();
+            gameState->interactionMode = CANVAS_DRAW_MODE;
         }
 
-        CanvasTab *tab = getActiveCanvasTab(gameState);
 
         TransformX TX = gameState->selectObject.T;
         float16 T = getModelToViewSpace(TX);
@@ -555,7 +565,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
     
                     // //NOTE: Now get the actual color and see if there is a pixel here
                     float2 uvCoords = minus_float2(pixelP, origin_bottom_left);
-                    float2 uv_ = float2_transform(uvCoords, xHat, yHat);
+                    float2 uv_ = float2_transform(uvCoords, scale_float2(1.0f / scale.x, xHat), scale_float2(1.0f / scale.y, yHat));
                     float2 uv = make_float2(floor(uv_.x), floor(uv_.y));
                     float2 uvNext = make_float2(ceil(uv_.x), ceil(uv_.y));
                     float2 uvNext1 = make_float2(uvNext.x, uv.y);
