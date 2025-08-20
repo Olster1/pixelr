@@ -1,6 +1,5 @@
 #include "includes.h"
 
-
 void updateGame(GameState *gameState) {
     checkInitGameState(gameState);
 
@@ -16,7 +15,7 @@ void updateGame(GameState *gameState) {
     float16 rot = eulerAnglesToTransform(gameState->camera.T.rotation.y, gameState->camera.T.rotation.x, gameState->camera.T.rotation.z);
     float3 lookingAxis = make_float3(rot.E_[2][0], rot.E_[2][1], rot.E_[2][2]);
 
-    
+    checkFileDrop(gameState);
     
    CanvasTab *t = getActiveCanvasTab(gameState);
    if(t) {

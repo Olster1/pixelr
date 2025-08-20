@@ -198,6 +198,10 @@ int main(int argc, char **argv) {
     while (SDL_PollEvent(&e)) {
        if (e.type == SDL_QUIT) {
           gameState->quit = true;
+       } else if (e.type == SDL_DROPFILE) {
+          char *file = e.drop.file; // path to the dropped file
+          gameState->droppedFilePath = file;
+          
         } else if (e.type == SDL_MOUSEWHEEL) {
           gameState->scrollSpeed = e.wheel.y;
         } else if(e.type == SDL_KEYDOWN) {
@@ -316,7 +320,13 @@ int main(int argc, char **argv) {
       SDL_WarpMouseInWindow(window, 0.5f*gameState->screenWidth, 0.5f*gameState->screenWidth);
     } else {
       gameState->lastMouseP = gameState->mouseP_screenSpace;
-    }          
+    }         
+
+    //NOTE: Free the dropped filepath if there was one
+    if(gameState->droppedFilePath) {
+      SDL_free(gameState->droppedFilePath);
+      gameState->droppedFilePath = 0;
+    } 
   }
 
     // Cleanup

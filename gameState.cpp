@@ -151,6 +151,7 @@ struct GameState {
     int entitiesToDelete[MAX_ENTITY_COUNT];
 
     KeyStates keys;
+    char *droppedFilePath;
 
     AOOffset aoOffsets[24];
     float3 cardinalOffsets[6];

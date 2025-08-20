@@ -180,20 +180,7 @@ void saveSpriteSheetToPNG(CanvasTab *canvas, int columns, int rows) {
     int writeResult = stbi_write_png(name, totalWidth, totalHeight, 4, totalPixels, stride_in_bytes);
 }
 
-
-
-
-void openPlainImage(GameState *gameState) {
-    const char *filterPatterns[] = { "*.png",};
-    const char *filePath = tinyfd_openFileDialog(
-        "Open an image",         // Dialog title
-        "",                    // Default path
-        1,                     // Number of filters
-        filterPatterns,        // Filters
-        "PNG files only",    // Filter description
-        0                      // Allow multiple selection (0 = No, 1 = Yes)
-    );
-
+void exportImport_loadPng(GameState *gameState, const char *filePath) {
     if (filePath) {
             stbi_set_flip_vertically_on_load(1);
             int width = 0;
@@ -222,9 +209,33 @@ void openPlainImage(GameState *gameState) {
     } else {
         printf("No file selected.\n");
     }
+}
 
-    // size_t bytesPerPixel = sizeof(uint32_t);
-    // int stride_in_bytes = bytesPerPixel*canvas->w;
+void checkFileDrop(GameState *gameState) {
+    if(gameState->droppedFilePath) {
+        char *extension = getFileExtension(gameState->droppedFilePath);
+        if(easyString_stringsMatch_nullTerminated(extension, "png") || easyString_stringsMatch_nullTerminated(extension, "PNG")) {
+            exportImport_loadPng(gameState, gameState->droppedFilePath);
+        } else if(easyString_stringsMatch_nullTerminated(extension, "pixelr")) {
+            CanvasTab tab = loadPixelrProject(gameState->droppedFilePath);
+            pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
+            gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+        }
+    }
+}
 
-    // char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
+
+
+void openPlainImage(GameState *gameState) {
+    const char *filterPatterns[] = { "*.png",};
+    const char *filePath = tinyfd_openFileDialog(
+        "Open an image",         // Dialog title
+        "",                    // Default path
+        1,                     // Number of filters
+        filterPatterns,        // Filters
+        "PNG files only",    // Filter description
+        0                      // Allow multiple selection (0 = No, 1 = Yes)
+    );
+
+    exportImport_loadPng(gameState, filePath);
 }

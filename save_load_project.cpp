@@ -45,17 +45,7 @@ ProjectFile initProjectFile() {
 
 }
 
-CanvasTab loadProjectFromFile() {
-    const char *filterPatterns[] = { "*.pixelr",};
-    const char *filePath = tinyfd_openFileDialog(
-        "Open Project",         // Dialog title
-        "",                    // Default path
-        1,                     // Number of filters
-        filterPatterns,        // Filters
-        ".pixelr files only",    // Filter description
-        0                      // Allow multiple selection (0 = No, 1 = Yes)
-    );    
-
+CanvasTab loadPixelrProject(const char *filePath) {
     FileContents file = platformReadEntireFile((char *)filePath, false);
     if(file.valid && file.memory) {
         ProjectFile *data = (ProjectFile *)file.memory;
@@ -126,6 +116,21 @@ CanvasTab loadProjectFromFile() {
         //NOTE: Return an empty one
         return CanvasTab(16, 16, easyString_copyToHeap("Untitled"));
     }
+}
+
+CanvasTab loadProjectFromFile() {
+    const char *filterPatterns[] = { "*.pixelr",};
+    const char *filePath = tinyfd_openFileDialog(
+        "Open Project",         // Dialog title
+        "",                    // Default path
+        1,                     // Number of filters
+        filterPatterns,        // Filters
+        ".pixelr files only",    // Filter description
+        0                      // Allow multiple selection (0 = No, 1 = Yes)
+    );    
+
+    CanvasTab tab = loadPixelrProject(filePath);
+    return tab;
     
 
 }
