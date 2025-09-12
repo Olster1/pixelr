@@ -183,6 +183,7 @@ struct Canvas {
     u32 *pixels = 0;
     int w = 0;
     int h = 0;
+    bool visible; //NOTE: Users can turn layers on and off. When off we don't show this layer.
 
     Canvas(int w_, int h_) {
         id = makeEntityId(globalRandomStartupSeed);
@@ -190,6 +191,7 @@ struct Canvas {
         h = h_;
         pixels = (u32 *)easyPlatform_allocateMemory(sizeof(u32)*w_*h_);
 
+        visible = true;
         for(int y = 0; y < h; ++y) {
             for(int x = 0; x < w; ++x) {
                 pixels[y*w + x] = 0x00FFFFFF;
@@ -277,7 +279,6 @@ struct CanvasTab {
     bool isOpen = true; //NOTE: Used to close the tab
 
     CanvasTab(int w, int h, char *saveFilePath_);
-
 
     Canvas *getActiveCanvas();
 

@@ -81,6 +81,13 @@ struct KeyStates {
   MouseKeyState keys[KEY_COUNTS];
 };
 
+void platform_copyToClipboard(char *str) {
+  if (SDL_SetClipboardText(str) == 0) {
+    printf("Copied to clipboard!\n");
+  } else {
+      printf("Clipboard error: %s\n", SDL_GetError());
+  }
+}
 
 #include "./main.cpp"
 
@@ -215,7 +222,14 @@ int main(int argc, char **argv) {
          if(scancode == SDL_SCANCODE_Z) {
             gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_RELEASED;
           }
-        }
+        } 
+        // else if(e.type == SDL_WINDOWEVENT) {
+        //     if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+        //         int newWidth = e.window.data1;
+        //         int newHeight = e.window.data2;
+        //         updateNewWindowSize(gameState, newWidth, newWidth);
+        //     }
+        // }
       ImGui_ImplSDL2_ProcessEvent(&e);
     }
 
@@ -259,6 +273,7 @@ int main(int argc, char **argv) {
     gameState->aspectRatio_y_over_x = (float)h / (float)w;
     // printf("w: %d\n", w);
     // printf("ap: %d\n", h);
+    glViewport(0, 0, w, h);
 
     int x; 
     int y;
@@ -268,8 +283,6 @@ int main(int argc, char **argv) {
 
     gameState->mouseP_01.x = gameState->mouseP_screenSpace.x / w;
     gameState->mouseP_01.y = (gameState->mouseP_screenSpace.y / h) + 1.0f;
-
-   
 
   if(mouseState && SDL_BUTTON(1)) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_NONE) {

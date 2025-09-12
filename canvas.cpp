@@ -150,7 +150,28 @@ float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h, bool real = f
      return result;
 }
 
-
+float4 getBlendedColor(float4 oldColorF, float4 newColorF) {
+    // Convert colors to premultiplied alpha
+    float oldR = oldColorF.x * oldColorF.w;
+    float oldG = oldColorF.y * oldColorF.w;
+    float oldB = oldColorF.z * oldColorF.w;
+    
+    float newR = newColorF.x * newColorF.w;
+    float newG = newColorF.y * newColorF.w;
+    float newB = newColorF.z * newColorF.w;
+    
+    // Compute new alpha
+    float alphaNew = newColorF.w + oldColorF.w * (1.0f - newColorF.w);
+    
+    // Blend each color channel separately
+    float blendedR = (newR + oldR * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
+    float blendedG = (newG + oldG * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
+    float blendedB = (newB + oldB * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
+    
+    // Store final color
+    float4 c = make_float4(blendedR, blendedG, blendedB, alphaNew);
+    return c;
+}
 
 
 void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, const u32 color, float opacity, bool useOpacity = true) {
@@ -161,27 +182,8 @@ void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, cons
 
         float4 c;
         if(useOpacity) {
-            newColorF.w = opacity;
-
-            // Convert colors to premultiplied alpha
-            float oldR = oldColorF.x * oldColorF.w;
-            float oldG = oldColorF.y * oldColorF.w;
-            float oldB = oldColorF.z * oldColorF.w;
-            
-            float newR = newColorF.x * newColorF.w;
-            float newG = newColorF.y * newColorF.w;
-            float newB = newColorF.z * newColorF.w;
-            
-            // Compute new alpha
-            float alphaNew = newColorF.w + oldColorF.w * (1.0f - newColorF.w);
-            
-            // Blend each color channel separately
-            float blendedR = (newR + oldR * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
-            float blendedG = (newG + oldG * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
-            float blendedB = (newB + oldB * (1.0f - newColorF.w)) / MathMaxf(alphaNew, 1e-6f);
-            
-            // Store final color
-            c = make_float4(blendedR, blendedG, blendedB, alphaNew);
+           newColorF.w = opacity;
+           c = getBlendedColor(oldColorF, newColorF);
 
         } else {
             c = newColorF;
@@ -941,6 +943,28 @@ void updateFrameGPUHandles(Frame *f, CanvasTab *t) {
     }
 }
 
+u32 *getCompositePixelsForFrame_shortTerm(CanvasTab *t, Frame *f) {
+    u32 *compositePixels = pushArray(&globalPerFrameArena, t->w*t->h, u32);
+
+    for (int j = 0; j < getArrayLength(f->layers); j++) {
+        if(f->layers[j].visible) {
+            for(int y = 0; y < t->h; y++) {
+                for(int x = 0; x < t->w; x++) {
+                    u32 compositeIndex = y*t->w + x;
+                    assert(compositeIndex < t->h*t->w);
+                    if(compositeIndex < t->h*t->w) {
+                        float4 colorA = u32_to_float4_color(compositePixels[compositeIndex]);
+                        float4 colorB = u32_to_float4_color(f->layers[j].pixels[compositeIndex]);
+                        float4 newColor = getBlendedColor(colorA, colorB);
+                        compositePixels[compositeIndex] = float4_to_u32_color(newColor);
+                    }
+                }
+            }
+        }
+    }
+    return compositePixels;
+}
+
 void updateGpuCanvasTextures(GameState *gameState) {
     CanvasTab *t = getActiveCanvasTab(gameState);
 
@@ -953,16 +977,17 @@ void updateGpuCanvasTextures(GameState *gameState) {
         glBindTexture(GL_TEXTURE_2D, f->gpuHandle);
         renderCheckError();
 
+        u32 *compositePixels = getCompositePixelsForFrame_shortTerm(t, f);
+
         glTexSubImage2D(
-            GL_TEXTURE_2D,  // Target
-            0,              // Mipmap level (0 for base level)
-            0, 0,           // X and Y offset (update from the top-left corner)
-            t->w, t->h,  // Width and height of the new data
-            GL_RGBA,        // Format of the pixel data
-            GL_UNSIGNED_BYTE, // Data type
-            f->layers[0].pixels    // Pointer to new pixel data
-        );
-        
+                GL_TEXTURE_2D,  // Target
+                0,              // Mipmap level (0 for base level)
+                0, 0,           // X and Y offset (update from the top-left corner)
+                t->w, t->h,  // Width and height of the new data
+                GL_RGBA,        // Format of the pixel data
+                GL_UNSIGNED_BYTE, // Data type
+                compositePixels    // Pointer to new pixel data
+            );
         renderCheckError();
 
         glBindTexture(GL_TEXTURE_2D, 0);

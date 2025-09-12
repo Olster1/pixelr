@@ -60,7 +60,7 @@ void updateHotKeys(GameState *gameState) {
         if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
-                saveFileToPNG(getActiveCanvas(gameState));
+                saveFileToPNG(getActiveFrame(gameState), t);
             }
         }
 

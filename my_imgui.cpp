@@ -191,12 +191,22 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
 
       ImGui::Checkbox("Copy Frame on add", &canvasTab->copyFrameOnAdd);
       if (ImGui::Button("Add New Frame +")) {
-          Frame f = Frame(canvasTab->w, canvasTab->h);
-          pushArrayItem(&canvasTab->frames, f, Frame);
+          Frame f_ = Frame(canvasTab->w, canvasTab->h);
+          Frame *f = pushArrayItem(&canvasTab->frames, f_, Frame);
           Frame *activeFrame = getActiveFrame(state);
           if(activeFrame && canvasTab->copyFrameOnAdd) {
-            easyPlatform_copyMemory(f.layers[0].pixels, activeFrame->layers[0].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
+            for(int j = 0; j < getArrayLength(activeFrame->layers); ++j) {
+              if(j > 0) {
+                //NOTE: Creating a frame automatically adds a canvas, so use that one first
+                Canvas newCanvas = Canvas(canvasTab->w, canvasTab->h);
+                pushArrayItem(&f->layers, newCanvas, Canvas);
+              }
+              easyPlatform_copyMemory(f->layers[j].pixels, activeFrame->layers[j].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
+              
+            }
             updateGpuCanvasTextures(state);
+            printf("%d\n", getArrayLength(activeFrame->layers));
+            printf("%d\n", getArrayLength(f->layers));
           }
 
           
@@ -210,6 +220,106 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
               anim->elapsedTime = 0.0f;
               canvasTab->activeFrame = (canvasTab->activeFrame + 1) % getArrayLength(canvasTab->frames);
           }
+      }
+
+      ImGui::End();
+    }
+}
+
+
+void drawLayersWindow(GameState *state, float deltaTime) {
+
+    CanvasTab *canvasTab = getActiveCanvasTab(state);
+
+    if(canvasTab) {
+      ImGuiIO& io = ImGui::GetIO();
+      ImVec2 window_pos = ImVec2(io.DisplaySize.x, 20);
+      ImVec2 window_pivot = ImVec2(1.0f, 0.0f);
+
+      ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
+      ImGui::SetNextWindowBgAlpha(0.35f);
+      ImGui::Begin("Layers");
+
+    
+     
+
+      Frame *activeFrame = getActiveFrame(state);
+      // Display all frames in a row
+      if (activeFrame && getArrayLength(activeFrame->layers) > 0) {
+        ImGui::Text("Layers:");
+        ImGui::BeginTable("Layers Table", 2);
+        for (int i = 0; i < getArrayLength(activeFrame->layers); i++) {
+           
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+
+            ImVec2 imageSize(64, 64); // Adjust as needed
+            ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+            
+            // Make a button that overlays the image so we can detect clicks
+            ImGui::PushID(i); // Unique ID for each frame
+            if (ImGui::InvisibleButton("##frame", imageSize)) {
+                activeFrame->activeLayer = i; // Change current layer
+            }
+            ImGui::PopID();
+    
+            // Get the position where the image will be drawn
+            ImVec2 imagePos = cursorPos;  
+
+            // Get the draw list
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+            // Draw a white background rectangle
+            drawList->AddRectFilled(imagePos, ImVec2(imagePos.x + imageSize.x, imagePos.y + imageSize.y), IM_COL32(255, 255, 255, 255));
+
+            // Draw the image on top
+            ImGui::SetCursorScreenPos(imagePos); // Reset position to draw the image
+            ImGui::Image((ImTextureID)(intptr_t)activeFrame->layers[i].gpuHandle, imageSize, ImVec2(0, 1), ImVec2(1, 0));
+    
+            // Draw border if this is the current frame
+            if (i == activeFrame->activeLayer) {
+                ImGui::GetWindowDrawList()->AddRect(
+                    cursorPos, ImVec2(cursorPos.x + imageSize.x, cursorPos.y + imageSize.y),
+                    IM_COL32(255, 255, 0, 255), // Yellow border
+                    0.0f, 0, 2.0f // Thickness
+                );
+            }
+
+            ImGui::TableNextColumn();
+            ImGui::PushID(i);  
+            if (ImGui::Button("\uf1f8")) {
+              if(getArrayLength(activeFrame->layers) > 1) {
+                //TODO: Delete the frame add to undo list
+                activeFrame->layers[activeFrame->activeLayer].dispose();
+                removeArrayAtIndex(activeFrame->layers, activeFrame->activeLayer);
+                activeFrame->activeLayer--;
+                if(activeFrame->activeLayer < 0) {
+                  activeFrame->activeLayer = 0;
+                }
+              }
+            }
+            ImGui::PopID();
+            ImGui::PushID(i);  
+            if (ImGui::Button((activeFrame->layers[i].visible) ? "\uf06e" : "\uf070")) {
+              activeFrame->layers[i].visible = !activeFrame->layers[i].visible;
+              updateGpuCanvasTextures(state);
+
+            }
+            ImGui::PopID();
+          }
+      }
+      ImGui::EndTable();
+
+      ImGui::Separator();
+      if (ImGui::Button("Add New Layer +")) {
+          Canvas f = Canvas(canvasTab->w, canvasTab->h);
+          pushArrayItem(&activeFrame->layers, f, Canvas);
+          // if(activeFrame && canvasTab->copyFrameOnAdd) {
+          //   easyPlatform_copyMemory(f.layers[0].pixels, activeFrame->layers[0].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
+            updateGpuCanvasTextures(state);
+          // }
+          
+          activeFrame->activeLayer = getArrayLength(activeFrame->layers) - 1;
       }
 
       ImGui::End();
@@ -383,7 +493,16 @@ void updateEditPaletteWindow (GameState *gameState) {
     if (ImGui::Button("Add Bulk")) {
       gameState->showColorPalleteEnter = true;
     }
-    
+    char *currentString = "";
+    if (ImGui::Button("Copy All to Clipoard")) {
+      for (int j = 0; j < tab->palletteCount; ++j) {
+        u32 color = tab->colorsPallete[j];
+        currentString = easy_createString_printf(&globalPerFrameArena, "%s0x%x,", currentString, color);
+      }
+      //NOTE: Add to the clipbaord now
+      platform_copyToClipboard(currentString);
+    }
+    ImGui::SameLine();
 
     ImGui::End();
   } 
@@ -468,7 +587,7 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("Open Project", "Ctrl+O")) { loadProjectAndStoreTab(state); }
             if (ImGui::MenuItem("Save Pallete", "", &dummy, tab)) {  }
             if (ImGui::MenuItem("Load Pallete", "")) {  }
-            if (ImGui::MenuItem("Export Image", "Ctrl+E", &dummy, tab)) { saveFileToPNG(getActiveCanvas(state)); }
+            if (ImGui::MenuItem("Export Image", "Ctrl+E", &dummy, tab)) { saveFileToPNG(getActiveFrame(state), getActiveCanvasTab(state)); }
             if (ImGui::MenuItem("Export Sprite Sheet", "", &dummy, tab)) { state->showExportWindow = true; }
             if (ImGui::MenuItem("Exit")) { state->quit = true;  }
             ImGui::EndMenu();
@@ -560,6 +679,12 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
         {
             ImGui::Begin("Color Palette");
             ImGui::ColorEdit3("Brush", (float*)&tab->colorPicked);
+
+            ImU32 col = ImGui::GetColorU32(ImVec4(tab->colorPicked.x, tab->colorPicked.y, tab->colorPicked.z, tab->opacity));
+            
+            char *strToWrite = easy_createString_printf(&globalPerFrameArena, "0x%x", col);
+            ImGui::InputText("##", strToWrite, easyString_getSizeInBytes_utf8(strToWrite) + 1, ImGuiInputTextFlags_ReadOnly);
+
             // Detect when the color picker is closed after changes
             ImGui::SliderFloat("Opacity", &tab->opacity, 0.0f, 1.0f);
             // ImGui::ColorEdit3("Background", (float*)&state->bgColor);
@@ -643,6 +768,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
         updateColorPaletteEnter(state);
         updateEditPaletteWindow(state);
         drawAnimationTimeline(state, state->dt);
+        drawLayersWindow(state, state->dt);
         
         if(startMode != state->interactionMode) {
           clearSelection(tab);

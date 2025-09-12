@@ -26,6 +26,10 @@
         "complex": "cpp",
         "locale": "cpp",
         "murmur3.c": "cpp",
-        "algorithm": "cpp"
+        "algorithm": "cpp",
+        "queue": "cpp",
+        "stack": "cpp",
+        "deque": "cpp",
+        "sstream": "cpp"
     }
 }
