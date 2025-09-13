@@ -47,6 +47,7 @@ void CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
 CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
     this->w = w;
     this->h = h;
+    this->zoomFactor = 0.3f*MathMax(w, h); //NOTE: Zoom out to fit the image in the screen
     this->colorPicked = make_float4(1, 1, 1, 1);
     this->currentUndoBlock = 0;
     this->palletteCount = 0;

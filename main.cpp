@@ -47,10 +47,9 @@ void updateGame(GameState *gameState) {
 
         updateUndoState(gameState);
 
+        updateCanvasZoom(gameState, isInteractingWithIMGUI());
         //NOTE: Update interaction with the canvas
         if(!isInteractingWithIMGUI()) {
-            updateCanvasZoom(gameState);
-            
             if(gameState->interactionMode == CANVAS_DRAW_RECTANGLE_MODE || gameState->interactionMode == CANVAS_DRAW_CIRCLE_MODE || gameState->interactionMode == CANVAS_DRAW_LINE_MODE) {
             updateDrawShape(gameState, getActiveCanvas(gameState));
             } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {

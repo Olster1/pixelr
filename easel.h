@@ -252,6 +252,8 @@ struct CanvasTab {
     Frame *frames = 0;
     int activeFrame = 0;
 
+    float zoomFactor = 5.0f;
+
     PlayBackAnimation playback;
     int w = 0;
     int h = 0;

@@ -7,6 +7,10 @@ Uses OpenGL 3.3 and SDL for platform layer.
 ![](image1.png) 
 
 ## Goals
+- [ ] Rewrite the GUI without using Dear IMGUI
+- [ ] Remove C runtime library
+- [ ] Build for Web using WASM
+- [ ] Build natively for Mac & Windows
 
 ## WHY's
 - [x] Fun & Challenging to program

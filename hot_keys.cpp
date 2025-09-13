@@ -23,10 +23,6 @@ void updateHotKeys(GameState *gameState) {
             gameState->interactionMode = CANVAS_COLOR_DROPPER;
         }
 
-        if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
-            showNewCanvas(gameState);
-        }
-
         //NOTEL: Update Frame change
         if(gameState->keys.keys[KEY_LEFT] == MOUSE_BUTTON_PRESSED) {
             CanvasTab *t = getActiveCanvasTab(gameState);
@@ -57,13 +53,6 @@ void updateHotKeys(GameState *gameState) {
 
         
 
-        if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
-            CanvasTab *t = getActiveCanvasTab(gameState);
-            if(t) {
-                saveFileToPNG(getActiveFrame(gameState), t);
-            }
-        }
-
         if(gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
@@ -72,6 +61,8 @@ void updateHotKeys(GameState *gameState) {
                 }
             }
         }
+
+
 
         if(gameState->keys.keys[KEY_C] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
             CanvasTab *t = getActiveCanvasTab(gameState);
@@ -205,4 +196,21 @@ void updateHotKeys(GameState *gameState) {
             }
         }
     }
+
+
+        if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+            showNewCanvas(gameState);
+        }
+
+
+        if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+            CanvasTab *t = getActiveCanvasTab(gameState);
+            if(t) {
+                saveFileToPNG(getActiveFrame(gameState), t);
+            }
+        }
+
+        if(gameState->keys.keys[KEY_O] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+            openPlainImage(gameState);
+        }
 }

@@ -45,6 +45,7 @@ enum KeyTypes {
   KEY_UP,
   KEY_DOWN,
   KEY_E,
+  KEY_O,
   KEY_Q,
   KEY_X,
   KEY_Z,
@@ -239,6 +240,7 @@ int main(int argc, char **argv) {
     
     updateKeyState(gameState, KEY_UP, currentKeyStates[SDL_SCANCODE_UP] == 1);
     updateKeyState(gameState, KEY_E, currentKeyStates[SDL_SCANCODE_E] == 1);
+    updateKeyState(gameState, KEY_O, currentKeyStates[SDL_SCANCODE_O] == 1);
     updateKeyState(gameState, KEY_N, currentKeyStates[SDL_SCANCODE_N] == 1);
     updateKeyState(gameState, KEY_S, currentKeyStates[SDL_SCANCODE_S] == 1);
     updateKeyState(gameState, KEY_Q, currentKeyStates[SDL_SCANCODE_Q] == 1);

@@ -34,7 +34,8 @@ bool inIMGUIActive() {
 }
 
 bool isInteractingWithIMGUI() {
-    return (ImGui::IsAnyItemActive() || ImGui::IsAnyItemHovered() || ImGui::IsWindowHovered());
+    ImGuiIO& io = ImGui::GetIO();
+    return io.WantCaptureMouse;  
 }
 
 u32 getCanvasColor(Canvas *canvas, int coordX, int coordY) {
@@ -704,18 +705,25 @@ void drawLinedGrid(GameState *gameState, Canvas *canvas) {
     }
 }
 
-void updateCanvasZoom(GameState *gameState) {
-    gameState->scrollDp += gameState->scrollSpeed*gameState->dt;
+void updateCanvasZoom(GameState *gameState, bool isInteractingImgui) {
+    CanvasTab *tab  = getActiveCanvasTab(gameState);
+    if(tab) {
+        if(!isInteractingImgui) {
+            gameState->scrollDp += gameState->scrollSpeed*gameState->dt;
 
-    //NOTE: Drag
-    gameState->scrollDp *= 0.81f;
+            //NOTE: Drag
+            gameState->scrollDp *= 0.81f;
 
-    //NOTE: Zoom in & out
-    gameState->camera.fov *= 1 + gameState->scrollDp;
-    
-    float min = 0.01f;
-    if(gameState->camera.fov < min) {
-        gameState->camera.fov = min;
+            //NOTE: Zoom in & out
+            tab->zoomFactor *= 1 + gameState->scrollDp;
+            
+            float min = 0.01f;
+            if(tab->zoomFactor < min) {
+                tab->zoomFactor = min;
+            }
+        }
+
+        gameState->camera.fov = tab->zoomFactor;
     }
 } 
 
