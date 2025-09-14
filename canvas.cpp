@@ -189,9 +189,12 @@ void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, cons
         } else {
             c = newColorF;
         }
-
-        tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, float4_to_u32_color(c)));
-        canvas->pixels[coordY*canvas->w + coordX] = float4_to_u32_color(c);
+        u32 u32Color = float4_to_u32_color(c);
+        if(canvas->pixels[coordY*canvas->w + coordX] != u32Color) {
+            //NOTE: Don't add and undo info unless it's a different color
+            tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, u32Color));
+        }
+        canvas->pixels[coordY*canvas->w + coordX] = u32Color;
     }
 }
 
@@ -761,16 +764,32 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
             if(undo || (gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] != MOUSE_BUTTON_DOWN)) {
                 UndoRedoBlock *block = tab->undoList;
                 if(block->next && !isUndoBlockSentinel(block)) {
-                    Canvas *canvas = getCanvasForUndoBlock(tab, block);
-                    if(canvas) {
-                        for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
-                            PixelInfo info = block->pixelInfos[i];
-                            if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
-                                canvas->pixels[info.y*canvas->w + info.x] = info.lastColor;
+
+                    if(block->type == UNDO_REDO_PIXELS) {
+                        Canvas *canvas = getCanvasForUndoBlock(tab, block);
+                        if(canvas) {
+                            for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
+                                PixelInfo info = block->pixelInfos[i];
+                                if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
+                                    canvas->pixels[info.y*canvas->w + info.x] = info.lastColor;
+                                }
                             }
+                            
                         }
-                        tab->undoList = block->next;
+                     } else if(block->type == UNDO_REDO_FRAME_DELETE || block->type == UNDO_REDO_FRAME_CREATE) {
+                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+                        Frame *f = tab->frames + block->frameInfo.frameIndex;
+                        f->deleted = (block->type == UNDO_REDO_FRAME_CREATE) ? true : false;
+                        tab->activeFrame = block->frameInfo.beforeActiveLayer;
+                    } else if(block->type == UNDO_REDO_CANVAS_DELETE || block->type == UNDO_REDO_CANVAS_CREATE) {
+                         assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+                        Frame *f = tab->frames + block->frameInfo.frameIndex;
+                        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
+                        Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
+                        canvas->deleted = (block->type == UNDO_REDO_CANVAS_CREATE) ? true : false;
+                        f->activeLayer = block->frameInfo.beforeActiveLayer;
                     }
+                    tab->undoList = block->next;
                 }
             }
 
@@ -778,14 +797,30 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                 UndoRedoBlock *block = tab->undoList;
                 if(block->prev) {
                     block = block->prev;
-                    Canvas *canvas = getCanvasForUndoBlock(tab, block);
-                    {
-                        for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
-                            PixelInfo info = block->pixelInfos[i];
-                            if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
-                                canvas->pixels[info.y*canvas->w + info.x] = info.thisColor;
+                    //NOTE: Process the undo block
+                    if(block->type == UNDO_REDO_PIXELS) {
+                        Canvas *canvas = getCanvasForUndoBlock(tab, block);
+                        {
+                            for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
+                                PixelInfo info = block->pixelInfos[i];
+                                if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
+                                    canvas->pixels[info.y*canvas->w + info.x] = info.thisColor;
+                                }
                             }
                         }
+                    } else if(block->type == UNDO_REDO_FRAME_DELETE || block->type == UNDO_REDO_FRAME_CREATE) {
+                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+                        Frame *f = tab->frames + block->frameInfo.frameIndex;
+                        f->deleted =  (block->type == UNDO_REDO_FRAME_CREATE) ? false : true;
+                        tab->activeFrame = block->frameInfo.afterActiveLayer;
+                    } else if(block->type == UNDO_REDO_CANVAS_CREATE || block->type == UNDO_REDO_FRAME_DELETE ) {
+                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+                        Frame *f = tab->frames + block->frameInfo.frameIndex;
+                        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
+                        Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
+                        canvas->deleted =  (block->type == UNDO_REDO_CANVAS_CREATE) ? false : true;
+                        f->activeLayer = block->frameInfo.afterActiveLayer;
+                        
                     }
                     tab->undoList = block;
                 }
@@ -955,7 +990,7 @@ u32 *getCompositePixelsForFrame_shortTerm(CanvasTab *t, Frame *f) {
     u32 *compositePixels = pushArray(&globalPerFrameArena, t->w*t->h, u32);
 
     for (int j = 0; j < getArrayLength(f->layers); j++) {
-        if(f->layers[j].visible) {
+        if(f->layers[j].visible && !f->layers[j].deleted) {
             for(int y = 0; y < t->h; y++) {
                 for(int x = 0; x < t->w; x++) {
                     u32 compositeIndex = y*t->w + x;
@@ -978,27 +1013,30 @@ void updateGpuCanvasTextures(GameState *gameState) {
 
     for (int i = 0; i < getArrayLength(t->frames); i++) {
         Frame *f = t->frames + i;
+
+        if(!f->deleted) {
         
-        updateFrameGPUHandles(f, t);
+            updateFrameGPUHandles(f, t);
 
-        //NOTE: Draw to a frame buffer all the images 
-        glBindTexture(GL_TEXTURE_2D, f->gpuHandle);
-        renderCheckError();
+            //NOTE: Draw to a frame buffer all the images 
+            glBindTexture(GL_TEXTURE_2D, f->gpuHandle);
+            renderCheckError();
 
-        u32 *compositePixels = getCompositePixelsForFrame_shortTerm(t, f);
+            u32 *compositePixels = getCompositePixelsForFrame_shortTerm(t, f);
 
-        glTexSubImage2D(
-                GL_TEXTURE_2D,  // Target
-                0,              // Mipmap level (0 for base level)
-                0, 0,           // X and Y offset (update from the top-left corner)
-                t->w, t->h,  // Width and height of the new data
-                GL_RGBA,        // Format of the pixel data
-                GL_UNSIGNED_BYTE, // Data type
-                compositePixels    // Pointer to new pixel data
-            );
-        renderCheckError();
+            glTexSubImage2D(
+                    GL_TEXTURE_2D,  // Target
+                    0,              // Mipmap level (0 for base level)
+                    0, 0,           // X and Y offset (update from the top-left corner)
+                    t->w, t->h,  // Width and height of the new data
+                    GL_RGBA,        // Format of the pixel data
+                    GL_UNSIGNED_BYTE, // Data type
+                    compositePixels    // Pointer to new pixel data
+                );
+            renderCheckError();
 
-        glBindTexture(GL_TEXTURE_2D, 0);
-        renderCheckError();
+            glBindTexture(GL_TEXTURE_2D, 0);
+            renderCheckError();
+        }
     }
 }

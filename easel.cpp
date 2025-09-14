@@ -133,7 +133,16 @@ void CanvasTab::addUndoInfo(PixelInfo info) {
     currentUndoBlock->addPixelInfo(info);
 }
 
+void CanvasTab::addUndoInfo(FrameInfo info) {
+    if(!currentUndoBlock) {
+        addUndoRedoBlock(this);
+    }
+    assert(currentUndoBlock);
+    currentUndoBlock->addFrameInfo(info);
 
+    //NOTE: Clear this undo block straight away
+    this->currentUndoBlock = 0;
+}
 
 void CanvasTab::dispose() {
     //TODO: Clear the undo list 

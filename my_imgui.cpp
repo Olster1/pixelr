@@ -99,8 +99,16 @@ void drawTabs(GameState *state) {
           ++i;
         }
       }
-      
-  
+}
+
+int getActiveCanvasCount(Frame *frame) { 
+  int result = 0;
+  for (int i = 0; i < getArrayLength(frame->layers); i++) {
+    if(!frame->layers[i].deleted) {
+      result++;
+    }
+  }
+  return result;
 }
 
 void drawAnimationTimeline(GameState *state, float deltaTime) {
@@ -125,13 +133,19 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
       ImGui::SameLine();
       if (ImGui::Button("\uf1f8 Delete Frame")) {
           if(getArrayLength(canvasTab->frames) > 1) {
-            //TODO: Delete the frame add to undo list
-            canvasTab->frames[canvasTab->activeFrame].dispose();
-            removeArrayAtIndex(canvasTab->frames, canvasTab->activeFrame);
+            canvasTab->frames[canvasTab->activeFrame].deleted = true;
+            FrameInfo frameUndoInfo = {};
+            frameUndoInfo.canvasType = UNDO_REDO_FRAME_DELETE;
+            frameUndoInfo.frameIndex = canvasTab->activeFrame;
+            frameUndoInfo.beforeActiveLayer = canvasTab->activeFrame;
+             
             canvasTab->activeFrame--;
             if(canvasTab->activeFrame < 0) {
               canvasTab->activeFrame = 0;
             }
+            frameUndoInfo.afterActiveLayer = canvasTab->activeFrame;
+
+            canvasTab->addUndoInfo(frameUndoInfo);
           }
       }
 
@@ -140,9 +154,12 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
       // Display all frames in a row
       if (getArrayLength(canvasTab->frames) > 0) {
         ImGui::Text("Frames:");
-    
+        
+        int addedIndex = 0;
         for (int i = 0; i < getArrayLength(canvasTab->frames); i++) {
-            if (i > 0) ImGui::SameLine(); // Keep frames on the same line
+          Frame *frame = canvasTab->frames + i;
+          if(!frame->deleted) {
+            if (addedIndex > 0) ImGui::SameLine(); // Keep frames on the same line
     
             ImVec2 imageSize(64, 64); // Adjust as needed
             ImVec2 cursorPos = ImGui::GetCursorScreenPos();
@@ -177,6 +194,8 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
                     0.0f, 0, 2.0f // Thickness
                 );
             }
+            addedIndex++;
+          }
         }
     }
 
@@ -195,22 +214,29 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
           Frame *f = pushArrayItem(&canvasTab->frames, f_, Frame);
           Frame *activeFrame = getActiveFrame(state);
           if(activeFrame && canvasTab->copyFrameOnAdd) {
+            int addedIndex = 0;
             for(int j = 0; j < getArrayLength(activeFrame->layers); ++j) {
-              if(j > 0) {
-                //NOTE: Creating a frame automatically adds a canvas, so use that one first
-                Canvas newCanvas = Canvas(canvasTab->w, canvasTab->h);
-                pushArrayItem(&f->layers, newCanvas, Canvas);
+              if(!activeFrame->layers[j].deleted) {
+                if(addedIndex > 0) {
+                  //NOTE: Creating a frame automatically adds a canvas, so use that one first
+                  Canvas newCanvas = Canvas(canvasTab->w, canvasTab->h);
+                  pushArrayItem(&f->layers, newCanvas, Canvas);
+                }
+                easyPlatform_copyMemory(f->layers[j].pixels, activeFrame->layers[j].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
+                addedIndex++;
               }
-              easyPlatform_copyMemory(f->layers[j].pixels, activeFrame->layers[j].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
               
             }
             updateGpuCanvasTextures(state);
-            printf("%d\n", getArrayLength(activeFrame->layers));
-            printf("%d\n", getArrayLength(f->layers));
           }
 
-          
+          FrameInfo frameUndoInfo = {};
+          frameUndoInfo.canvasType = UNDO_REDO_FRAME_CREATE;
+          frameUndoInfo.frameIndex = getArrayLength(canvasTab->frames) - 1;
+          frameUndoInfo.beforeActiveLayer = canvasTab->activeFrame;
           canvasTab->activeFrame = getArrayLength(canvasTab->frames) - 1;
+          frameUndoInfo.afterActiveLayer = canvasTab->activeFrame;
+          canvasTab->addUndoInfo(frameUndoInfo);
       }
 
       // Animation playback logic
@@ -249,63 +275,77 @@ void drawLayersWindow(GameState *state, float deltaTime) {
         ImGui::Text("Layers:");
         ImGui::BeginTable("Layers Table", 2);
         for (int i = 0; i < getArrayLength(activeFrame->layers); i++) {
+            if(!activeFrame->layers[i].deleted) {
            
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
+              ImGui::TableNextRow();
+              ImGui::TableNextColumn();
 
-            ImVec2 imageSize(64, 64); // Adjust as needed
-            ImVec2 cursorPos = ImGui::GetCursorScreenPos();
-            
-            // Make a button that overlays the image so we can detect clicks
-            ImGui::PushID(i); // Unique ID for each frame
-            if (ImGui::InvisibleButton("##frame", imageSize)) {
-                activeFrame->activeLayer = i; // Change current layer
-            }
-            ImGui::PopID();
-    
-            // Get the position where the image will be drawn
-            ImVec2 imagePos = cursorPos;  
+              ImVec2 imageSize(64, 64); // Adjust as needed
+              ImVec2 cursorPos = ImGui::GetCursorScreenPos();
+              
+              // Make a button that overlays the image so we can detect clicks
+              ImGui::PushID(i); // Unique ID for each frame
+              if (ImGui::InvisibleButton("##frame", imageSize)) {
+                  activeFrame->activeLayer = i; // Change current layer
+              }
+              ImGui::PopID();
+      
+              // Get the position where the image will be drawn
+              ImVec2 imagePos = cursorPos;  
 
-            // Get the draw list
-            ImDrawList* drawList = ImGui::GetWindowDrawList();
+              // Get the draw list
+              ImDrawList* drawList = ImGui::GetWindowDrawList();
 
-            // Draw a white background rectangle
-            drawList->AddRectFilled(imagePos, ImVec2(imagePos.x + imageSize.x, imagePos.y + imageSize.y), IM_COL32(255, 255, 255, 255));
+              // Draw a white background rectangle
+              drawList->AddRectFilled(imagePos, ImVec2(imagePos.x + imageSize.x, imagePos.y + imageSize.y), IM_COL32(255, 255, 255, 255));
 
-            // Draw the image on top
-            ImGui::SetCursorScreenPos(imagePos); // Reset position to draw the image
-            ImGui::Image((ImTextureID)(intptr_t)activeFrame->layers[i].gpuHandle, imageSize, ImVec2(0, 1), ImVec2(1, 0));
-    
-            // Draw border if this is the current frame
-            if (i == activeFrame->activeLayer) {
-                ImGui::GetWindowDrawList()->AddRect(
-                    cursorPos, ImVec2(cursorPos.x + imageSize.x, cursorPos.y + imageSize.y),
-                    IM_COL32(255, 255, 0, 255), // Yellow border
-                    0.0f, 0, 2.0f // Thickness
-                );
-            }
+              // Draw the image on top
+              ImGui::SetCursorScreenPos(imagePos); // Reset position to draw the image
+              ImGui::Image((ImTextureID)(intptr_t)activeFrame->layers[i].gpuHandle, imageSize, ImVec2(0, 1), ImVec2(1, 0));
+      
+              // Draw border if this is the current frame
+              if (i == activeFrame->activeLayer) {
+                  ImGui::GetWindowDrawList()->AddRect(
+                      cursorPos, ImVec2(cursorPos.x + imageSize.x, cursorPos.y + imageSize.y),
+                      IM_COL32(255, 255, 0, 255), // Yellow border
+                      0.0f, 0, 2.0f // Thickness
+                  );
+              }
 
-            ImGui::TableNextColumn();
-            ImGui::PushID(i);  
-            if (ImGui::Button("\uf1f8")) {
-              if(getArrayLength(activeFrame->layers) > 1) {
-                //TODO: Delete the frame add to undo list
-                activeFrame->layers[activeFrame->activeLayer].dispose();
-                removeArrayAtIndex(activeFrame->layers, activeFrame->activeLayer);
-                activeFrame->activeLayer--;
-                if(activeFrame->activeLayer < 0) {
-                  activeFrame->activeLayer = 0;
+              ImGui::TableNextColumn();
+              ImGui::PushID(i);  
+              if (ImGui::Button("\uf1f8")) {
+                //NOTE: Delete the canvas
+                if(getActiveCanvasCount(activeFrame) > 1) {
+                  FrameInfo frameUndoInfo = {};
+                  activeFrame->layers[i].deleted = true;
+                  frameUndoInfo.canvasType = UNDO_REDO_CANVAS_DELETE;
+                  frameUndoInfo.frameIndex = canvasTab->activeFrame;
+                  frameUndoInfo.canvasIndex = i;
+                  
+                  frameUndoInfo.beforeActiveLayer = activeFrame->activeLayer;
+                  
+                  if(i >= activeFrame->activeLayer) {
+                    activeFrame->activeLayer--;
+                  }
+                  if(activeFrame->activeLayer < 0) {
+                    activeFrame->activeLayer = 0;
+                  }
+
+                  frameUndoInfo.afterActiveLayer = activeFrame->activeLayer;
+
+                  canvasTab->addUndoInfo(frameUndoInfo);
                 }
               }
-            }
-            ImGui::PopID();
-            ImGui::PushID(i);  
-            if (ImGui::Button((activeFrame->layers[i].visible) ? "\uf06e" : "\uf070")) {
-              activeFrame->layers[i].visible = !activeFrame->layers[i].visible;
-              updateGpuCanvasTextures(state);
+              ImGui::PopID();
+              ImGui::PushID(i);  
+              if (ImGui::Button((activeFrame->layers[i].visible) ? "\uf06e" : "\uf070")) {
+                activeFrame->layers[i].visible = !activeFrame->layers[i].visible;
+                updateGpuCanvasTextures(state);
 
+              }
+              ImGui::PopID();
             }
-            ImGui::PopID();
           }
       }
       ImGui::EndTable();
@@ -318,8 +358,15 @@ void drawLayersWindow(GameState *state, float deltaTime) {
           //   easyPlatform_copyMemory(f.layers[0].pixels, activeFrame->layers[0].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
             updateGpuCanvasTextures(state);
           // }
-          
+
+          FrameInfo frameUndoInfo = {};
+          frameUndoInfo.canvasType = UNDO_REDO_CANVAS_CREATE;
+          frameUndoInfo.frameIndex = canvasTab->activeFrame;
+          frameUndoInfo.canvasIndex = getArrayLength(activeFrame->layers) - 1; 
+          frameUndoInfo.beforeActiveLayer = activeFrame->activeLayer;
           activeFrame->activeLayer = getArrayLength(activeFrame->layers) - 1;
+          frameUndoInfo.afterActiveLayer = activeFrame->activeLayer;
+          canvasTab->addUndoInfo(frameUndoInfo);
       }
 
       ImGui::End();

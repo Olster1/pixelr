@@ -11,6 +11,21 @@ float4 u32_to_float4_color(u32 c) {
     return make_float4(r, g, b, a);
 }
 
+enum UndoRedoBlockType {
+    UNDO_REDO_PIXELS,
+    UNDO_REDO_CANVAS_DELETE,
+    UNDO_REDO_FRAME_DELETE,
+    UNDO_REDO_CANVAS_CREATE,
+    UNDO_REDO_FRAME_CREATE,
+};
+
+struct FrameInfo {
+    UndoRedoBlockType canvasType;
+    int frameIndex;
+    int canvasIndex; //NOTE: Only relevant if the type is CANVAS_TYPE_CANVAS
+    int afterActiveLayer;
+    int beforeActiveLayer;
+};
 
 struct PixelInfo {
     int x; 
@@ -120,8 +135,10 @@ struct Clipboard {
 struct UndoRedoBlock {
     //NOTE: The canvas the block is talking about
     EntityID canvasId; //NOTE: Lives on the long term storeage
+    UndoRedoBlockType type = UNDO_REDO_PIXELS;
 
     PixelInfo *pixelInfos = 0; //NOTE: Resize array 
+    FrameInfo frameInfo; //NOTE: If the undo type is a frame or canvas - determined if the pixelInfos == 0
 
     bool isSentintel = false;
 
@@ -132,7 +149,14 @@ struct UndoRedoBlock {
         this->canvasId = canvasId;
     }
 
+    void addFrameInfo(FrameInfo info) {
+        assert(!pixelInfos);
+        type = info.canvasType;
+        this->frameInfo = info;
+    }
+
     void addPixelInfo(PixelInfo info) {
+        type = UNDO_REDO_PIXELS;
         if(!pixelInfos) {
             pixelInfos = initResizeArray(PixelInfo);
         }
@@ -179,6 +203,8 @@ struct PlayBackAnimation {
 struct Canvas {
     EntityID id;
 
+    bool deleted = false; //NOTE: For the undo system we keep all the canvases active, we just say it's deleted
+
     u32 gpuHandle = 0;
     u32 *pixels = 0;
     int w = 0;
@@ -199,8 +225,6 @@ struct Canvas {
         }
 
         gpuHandle = createGPUTexture(w, h, pixels).handle;
-
-        
     }
 
     void dispose() {
@@ -219,6 +243,8 @@ struct Canvas {
 struct Frame {
     Canvas *layers = 0;
     int activeLayer = 0;
+
+    bool deleted = false; //NOTE: For the undo system we keep all the canvases active, we just say it's deleted
 
     u32 gpuHandle = 0;
 
@@ -291,6 +317,7 @@ struct CanvasTab {
     void addColorToPalette(u32 color);
 
     void addUndoInfo(PixelInfo info);
+    void addUndoInfo(FrameInfo info);
 
 
 

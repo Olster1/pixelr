@@ -19,8 +19,8 @@ void updateGame(GameState *gameState) {
     
    CanvasTab *t = getActiveCanvasTab(gameState);
    if(t) {
-    drawCanvasGridBackground(gameState, getActiveCanvas(gameState), getActiveCanvasTab(gameState));
-   drawLinedGrid(gameState, getActiveCanvas(gameState));
+        drawCanvasGridBackground(gameState, getActiveCanvas(gameState), getActiveCanvasTab(gameState));
+        drawLinedGrid(gameState, getActiveCanvas(gameState));
         {
         
             if(t && getArrayLength(t->frames) > 0) {
