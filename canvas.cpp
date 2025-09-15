@@ -829,24 +829,6 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
     }
 }
 
-void updateEraser(GameState *gameState, Canvas *canvas) {
-    CanvasTab *tab = getActiveCanvasTab(gameState);
-
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN) {
-        float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
-        
-        
-        for(int y = 0; y < tab->eraserSize; y++) {
-            for(int x = 0; x < tab->eraserSize; x++) {
-                float px = (canvasP.x - 0.5f*(tab->eraserSize == 1 ? 0 : tab->eraserSize)) + x;
-                float py = (canvasP.y - 0.5f*(tab->eraserSize == 1 ? 0 : tab->eraserSize)) + y;
-                setCanvasColor(tab, canvas, px, py, 0x00FFFFFF, tab->opacity, false);
-            }
-        }
-    }
-}
-
-
 void updateCanvasMove(GameState *gameState) {
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
         //NOTE: Move the canvas
@@ -912,7 +894,30 @@ void updateCanvasSelect(GameState *gameState, CanvasTab *canvas) {
     }
 }
 
-void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
+void setCanvasColorWithBrushSize(CanvasTab *tab, Canvas *canvas, u32 color, int centerX, int centerY, bool erase) {
+    int brushSize = tab->eraserSize; //NOTE: Uses the same slider as the eraser size slider
+    int halfBrushSize = floor(0.5f*(brushSize == 1 ? 0 : brushSize));
+
+    //NOTE: If even number prioritise upper right corner placement 
+    if(((brushSize % 2) == 0) && halfBrushSize > 0) {
+        halfBrushSize -= 1;
+    }
+
+    int startBrushX = centerX - halfBrushSize;
+    int startBrushY = centerY - halfBrushSize;
+
+    for(int brushY = 0; brushY < brushSize; brushY++) {
+        for(int brushX = 0; brushX < brushSize; brushX++) {
+            int x = startBrushX + brushX;
+            int y = startBrushY + brushY;
+            if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h) {
+                setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase);
+            }
+        }
+    }
+}
+
+void updateCanvasDraw(GameState *gameState, Canvas *canvas, bool erase = false) {
     CanvasTab *tab = getActiveCanvasTab(gameState);
     if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
                
@@ -920,40 +925,40 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas) {
 
         const int coordX = a.x;
         const int coordY = a.y;
+
+        u32 color = !erase ? float4_to_u32_color(tab->colorPicked) : 0x00FFFFFF;
        
-         //NOTE: So there is always a continous line, even when the user is painting fast
-         if(gameState->paintActive) {
-             //NOTE: Fill in from the last one
-             float2 endP = make_float2(coordX, coordY);
-             float2 distance = minus_float2(endP, gameState->lastPaintP);
-             float2 addend = scale_float2(VOXEL_SIZE_IN_METERS, normalize_float2(distance));
+        //NOTE: So there is always a continous line, even when the user is painting fast
+        if(gameState->paintActive) {
+            //NOTE: Fill in from the last frames movement - essentitally lerp between last Position and this position, filling in the pixels
+            float2 endP = make_float2(coordX, coordY);
+            float2 distance = minus_float2(endP, gameState->lastPaintP);
 
-             float2 startP = plus_float2(gameState->lastPaintP, addend);//NOTE: Move past the one we just did last turn
-             
-             u32 color = float4_to_u32_color(tab->colorPicked);
-             while(float2_dot(minus_float2(startP, endP), minus_float2(gameState->lastPaintP, endP)) >= 0 && (float2_magnitude(addend) > 0)) {
-                 int x1 = startP.x;
-                 int y1 = startP.y;
-                 if(y1 >= 0 && x1 >= 0 && y1 < canvas->h && x1 < canvas->w) {
-                     if(!(x1 == coordX && y1 == coordY)) 
-                     { //NOTE: Don't color the one were about to do after this loop
-                        setCanvasColor(tab, canvas, x1, y1, color, tab->opacity);
-                     }
-                 }
+            int brushSize = tab->eraserSize; //NOTE: Uses the same slider as the eraser size slider
+            float2 addend = scale_float2(VOXEL_SIZE_IN_METERS*brushSize, normalize_float2(distance));
 
-                 startP = plus_float2(startP, addend);
-             }
-         }
+            float2 startP = plus_float2(gameState->lastPaintP, addend);//NOTE: Move past the one we just did last turn
+            
+            int loopCount = 0; //NOTE: To avoid any chance of an infinite loop
+            while(float2_dot(minus_float2(startP, endP), minus_float2(gameState->lastPaintP, endP)) >= 0 && (float2_magnitude(addend) > 0) && loopCount < 1000) {
+                //NOTE: Draw the brush size
+                setCanvasColorWithBrushSize(tab, canvas, color, startP.x, startP.y, erase);
+
+                startP = plus_float2(startP, addend);
+                loopCount++;
+            }
+        } else {
+            //NOTE: Not dragging the paint brush so don't need to lerp between end and start points
+            setCanvasColorWithBrushSize(tab, canvas, color, coordX, coordY, erase);
+        }
            
-         if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
-             u32 color = float4_to_u32_color(tab->colorPicked);
-             
-             setCanvasColor(tab, canvas, coordX, coordY, color, tab->opacity);
-         }
+        gameState->paintActive = true;
+        gameState->lastPaintP = make_float2(coordX, coordY);
+    }
+}
 
-         gameState->paintActive = true;
-         gameState->lastPaintP = make_float2(coordX, coordY);
-     }
+void updateEraser(GameState *gameState, Canvas *canvas) {
+    updateCanvasDraw(gameState, canvas, true);
 }
 
 void showNewCanvas(GameState *gameState) {

@@ -738,7 +738,9 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
             ImGui::Checkbox("Check Background", &tab->checkBackground);
             // ImGui::Checkbox("nearest", &state->nearest);
             // ImGui::Checkbox("Draw Grid", &state->drawGrid); 
-            ImGui::SliderFloat("Eraser", &tab->eraserSize, 1.0f, 100.0f);
+            int brushSize = tab->eraserSize;
+            ImGui::SliderInt((state->interactionMode != CANVAS_ERASE_MODE) ? "Brush Size" : "Eraser Size", &brushSize, 1, 100);
+            tab->eraserSize = brushSize;
             
             ImGui::Checkbox("SELECT", &state->selectMode);
 
