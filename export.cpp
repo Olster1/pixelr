@@ -13,6 +13,42 @@ void saveFileToPNG(Frame *frame, CanvasTab *tab) {
     int writeResult = stbi_write_png(name, tab->w, tab->h, 4, getCompositePixelsForFrame_shortTerm(tab, frame), stride_in_bytes);
 }
 
+void loadPngColorPalette(CanvasTab *tab, bool clearPalette) {
+    const char *filterPatterns[] = { "*.png",};
+    const char *filePath = tinyfd_openFileDialog(
+        "Load Color Palette",         // Dialog title
+        "",                    // Default path
+        1,                     // Number of filters
+        filterPatterns,        // Filters
+        "PNG files only",    // Filter description
+        0                      // Allow multiple selection (0 = No, 1 = Yes)
+    );
+    
+    if (filePath) {
+            
+        stbi_set_flip_vertically_on_load(1);
+        int w = 0;
+        int h = 0;
+        int nrChannels = 0;
+        u32 *data = (u32 *)stbi_load(filePath, &w, &h, &nrChannels, STBI_rgb_alpha);
+
+        if(data) {
+            if(clearPalette) {
+                tab->palletteCount = 0;
+            }
+
+            for(int y = 0; y < h; ++y) {
+                for(int x = 0; x < w; ++x) {
+                    tab->addColorToPalette(data[y*w + x]);
+                }
+            }
+            stbi_image_free(data);
+        }
+        stbi_set_flip_vertically_on_load(0);
+    }
+
+}
+
 void openSpriteSheet(GameState *gameState, int w, int h) {
     const char *filterPatterns[] = { "*.png",};
     const char *filePath = tinyfd_openFileDialog(

@@ -782,11 +782,21 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                         f->deleted = (block->type == UNDO_REDO_FRAME_CREATE) ? true : false;
                         tab->activeFrame = block->frameInfo.beforeActiveLayer;
                     } else if(block->type == UNDO_REDO_CANVAS_DELETE || block->type == UNDO_REDO_CANVAS_CREATE) {
-                         assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
                         Frame *f = tab->frames + block->frameInfo.frameIndex;
                         assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
                         Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
                         canvas->deleted = (block->type == UNDO_REDO_CANVAS_CREATE) ? true : false;
+                        f->activeLayer = block->frameInfo.beforeActiveLayer;
+                    } else if(block->type == UNDO_REDO_CANVAS_SWAP) {
+                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+                        Frame *f = tab->frames + block->frameInfo.frameIndex;
+                        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
+                        Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
+                        Canvas *canvasB = f->layers + block->frameInfo.canvasIndexB;
+                        Canvas temp = *canvas;
+                        *canvas = *canvasB;
+                        *canvasB = temp;
                         f->activeLayer = block->frameInfo.beforeActiveLayer;
                     }
                     tab->undoList = block->next;
@@ -821,6 +831,16 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                         canvas->deleted =  (block->type == UNDO_REDO_CANVAS_CREATE) ? false : true;
                         f->activeLayer = block->frameInfo.afterActiveLayer;
                         
+                    } else if(block->type == UNDO_REDO_CANVAS_SWAP) {
+                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+                        Frame *f = tab->frames + block->frameInfo.frameIndex;
+                        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
+                        Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
+                        Canvas *canvasB = f->layers + block->frameInfo.canvasIndexB;
+                        Canvas temp = *canvasB;
+                        *canvasB = *canvas;
+                        *canvas = temp;
+                        f->activeLayer = block->frameInfo.afterActiveLayer;
                     }
                     tab->undoList = block;
                 }
@@ -910,7 +930,14 @@ void setCanvasColorWithBrushSize(CanvasTab *tab, Canvas *canvas, u32 color, int 
         for(int brushX = 0; brushX < brushSize; brushX++) {
             int x = startBrushX + brushX;
             int y = startBrushY + brushY;
-            if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h) {
+
+            bool inBounds = true;
+            if(tab->brushShape == BRUSH_SHAPE_CIRCLE) {
+                float lenSqr = float2_magnitude_sqr(minus_float2(make_float2(x, y), make_float2(centerX, centerY)));
+                inBounds = lenSqr <= halfBrushSize*halfBrushSize;
+            } 
+
+            if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h && inBounds) {
                 setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase);
             }
         }

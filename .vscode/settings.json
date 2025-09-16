@@ -30,6 +30,8 @@
         "queue": "cpp",
         "stack": "cpp",
         "deque": "cpp",
-        "sstream": "cpp"
+        "sstream": "cpp",
+        "__split_buffer": "cpp",
+        "initializer_list": "cpp"
     }
 }

@@ -17,12 +17,14 @@ enum UndoRedoBlockType {
     UNDO_REDO_FRAME_DELETE,
     UNDO_REDO_CANVAS_CREATE,
     UNDO_REDO_FRAME_CREATE,
+    UNDO_REDO_CANVAS_SWAP
 };
 
 struct FrameInfo {
     UndoRedoBlockType canvasType;
     int frameIndex;
     int canvasIndex; //NOTE: Only relevant if the type is CANVAS_TYPE_CANVAS
+    int canvasIndexB; //NOTE: Only relevant if the type is CANVAS_TYPE_CANVAS_SWAP
     int afterActiveLayer;
     int beforeActiveLayer;
 };
@@ -273,6 +275,11 @@ struct Frame {
 
 };
 
+enum BrushShapeType {
+    BRUSH_SHAPE_RECTANGLE,
+    BRUSH_SHAPE_CIRCLE
+};
+
 #define MAX_PALETTE_COUNT 1028
 struct CanvasTab {
     Frame *frames = 0;
@@ -301,6 +308,7 @@ struct CanvasTab {
     float savedOpacity = 1;//NOTE: When we make a select shape we save the opactiy to reset it to once they finished the select shape editing, so it isn't annoying having to keep chaning the opacity value.
     bool checkBackground = true;
     float eraserSize = 1;
+    BrushShapeType brushShape = BRUSH_SHAPE_RECTANGLE;
     int onionSkinningFrames = 0;
     bool copyFrameOnAdd;;
 

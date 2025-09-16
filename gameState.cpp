@@ -153,6 +153,8 @@ struct GameState {
     KeyStates keys;
     char *droppedFilePath;
 
+    bool clearPaletteOnLoad;
+
     AOOffset aoOffsets[24];
     float3 cardinalOffsets[6];
 

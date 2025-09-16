@@ -956,6 +956,10 @@ float float3_magnitude_sqr(float3 v) {
 	float result = (v.x*v.x + v.y*v.y + v.z*v.z); 
 	return result;
 }
+float float2_magnitude_sqr(float2 v) {
+	float result = (v.x*v.x + v.y*v.y); 
+	return result;
+}
 
 float float3_magnitude(float3 v) {
 	float result = (v.x*v.x + v.y*v.y + v.z*v.z); 
