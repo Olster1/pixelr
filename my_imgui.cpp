@@ -111,6 +111,18 @@ int getActiveCanvasCount(Frame *frame) {
   return result;
 }
 
+void drawChip(char *chipTitle) {
+  ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(200, 200, 255, 255));  // background
+  ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(170, 170, 230, 255));
+  ImGui::PushStyleColor(ImGuiCol_ButtonActive, IM_COL32(150, 150, 210, 255));
+
+  if (ImGui::Button(chipTitle)) {
+      
+  }
+
+  ImGui::PopStyleColor(3);
+}
+
 void drawAnimationTimeline(GameState *state, float deltaTime) {
 
     CanvasTab *canvasTab = getActiveCanvasTab(state);
@@ -422,6 +434,12 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
 ImGui::EndTable();
 }
 
+void imgui_createNewCanvasFromSize(GameState *gameState, int w, int h) {
+  CanvasTab tab = CanvasTab(w, h, easyString_copyToHeap("Untitled"));
+  pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
+  gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+  gameState->showNewCanvasWindow = false;
+}
 
 void drawLayersWindow(GameState *state, float deltaTime) {
 
@@ -513,14 +531,38 @@ void updateNewCanvasWindow(GameState *gameState) {
     }
     ImGui::InputText("Width", gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0));
     ImGui::InputText("Height", gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1));
+    ImGui::Spacing();    
+    if (ImGui::Button("16 x 16")) {
+      imgui_createNewCanvasFromSize(gameState, 16, 16);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("32 x 32")) {
+      imgui_createNewCanvasFromSize(gameState, 32, 32);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("64 x 64")) {
+      imgui_createNewCanvasFromSize(gameState, 64, 64);
+    }
+    if (ImGui::Button("128 x 128")) {
+      imgui_createNewCanvasFromSize(gameState, 128, 128);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("192 x 192")) {
+      imgui_createNewCanvasFromSize(gameState, 192, 192);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("256 x 256")) {
+      imgui_createNewCanvasFromSize(gameState, 256, 256);
+    }
+    if (ImGui::Button("512 x 512")) {
+      imgui_createNewCanvasFromSize(gameState, 512, 512);
+    }
+    ImGui::Spacing();    
+    ImGui::Spacing();    
     if (ImGui::Button("Create")) {
       int w = atoi(gameState->dimStr0);
       int h = atoi(gameState->dimStr1);
-      CanvasTab tab = CanvasTab(w, h, easyString_copyToHeap("Untitled"));
-      pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
-      gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
-
-       gameState->showNewCanvasWindow = false;
+      imgui_createNewCanvasFromSize(gameState, w, h);
     }
 
     ImGui::End();

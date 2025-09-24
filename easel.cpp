@@ -63,11 +63,12 @@ CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
 
     u32 *checkData = (u32 *)pushArray(&globalPerFrameArena, w*h, u32);
 
+    int checkerWidth = w / 16;
     //TODO: This should just be a shader that does this
     for(int y = 0; y < h; ++y) {
         for(int x = 0; x < w; ++x) {
             float4 c = make_float4(0.8f, 0.8f, 0.8f, 1);
-            if(((y % 2) == 0 && (x % 2) == 1) || ((y % 2) == 1 && (x % 2) == 0)) {
+            if((((y / checkerWidth) % 2) == 0 && ((x / checkerWidth) % 2) == 1) || (((y/ checkerWidth) % 2) == 1 && ((x/ checkerWidth) % 2) == 0)) {
                 c = make_float4(0.6f, 0.6f, 0.6f, 1);
             }
             checkData[y*w + x] = float4_to_u32_color(c);

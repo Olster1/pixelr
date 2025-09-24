@@ -756,6 +756,88 @@ Canvas *getCanvasForUndoBlock(CanvasTab *tab, UndoRedoBlock *block) {
     return canvas;
 }
 
+
+void updateFrameGPUHandles(Frame *f, CanvasTab *t) {
+   
+    for (int j = 0; j < getArrayLength(f->layers); j++) {
+        Canvas *c = f->layers + j;
+        assert(c->gpuHandle > 0);
+
+        glBindTexture(GL_TEXTURE_2D, c->gpuHandle);
+        renderCheckError();
+
+        glTexSubImage2D(
+            GL_TEXTURE_2D,  // Target
+            0,              // Mipmap level (0 for base level)
+            0, 0,           // X and Y offset (update from the top-left corner)
+            t->w, t->h,  // Width and height of the new data
+            GL_RGBA,        // Format of the pixel data
+            GL_UNSIGNED_BYTE, // Data type
+            c->pixels    // Pointer to new pixel data
+        );
+
+        renderCheckError();
+        glBindTexture(GL_TEXTURE_2D, 0);
+        renderCheckError();
+    }
+}
+
+u32 *getCompositePixelsForFrame_shortTerm(CanvasTab *t, Frame *f) {
+    u32 *compositePixels = pushArray(&globalPerFrameArena, t->w*t->h, u32);
+
+    for (int j = 0; j < getArrayLength(f->layers); j++) {
+        if(f->layers[j].visible && !f->layers[j].deleted) {
+            for(int y = 0; y < t->h; y++) {
+                for(int x = 0; x < t->w; x++) {
+                    u32 compositeIndex = y*t->w + x;
+                    assert(compositeIndex < t->h*t->w);
+                    if(compositeIndex < t->h*t->w) {
+                        float4 colorA = u32_to_float4_color(compositePixels[compositeIndex]);
+                        float4 colorB = u32_to_float4_color(f->layers[j].pixels[compositeIndex]);
+                        float4 newColor = getBlendedColor(colorA, colorB);
+                        compositePixels[compositeIndex] = float4_to_u32_color(newColor);
+                    }
+                }
+            }
+        }
+    }
+    return compositePixels;
+}
+
+void updateGpuCanvasTextures(GameState *gameState) {
+    CanvasTab *t = getActiveCanvasTab(gameState);
+
+    for (int i = 0; i < getArrayLength(t->frames); i++) {
+        Frame *f = t->frames + i;
+
+        if(!f->deleted) {
+        
+            updateFrameGPUHandles(f, t);
+
+            //NOTE: Draw to a frame buffer all the images 
+            glBindTexture(GL_TEXTURE_2D, f->gpuHandle);
+            renderCheckError();
+
+            u32 *compositePixels = getCompositePixelsForFrame_shortTerm(t, f);
+
+            glTexSubImage2D(
+                    GL_TEXTURE_2D,  // Target
+                    0,              // Mipmap level (0 for base level)
+                    0, 0,           // X and Y offset (update from the top-left corner)
+                    t->w, t->h,  // Width and height of the new data
+                    GL_RGBA,        // Format of the pixel data
+                    GL_UNSIGNED_BYTE, // Data type
+                    compositePixels    // Pointer to new pixel data
+                );
+            renderCheckError();
+
+            glBindTexture(GL_TEXTURE_2D, 0);
+            renderCheckError();
+        }
+    }
+}
+
+
 void updateUndoState(GameState *gameState, bool undo = false, bool redo = false) {
     CanvasTab *tab = getActiveCanvasTab(gameState);
 
@@ -799,6 +881,7 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                         *canvasB = temp;
                         f->activeLayer = block->frameInfo.beforeActiveLayer;
                     }
+                    updateGpuCanvasTextures(gameState);
                     tab->undoList = block->next;
                 }
             }
@@ -842,6 +925,7 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                         *canvas = temp;
                         f->activeLayer = block->frameInfo.afterActiveLayer;
                     }
+                    updateGpuCanvasTextures(gameState);
                     tab->undoList = block;
                 }
             }
@@ -991,84 +1075,4 @@ void updateEraser(GameState *gameState, Canvas *canvas) {
 void showNewCanvas(GameState *gameState) {
     gameState->showNewCanvasWindow = true;
     gameState->autoFocus = true;
-}
-
-void updateFrameGPUHandles(Frame *f, CanvasTab *t) {
-   
-    for (int j = 0; j < getArrayLength(f->layers); j++) {
-        Canvas *c = f->layers + j;
-        assert(c->gpuHandle > 0);
-
-        glBindTexture(GL_TEXTURE_2D, c->gpuHandle);
-        renderCheckError();
-
-        glTexSubImage2D(
-            GL_TEXTURE_2D,  // Target
-            0,              // Mipmap level (0 for base level)
-            0, 0,           // X and Y offset (update from the top-left corner)
-            t->w, t->h,  // Width and height of the new data
-            GL_RGBA,        // Format of the pixel data
-            GL_UNSIGNED_BYTE, // Data type
-            c->pixels    // Pointer to new pixel data
-        );
-
-        renderCheckError();
-        glBindTexture(GL_TEXTURE_2D, 0);
-        renderCheckError();
-    }
-}
-
-u32 *getCompositePixelsForFrame_shortTerm(CanvasTab *t, Frame *f) {
-    u32 *compositePixels = pushArray(&globalPerFrameArena, t->w*t->h, u32);
-
-    for (int j = 0; j < getArrayLength(f->layers); j++) {
-        if(f->layers[j].visible && !f->layers[j].deleted) {
-            for(int y = 0; y < t->h; y++) {
-                for(int x = 0; x < t->w; x++) {
-                    u32 compositeIndex = y*t->w + x;
-                    assert(compositeIndex < t->h*t->w);
-                    if(compositeIndex < t->h*t->w) {
-                        float4 colorA = u32_to_float4_color(compositePixels[compositeIndex]);
-                        float4 colorB = u32_to_float4_color(f->layers[j].pixels[compositeIndex]);
-                        float4 newColor = getBlendedColor(colorA, colorB);
-                        compositePixels[compositeIndex] = float4_to_u32_color(newColor);
-                    }
-                }
-            }
-        }
-    }
-    return compositePixels;
-}
-
-void updateGpuCanvasTextures(GameState *gameState) {
-    CanvasTab *t = getActiveCanvasTab(gameState);
-
-    for (int i = 0; i < getArrayLength(t->frames); i++) {
-        Frame *f = t->frames + i;
-
-        if(!f->deleted) {
-        
-            updateFrameGPUHandles(f, t);
-
-            //NOTE: Draw to a frame buffer all the images 
-            glBindTexture(GL_TEXTURE_2D, f->gpuHandle);
-            renderCheckError();
-
-            u32 *compositePixels = getCompositePixelsForFrame_shortTerm(t, f);
-
-            glTexSubImage2D(
-                    GL_TEXTURE_2D,  // Target
-                    0,              // Mipmap level (0 for base level)
-                    0, 0,           // X and Y offset (update from the top-left corner)
-                    t->w, t->h,  // Width and height of the new data
-                    GL_RGBA,        // Format of the pixel data
-                    GL_UNSIGNED_BYTE, // Data type
-                    compositePixels    // Pointer to new pixel data
-                );
-            renderCheckError();
-
-            glBindTexture(GL_TEXTURE_2D, 0);
-            renderCheckError();
-        }
-    }
 }
