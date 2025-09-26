@@ -953,7 +953,15 @@ void updateCanvasMove(GameState *gameState) {
         gameState->canvasMoveDp.y *= 0.86f;
     }
 
-    gameState->camera.T.pos.xy = plus_float2(gameState->camera.T.pos.xy, gameState->canvasMoveDp);
+    float2 *cameraP = &gameState->camera.T.pos.xy;
+
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+    if(tab) {
+        cameraP = &tab->cameraP;
+    }
+
+    *cameraP = plus_float2(*cameraP, gameState->canvasMoveDp);
+    gameState->camera.T.pos.xy = *cameraP;
     gameState->startDragP = getMouseP01(gameState);
 }
 

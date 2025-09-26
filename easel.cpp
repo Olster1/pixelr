@@ -59,7 +59,14 @@ CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
     this->playback.frameTime = 0.2f;
 
     this->saveFilePath = saveFilePath_;
-    this->fileName = getFileLastPortion(saveFilePath);
+    char *fileName = 0;
+
+    if(saveFilePath_) {
+        fileName = getFileLastPortion(saveFilePath);
+    } else {
+        fileName = easyString_copyToHeap(easy_createString_printf(&globalPerFrameArena, "Untitled %d x %d", w, h));
+    }
+    this->fileName = fileName;
 
     u32 *checkData = (u32 *)pushArray(&globalPerFrameArena, w*h, u32);
 

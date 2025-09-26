@@ -286,6 +286,7 @@ struct CanvasTab {
     int activeFrame = 0;
 
     float zoomFactor = 5.0f;
+    float2 cameraP = {};
 
     PlayBackAnimation playback;
     int w = 0;
@@ -298,6 +299,7 @@ struct CanvasTab {
     char *saveFilePath = 0; //NOTE: Allocated on heap - need to free on dispose
     char *fileName = 0; //NOTE: Allocated on heap - need to free on dispose
 
+    UndoRedoBlock *savePositionUndoBlock = 0;
     UndoRedoBlock *undoList = 0;
     UndoRedoBlock *undoBlockFreeList = 0;
     UndoRedoBlock *currentUndoBlock = 0;
@@ -313,6 +315,7 @@ struct CanvasTab {
     bool copyFrameOnAdd;;
 
     bool isOpen = true; //NOTE: Used to close the tab
+    u32 uiTabSelectedFlag = 0;
 
     CanvasTab(int w, int h, char *saveFilePath_);
 

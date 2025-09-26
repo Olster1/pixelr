@@ -114,7 +114,7 @@ CanvasTab loadPixelrProject(const char *filePath) {
         return tab;
     } else {
         //NOTE: Return an empty one
-        return CanvasTab(16, 16, easyString_copyToHeap("Untitled"));
+        return CanvasTab(16, 16, 0);
     }
 }
 

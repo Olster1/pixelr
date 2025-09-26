@@ -55,7 +55,7 @@ void initGameState(GameState *gameState) {
 
     {
         gameState->canvasTabs = initResizeArray(CanvasTab);
-        CanvasTab tab = CanvasTab(16, 16, easyString_copyToHeap("Untitled"));
+        CanvasTab tab = CanvasTab(16, 16, 0);
         pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
         gameState->activeCanvasTab = 0;
     }

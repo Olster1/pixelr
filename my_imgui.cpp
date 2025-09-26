@@ -41,30 +41,43 @@ void drawTabs(GameState *state) {
       // Begin a window without decorations, keeping it at the top
       if (ImGui::Begin("Top Tab Bar", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground))
       {
-          if (ImGui::BeginTabBar("TopTabs"))
+          if (ImGui::BeginTabBar("TopTabs", ImGuiTabBarFlags_Reorderable))
           {
 
             for(int i = 0; i < getArrayLength(state->canvasTabs); ++i) {
               CanvasTab *t = state->canvasTabs + i;
 
-              char *id = easy_createString_printf(&globalPerFrameArena, "%s%d", (char *)t->fileName, i);
+              char *id = easy_createString_printf(&globalPerFrameArena, "%ld", t->frames);
               ImGui::PushID(id);
-            
-              if (ImGui::BeginTabItem(t->fileName, &t->isOpen))
+
+              u32 unsavedFlag = ImGuiTabItemFlags_UnsavedDocument;
+
+              //NOTE: Check if the tab is at a saved state
+              if(t->savePositionUndoBlock == t->undoList && t->saveFilePath) 
               {
-                if (ImGui::IsItemClicked()) 
+                unsavedFlag = 0;
+              }
+            
+              if (ImGui::BeginTabItem(t->fileName, &t->isOpen, t->uiTabSelectedFlag | unsavedFlag))
+              {
+                if (state->activeCanvasTab != i)
                 {
                     state->activeCanvasTab = i;
+                    CanvasTab *tab = getActiveCanvasTab(state);
+                    if(tab) {
+                      //NOTE: Reset the camera position
+                      state->camera.T.pos.xy = tab->cameraP;
+                      state->camera.fov = tab->zoomFactor;
+                    }
                 }
-                
               
                   ImGui::EndTabItem();
               }
+              //NOTE: Clear the ui selected flags now
+              t->uiTabSelectedFlag = 0;
 
               ImGui::PopID();
             } 
-
-           
   
               ImGui::EndTabBar();
 
@@ -94,6 +107,10 @@ void drawTabs(GameState *state) {
             if(state->activeCanvasTab < 0) {
               state->activeCanvasTab = 0;
             }
+          }
+          CanvasTab *tab = getActiveCanvasTab(state);
+          if(tab) {
+            tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
           }
         } else {
           ++i;
@@ -435,10 +452,15 @@ ImGui::EndTable();
 }
 
 void imgui_createNewCanvasFromSize(GameState *gameState, int w, int h) {
-  CanvasTab tab = CanvasTab(w, h, easyString_copyToHeap("Untitled"));
+  CanvasTab tab = CanvasTab(w, h, 0);
   pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
   gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
   gameState->showNewCanvasWindow = false;
+
+  CanvasTab *newTab = getActiveCanvasTab(gameState);
+  if(newTab) {
+    newTab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;  
+  }
 }
 
 void drawLayersWindow(GameState *state, float deltaTime) {
