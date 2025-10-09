@@ -309,8 +309,8 @@ struct CanvasTab {
     float opacity = 1;
     float savedOpacity = 1;//NOTE: When we make a select shape we save the opactiy to reset it to once they finished the select shape editing, so it isn't annoying having to keep chaning the opacity value.
     bool checkBackground = true;
-    float eraserSize = 1;
-    BrushShapeType brushShape = BRUSH_SHAPE_RECTANGLE;
+    float eraserSize = DEFAULT_ERASER_SIZE;
+    BrushShapeType brushShape = BRUSH_SHAPE_CIRCLE;
     int onionSkinningFrames = 0;
     bool copyFrameOnAdd;;
 
@@ -332,7 +332,7 @@ struct CanvasTab {
 
 
 
-void addUndoRedoBlock(CanvasTab *c, bool isSentintel = false);
+UndoRedoBlock *addUndoRedoBlock(CanvasTab *c, bool isSentintel = false);
  
     void dispose();
 };

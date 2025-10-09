@@ -73,6 +73,7 @@ void openSpriteSheet(GameState *gameState, int w, int h) {
                 CanvasTab tab_ = CanvasTab(w, h, name);
                 CanvasTab *tab = pushArrayItem(&gameState->canvasTabs, tab_, CanvasTab);
                 gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+                tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
 
                 int wCount = totalW / w;
                 int hCount = totalH / h;
@@ -180,9 +181,10 @@ void exportImport_loadPng(GameState *gameState, const char *filePath) {
             if(data) {
                 char *name = getFileLastPortionWithoutExtension((char *)filePath);
                 CanvasTab tab = CanvasTab(width, height, name);
+                tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
                 pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
                 gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
-                printf("%d\n", gameState->activeCanvasTab);
+                
 
                 Canvas *canvas = getActiveCanvas(gameState);
 
@@ -207,6 +209,7 @@ void checkFileDrop(GameState *gameState) {
             exportImport_loadPng(gameState, gameState->droppedFilePath);
         } else if(easyString_stringsMatch_nullTerminated(extension, "pixelr")) {
             CanvasTab tab = loadPixelrProject(gameState->droppedFilePath);
+            tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
             pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
             gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
         }

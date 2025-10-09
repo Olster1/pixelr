@@ -44,6 +44,7 @@
 #include "./export.cpp"
 #include "./flood_fill.cpp"
 #include "./premade_palette.cpp"
+#include "./my_imgui_toasts.cpp"
 #include "./my_imgui.cpp"
 #include "./hot_keys.cpp"
 

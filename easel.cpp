@@ -1,6 +1,10 @@
 
 
-void CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
+bool isCanvasTabSaved(CanvasTab *t) {
+    return ((t->savePositionUndoBlock == t->undoList) && t->saveFilePath);
+}
+
+UndoRedoBlock *CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
     UndoRedoBlock *block = 0;
     if(c->undoList) {
         //NOTE: Remove all of them off to start at a new undo redo point
@@ -42,6 +46,8 @@ void CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
 
     //NOTE: add it as the current block
     c->currentUndoBlock = block;
+
+    return block;
 }
 
 CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
@@ -57,13 +63,13 @@ CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
 
     this->playback = PlayBackAnimation();
     this->playback.frameTime = 0.2f;
-
-    this->saveFilePath = saveFilePath_;
+    
     char *fileName = 0;
-
     if(saveFilePath_) {
-        fileName = getFileLastPortion(saveFilePath);
+        this->saveFilePath = easyString_copyToHeap(saveFilePath_);
+        fileName = getFileLastPortion_allocateToHeap(saveFilePath);
     } else {
+        this->saveFilePath = 0;
         fileName = easyString_copyToHeap(easy_createString_printf(&globalPerFrameArena, "Untitled %d x %d", w, h));
     }
     this->fileName = fileName;
@@ -88,6 +94,7 @@ CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
 
     //NOTE:sentintel
     this->addUndoRedoBlock(this, true);
+    this->savePositionUndoBlock = this->undoList;
 }
 
 

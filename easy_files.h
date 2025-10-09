@@ -53,7 +53,7 @@ char *getFileLastPortion_(char *buffer, int bufferLen, char *at, Arena *arena) {
     
     return result;
 }
-#define getFileLastPortion(at) getFileLastPortion_(0, 0, at, 0)
+#define getFileLastPortion_allocateToHeap(at) getFileLastPortion_(0, 0, at, 0)
 #define getFileLastPortionWithBuffer(buffer, bufferLen, at) getFileLastPortion_(buffer, bufferLen, at, 0)
 #define getFileLastPortionWithArena(at, arena) getFileLastPortion_(0, 0, at, arena)
 
@@ -64,7 +64,7 @@ char *getFileLastPortionWithoutExtension_(char *name, Arena *arena) {
     if(arena) {
         lastPortion = getFileLastPortionWithArena(name, arena);
     } else {
-        lastPortion = getFileLastPortion(name);
+        lastPortion = getFileLastPortion_allocateToHeap(name);
     }
     
     char *at = lastPortion;

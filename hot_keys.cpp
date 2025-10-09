@@ -95,6 +95,14 @@ void updateHotKeys(GameState *gameState) {
             }
         }
 
+        if(gameState->keys.keys[KEY_S] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+            CanvasTab *t = getActiveCanvasTab(gameState);
+            if(t) {
+                saveProjectToFile(t);
+                addIMGUIToast("Project Saved", 2);
+            }
+        }
+
         if(gameState->keys.keys[KEY_V] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
             Canvas *c = getActiveCanvas(gameState);
             CanvasTab *t = getActiveCanvasTab(gameState);

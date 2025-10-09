@@ -53,7 +53,7 @@ void drawTabs(GameState *state) {
               u32 unsavedFlag = ImGuiTabItemFlags_UnsavedDocument;
 
               //NOTE: Check if the tab is at a saved state
-              if(t->savePositionUndoBlock == t->undoList && t->saveFilePath) 
+              if(isCanvasTabSaved(t)) 
               {
                 unsavedFlag = 0;
               }
@@ -265,6 +265,7 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
           frameUndoInfo.frameIndex = getArrayLength(canvasTab->frames) - 1;
           frameUndoInfo.beforeActiveLayer = canvasTab->activeFrame;
           canvasTab->activeFrame = getArrayLength(canvasTab->frames) - 1;
+          printf("%d\n", getArrayLength(canvasTab->frames));
           frameUndoInfo.afterActiveLayer = canvasTab->activeFrame;
           canvasTab->addUndoInfo(frameUndoInfo);
       }
@@ -283,8 +284,7 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
 }
 
 void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame) {
-  if (ImGui::BeginTable("Layers Table", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg))
-  {
+  if (ImGui::BeginTable("Layers Table", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
     for (int i = 0; i < getArrayLength(activeFrame->layers); i++)
     {
         if (activeFrame->layers[i].deleted) continue;
@@ -447,8 +447,9 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
         
         
     }
+  ImGui::EndTable();
 }
-ImGui::EndTable();
+
 }
 
 void imgui_createNewCanvasFromSize(GameState *gameState, int w, int h) {
@@ -584,7 +585,9 @@ void updateNewCanvasWindow(GameState *gameState) {
     if (ImGui::Button("Create")) {
       int w = atoi(gameState->dimStr0);
       int h = atoi(gameState->dimStr1);
-      imgui_createNewCanvasFromSize(gameState, w, h);
+      if(w > 0 && h > 0) {
+        imgui_createNewCanvasFromSize(gameState, w, h);
+      }
     }
 
     ImGui::End();
@@ -869,8 +872,10 @@ void updateColorPaletteEnter(GameState *gameState) {
 
 void loadProjectAndStoreTab(GameState *gameState) {
   CanvasTab tab = loadProjectFromFile();
+  tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
   pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
   gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+  
 }
 
 void showMainMenuBar(GameState *state)
@@ -1094,7 +1099,8 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
         updateEditPaletteWindow(state);
         drawAnimationTimeline(state, state->dt);
         drawLayersWindow(state, state->dt);
-        
+        renderIMGUIToasts();
+
         if(startMode != state->interactionMode) {
           clearSelection(tab);
         }

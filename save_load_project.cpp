@@ -52,7 +52,7 @@ CanvasTab loadPixelrProject(const char *filePath) {
 
         assert(data->version == PROJECT_FILE_LATEST_VERSION);
 
-        CanvasTab tab = CanvasTab(data->canvasW, data->canvasH, getFileLastPortionWithoutExtension((char *)filePath));
+        CanvasTab tab =  CanvasTab(data->canvasW, data->canvasH, (char *)filePath);
 
         tab.colorPicked = u32_to_float4_color(data->brushColor);
         tab.palletteCount = data->palletteCount;
@@ -228,6 +228,14 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath) {
 
         platformEndFile(file);
 
+        //NOTE: Update the save state to say the project is now saved
+        tab->savePositionUndoBlock = tab->undoList;
+        
+        //NOTE: If there is no save file path, now add it to save in the future
+        if(!tab->saveFilePath) {
+            tab->saveFilePath = easyString_copyToHeap(filePath);
+            tab->fileName = getFileLastPortion_allocateToHeap(tab->saveFilePath);
+        }
     }
 
     return result;
@@ -235,15 +243,24 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath) {
 }
 
 void saveProjectToFile(CanvasTab *tab) {
-    char const *fileName = tinyfd_saveFileDialog (
+    char *strToWrite = 0;
+    if(tab->saveFilePath) {
+        strToWrite = tab->saveFilePath;
+    } else {
+        char const *fileName = tinyfd_saveFileDialog (
         "Save File",
         "",
         0,
         NULL,
         NULL);
 
-    char *strToWrite = easy_createString_printf(&globalPerFrameArena, "%s.pixelr", (char *)fileName);
-    saveProjectFile_(tab, strToWrite);
+        strToWrite = easy_createString_printf(&globalPerFrameArena, "%s.pixelr", (char *)fileName);
+    }
+    
+    if(strToWrite) {
+        saveProjectFile_(tab, strToWrite);
+
+    }
 }
 
 void savePalleteDefault_(void *data) {
