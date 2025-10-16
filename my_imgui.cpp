@@ -33,6 +33,26 @@ ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window) {
 
 #include "imgui.h"
 
+void closeCanvasTabUI(GameState *state, CanvasTab *t, int i) {
+  if(t) {
+    t->dispose();
+    //NOTE: Remove from the list
+    bool found = removeArrayAtIndex(state->canvasTabs, i);
+    assert(found);
+
+    if(i == state->activeCanvasTab)  {
+      state->activeCanvasTab--;
+      if(state->activeCanvasTab < 0) {
+        state->activeCanvasTab = 0;
+      }
+    }
+    CanvasTab *tab = getActiveCanvasTab(state);
+    if(tab) {
+      tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
+    }
+  }
+}
+
 void drawTabs(GameState *state) {
       // Push a style to keep the tab bar at the top of the screen
       ImGui::SetNextWindowPos(ImVec2(0, 15));
@@ -97,21 +117,10 @@ void drawTabs(GameState *state) {
         CanvasTab *t = state->canvasTabs + i;
 
         if(!t->isOpen) {
-          t->dispose();
-          //NOTE: Remove from the list
-          bool found = removeArrayAtIndex(state->canvasTabs, i);
-          assert(found);
-
-          if(i == state->activeCanvasTab)  {
-            state->activeCanvasTab--;
-            if(state->activeCanvasTab < 0) {
-              state->activeCanvasTab = 0;
-            }
-          }
-          CanvasTab *tab = getActiveCanvasTab(state);
-          if(tab) {
-            tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
-          }
+          state->closeCanvasTabInfo.UIshowUnsavedWindow = true;
+          state->closeCanvasTabInfo.canvasTab = t;
+          state->closeCanvasTabInfo.arrayIndex = i;
+          i++;
         } else {
           ++i;
         }
@@ -957,6 +966,32 @@ void Spinner(const char* label, float radius, int thickness, ImU32 color) {
                          col, thickness);
   }
 }
+
+void showUnSavedWindow(GameState *gameState) {
+  if(gameState->closeCanvasTabInfo.UIshowUnsavedWindow) {
+    //NOTE: Create new canvas
+    ImGui::Begin("Unsaved Changes", &gameState->closeCanvasTabInfo.UIshowUnsavedWindow);       
+
+    ImGui::Text("You have unsaved changes. Do you want to save?"); 
+    if (ImGui::Button("Yes")) {
+      if(!isCanvasTabSaved(gameState->closeCanvasTabInfo.canvasTab)) {
+        saveProjectToFile(gameState->closeCanvasTabInfo.canvasTab);
+        addIMGUIToast("Project Saved", 2);
+      } 
+      closeCanvasTabUI(gameState, gameState->closeCanvasTabInfo.canvasTab, gameState->closeCanvasTabInfo.arrayIndex);
+      gameState->closeCanvasTabInfo.UIshowUnsavedWindow = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("No")) {
+      closeCanvasTabUI(gameState, gameState->closeCanvasTabInfo.canvasTab, gameState->closeCanvasTabInfo.arrayIndex);
+      gameState->closeCanvasTabInfo.UIshowUnsavedWindow = false;
+    }
+
+    ImGui::End();
+  }
+  
+}
+
 void updateMyImgui(GameState *state, ImGuiIO& io) {
 
       CanvasInteractionMode startMode = state->interactionMode;
@@ -973,6 +1008,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       ImVec2 window_pos = ImVec2(0, io.DisplaySize.y);
       ImVec2 window_pivot = ImVec2(0, 1.0f);
 
+      showUnSavedWindow(state);
       ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
       ImGui::SetNextWindowBgAlpha(1);
 
@@ -1099,12 +1135,14 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
         updateEditPaletteWindow(state);
         drawAnimationTimeline(state, state->dt);
         drawLayersWindow(state, state->dt);
-        renderIMGUIToasts();
+        
+        
 
         if(startMode != state->interactionMode) {
           clearSelection(tab);
         }
       }
+      renderIMGUIToasts();
       
 }
 

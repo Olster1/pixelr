@@ -55,6 +55,11 @@ enum CanvasInteractionMode {
 #define MAX_CANVAS_DIM 4000
 #define CHUNK_LIST_SIZE 4096*4
 
+struct CloseCanvasTabInfo {
+    bool UIshowUnsavedWindow;
+    CanvasTab *canvasTab;
+    int arrayIndex;
+};
 
 struct GameState {
     bool inited;
@@ -63,6 +68,8 @@ struct GameState {
     float aspectRatio_y_over_x;
 
     TextureAtlas spriteTextureAtlas;
+
+    CloseCanvasTabInfo closeCanvasTabInfo;
 
     Interaction currentInteraction;
 
