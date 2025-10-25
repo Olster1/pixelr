@@ -1,12 +1,15 @@
 #include "includes.h"
 
 void updateGame(GameState *gameState) {
+    DEBUG_TIME_BLOCK()
     checkInitGameState(gameState);
 
     updateCamera(gameState);
-  
-    float16 screenGuiT = make_ortho_matrix_origin_center(100, 100*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
-    float16 textGuiT = make_ortho_matrix_top_left_corner_y_down(100, 100*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
+    
+    float fauxWidth = 1920;
+    float16 screenGuiT = make_ortho_matrix_bottom_left_corner(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
+    float16 textGuiT = screenGuiT;//make_ortho_matrix_top_left_corner_y_down(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
+    gameState->renderer->textMatrixResolution = make_float2(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x);
 
     float16 screenT = make_ortho_matrix_origin_center(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
     float16 cameraT = transform_getInverseX(gameState->camera.T);
@@ -19,6 +22,8 @@ void updateGame(GameState *gameState) {
     
    CanvasTab *t = getActiveCanvasTab(gameState);
    if(t) {
+        checkAndSaveBackupFile(gameState, t);
+        
         drawCanvasGridBackground(gameState, getActiveCanvas(gameState), getActiveCanvasTab(gameState));
         drawLinedGrid(gameState, getActiveCanvas(gameState));
         {
@@ -51,13 +56,13 @@ void updateGame(GameState *gameState) {
         //NOTE: Update interaction with the canvas
         if(!isInteractingWithIMGUI()) {
             if(gameState->interactionMode == CANVAS_DRAW_RECTANGLE_MODE || gameState->interactionMode == CANVAS_DRAW_CIRCLE_MODE || gameState->interactionMode == CANVAS_DRAW_LINE_MODE) {
-            updateDrawShape(gameState, getActiveCanvas(gameState));
+                updateDrawShape(gameState, getActiveCanvas(gameState));
             } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
-            updateEraser(gameState, getActiveCanvas(gameState));
+                updateEraser(gameState, getActiveCanvas(gameState));
             } else if(gameState->interactionMode == CANVAS_FILL_MODE) {
-            updateBucket(gameState, getActiveCanvas(gameState), gameState->selectMode);
+                updateBucket(gameState, getActiveCanvas(gameState), gameState->selectMode);
             } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
-            updateCanvasDraw(gameState, getActiveCanvas(gameState));
+                updateCanvasDraw(gameState, getActiveCanvas(gameState));
             } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
                 updateCanvasMove(gameState);
             } else if(gameState->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) {
@@ -81,12 +86,16 @@ void updateGame(GameState *gameState) {
 
             getActiveCanvasTab(gameState)->currentUndoBlock = 0;
         }
+
     }
     
     updateHotKeys(gameState);
+
+    #if DEBUG_BUILD
+        EasyProfile_DrawGraph(gameState->renderer, gameState, gameState->drawState, gameState->dt, gameState->aspectRatio_y_over_x, gameState->mouseP_01);
+    #endif
     
-    TimeOfDayValues timeOfDayValues = getTimeOfDayValues(gameState);
     // updateAndDrawDebugCode(gameState);
-    rendererFinish(gameState->renderer, screenT, cameraT, screenGuiT, textGuiT, lookingAxis, cameraTWithoutTranslation, timeOfDayValues, gameState->perlinTestTexture.handle);
+    rendererFinish(gameState->renderer, screenT, cameraT, screenGuiT, textGuiT, lookingAxis, cameraTWithoutTranslation, gameState->perlinTestTexture.handle);
     gameState->renderer->timeAccum += 0.1f*gameState->dt;
 }   

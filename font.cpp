@@ -77,7 +77,8 @@ Font initFontAtlas(char *fontFile) {
 
 }
 
-void renderText(Renderer *renderer, Font *font, char *nullTerminatedString, float2 start, float scale) {
+void renderText(Renderer *renderer, Font *font, char *nullTerminatedString, float2 start, float scale, float4 color = make_float4(1, 1, 1, 1)) {
+    DEBUG_TIME_BLOCK()
     float x = start.x;
     float y = start.y;
 
@@ -87,6 +88,8 @@ void renderText(Renderer *renderer, Font *font, char *nullTerminatedString, floa
 
                 stbtt_aligned_quad q  = {};
 
+                float beginY = y;
+
                 int index = *nullTerminatedString - font->startOffset;
                 stbtt_GetBakedQuad(font->glyphData, font->fontAtlasDim.x, font->fontAtlasDim.y, index, &x, &y, &q, 1);
 
@@ -94,19 +97,19 @@ void renderText(Renderer *renderer, Font *font, char *nullTerminatedString, floa
                 float height = q.y1 - q.y0;
 
                 float x1 = 0.5f*width + q.x0;
-                float y1 = 0.5f*height + q.y0;
+                float y1 = 0.5f*height + (font->fontHeight - (q.y0 - beginY)) + q.y0;
 
                 x1 = (scale*(x1 - start.x)) + start.x;
-                y1 = (scale*(y1 - start.y)) + start.y;
+                y1 = ((scale*(y1 - start.y))) + start.y;
 
-                float4 uvCoords = make_float4(q.s0, q.s1, q.t1, q.t0);
+                float4 uvCoords = make_float4(q.s0, q.s1, q.t0, q.t1);
 
-                pushGlyph(renderer, make_float3(x1, y1, 1), make_float3(scale*width, scale*height, 1), uvCoords, make_float4(1, 1, 1, 1));
+                pushGlyph(renderer, make_float3(x1, y1, 1), make_float3(scale*width, scale*height, 1), uvCoords, color);
             }
         } else {
             //NOTE: Move down a line
             x = start.x;
-            y += font->fontHeight;
+            y -= font->fontHeight;
         }
         nullTerminatedString++;
     }

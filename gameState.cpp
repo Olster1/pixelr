@@ -61,6 +61,58 @@ struct CloseCanvasTabInfo {
     int arrayIndex;
 };
 
+typedef enum {
+	EASY_PROFILER_DRAW_OVERVIEW,
+	EASY_PROFILER_DRAW_ACCUMALTED,
+} EasyProfile_DrawType;
+
+typedef enum {
+	EASY_PROFILER_DRAW_OPEN,
+	EASY_PROFILER_DRAW_CLOSED,
+} EasyDrawProfile_OpenState;
+
+typedef struct {
+	int hotIndex;
+
+	EasyProfile_DrawType drawType;
+
+	//For navigating the samples in a frame
+	float zoomLevel;
+	float xOffset; //for the scroll bar
+	bool holdingScrollBar;
+	float scrollPercent;
+	float grabOffset;
+
+	float2 lastMouseP;
+	bool firstFrame;
+
+	EasyDrawProfile_OpenState openState;
+	float openTimer;
+
+	int level;
+} EasyProfile_ProfilerDrawState;
+
+static EasyProfile_ProfilerDrawState *EasyProfiler_initProfilerDrawState() {
+	EasyProfile_ProfilerDrawState *result = pushStruct(&globalLongTermArena, EasyProfile_ProfilerDrawState);
+		
+	result->hotIndex = -1;
+	result->level = 0;
+	result->drawType = EASY_PROFILER_DRAW_OVERVIEW;
+
+	result->zoomLevel = 1;
+	result->holdingScrollBar = false;
+	result->xOffset = 0;
+	result->lastMouseP =  make_float2(0, 0);
+	result->firstFrame = true;
+	result->grabOffset = 0;
+
+	result->openTimer = -1;
+	result->openState = EASY_PROFILER_DRAW_CLOSED;
+
+	return result;
+
+}
+
 struct GameState {
     bool inited;
     float dt;
@@ -75,6 +127,8 @@ struct GameState {
 
     float2 mouseP_screenSpace;
     float2 mouseP_01;
+    
+    char *appDataFolderName;
 
     int mouseIndexAt;
     int mouseCountAt;
@@ -87,11 +141,15 @@ struct GameState {
     Font mainFont;
 
     CanvasInteractionMode interactionMode;
+    CanvasInteractionMode lastInteractionMode;
+    CanvasInteractionMode interactionModeStartOfFrame;
 
     Texture grassTexture;
     Texture soilTexture;
     Texture circleTexture;
     Texture circleOutlineTexture;
+
+    EasyProfile_ProfilerDrawState *drawState;
 
     ChunkInfo *chunksList;
     

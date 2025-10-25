@@ -117,10 +117,16 @@ void drawTabs(GameState *state) {
         CanvasTab *t = state->canvasTabs + i;
 
         if(!t->isOpen) {
-          state->closeCanvasTabInfo.UIshowUnsavedWindow = true;
-          state->closeCanvasTabInfo.canvasTab = t;
-          state->closeCanvasTabInfo.arrayIndex = i;
-          i++;
+          if(isCanvasTabSaved(t)) {
+              closeCanvasTabUI(state, t, i);
+          } else {
+            state->closeCanvasTabInfo.UIshowUnsavedWindow = true;
+            state->closeCanvasTabInfo.canvasTab = t;
+            state->closeCanvasTabInfo.arrayIndex = i;
+            t->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;  
+            t->isOpen = true;
+            i++;
+          }
         } else {
           ++i;
         }
@@ -223,7 +229,7 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
 
             // Draw the image on top
             ImGui::SetCursorScreenPos(imagePos); // Reset position to draw the image
-            ImGui::Image((ImTextureID)(intptr_t)canvasTab->frames[i].gpuHandle, imageSize, ImVec2(0, 1), ImVec2(1, 0));
+            ImGui::Image((ImTextureID)(intptr_t)canvasTab->frames[i].frameBufferHandle.textureHandle, imageSize, ImVec2(0, 1), ImVec2(1, 0));
     
             // Draw border if this is the current frame
             if (i == canvasTab->activeFrame) {
@@ -542,7 +548,7 @@ void exportWindow(GameState *gameState) {
       int w = atoi(gameState->dimStr0);
       int h = atoi(gameState->dimStr1);
 
-      saveSpriteSheetToPNG(getActiveCanvasTab(gameState), w, h);
+      saveSpriteSheetToPNG(gameState->renderer, getActiveCanvasTab(gameState), w, h);
 
        gameState->showExportWindow = false;
     }
@@ -902,7 +908,7 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("Open Project", "Ctrl+O")) { loadProjectAndStoreTab(state); }
             if (ImGui::MenuItem("Save Pallete", "", &dummy, tab)) {  }
             if (ImGui::MenuItem("Load Pallete", "")) {  }
-            if (ImGui::MenuItem("Export Image", "Ctrl+E", &dummy, tab)) { saveFileToPNG(getActiveFrame(state), getActiveCanvasTab(state)); }
+            if (ImGui::MenuItem("Export Image", "Ctrl+E", &dummy, tab)) { saveFileToPNG(state->renderer, getActiveFrame(state), getActiveCanvasTab(state)); }
             if (ImGui::MenuItem("Export Sprite Sheet", "", &dummy, tab)) { state->showExportWindow = true; }
             if (ImGui::MenuItem("Exit")) { state->quit = true;  }
             ImGui::EndMenu();
@@ -1003,146 +1009,149 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       ImGui_ImplSDL2_NewFrame();
       ImGui::NewFrame();
 
-      bool show_demo_window = true;
+      if(state->drawState && state->drawState->openState == EASY_PROFILER_DRAW_CLOSED) {
 
-      ImVec2 window_pos = ImVec2(0, io.DisplaySize.y);
-      ImVec2 window_pivot = ImVec2(0, 1.0f);
+        bool show_demo_window = true;
 
-      showUnSavedWindow(state);
-      ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
-      ImGui::SetNextWindowBgAlpha(1);
+        ImVec2 window_pos = ImVec2(0, io.DisplaySize.y);
+        ImVec2 window_pivot = ImVec2(0, 1.0f);
 
-      // ImGui::ShowDemoWindow(&show_demo_window);
-      drawTabs(state); //NOTE: This has to be at the start because they can remove a canvas tab here
-      showMainMenuBar(state);
-      updateNewCanvasWindow(state);
-      updateSpriteSheetWindow(state);
-      if(tab) {
-        {
-            ImGui::Begin("Color Palette");
-            ImGui::ColorEdit3("Brush", (float*)&tab->colorPicked);
+        showUnSavedWindow(state);
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
+        ImGui::SetNextWindowBgAlpha(1);
 
-            ImU32 col = ImGui::GetColorU32(ImVec4(tab->colorPicked.x, tab->colorPicked.y, tab->colorPicked.z, tab->opacity));
-            
-            char *strToWrite = easy_createString_printf(&globalPerFrameArena, "0x%x", col);
-            ImGui::InputText("##", strToWrite, easyString_getSizeInBytes_utf8(strToWrite) + 1, ImGuiInputTextFlags_ReadOnly);
+        // ImGui::ShowDemoWindow(&show_demo_window);
+        drawTabs(state); //NOTE: This has to be at the start because they can remove a canvas tab here
+        showMainMenuBar(state);
+        updateNewCanvasWindow(state);
+        updateSpriteSheetWindow(state);
+        if(tab) {
+          {
+              ImGui::Begin("Color Palette");
+              ImGui::ColorEdit3("Brush", (float*)&tab->colorPicked);
 
-            // Detect when the color picker is closed after changes
-            ImGui::SliderFloat("Opacity", &tab->opacity, 0.0f, 1.0f);
-            // ImGui::ColorEdit3("Background", (float*)&state->bgColor);
-            ImGui::Checkbox("Check Background", &tab->checkBackground);
-            // ImGui::Checkbox("nearest", &state->nearest);
-            // ImGui::Checkbox("Draw Grid", &state->drawGrid); 
-            int brushSize = tab->eraserSize;
-            ImGui::SliderInt((state->interactionMode != CANVAS_ERASE_MODE) ? "Brush Size" : "Eraser Size", &brushSize, 1, 100);
-            tab->eraserSize = brushSize;
-            
-            ImGui::Checkbox("SELECT", &state->selectMode);
-
-            const char* brushShapes[] = { "Square", "Circle" };
-            ImGui::Text("Brush Shape");
-            ImGui::SameLine();
-            if (ImGui::BeginCombo("##BrushShape", brushShapes[(int)tab->brushShape])) // Label shown on the combo
-            {
-                for (int n = 0; n < IM_ARRAYSIZE(brushShapes); n++)
-                {
-                    bool isSelected = (tab->brushShape == n);
-                    if (ImGui::Selectable(brushShapes[n], isSelected))
-                        tab->brushShape = (BrushShapeType)n;
-
-                    // Set default focus when opening
-                    if (isSelected)
-                        ImGui::SetItemDefaultFocus();
-                }
-                ImGui::EndCombo();
-            }
-
-            addModeSelection(state, "\uf0b2", CANVAS_MOVE_MODE);
-            ImGui::SameLine();
-            addModeSelection(state, "\uf1fc", CANVAS_DRAW_MODE);
-            ImGui::SameLine();
-            addModeSelection(state, "\uf575", CANVAS_FILL_MODE);
-            ImGui::SameLine();
-            addModeSelection(state, "\uf111", CANVAS_DRAW_CIRCLE_MODE);
-            ImGui::SameLine();
-            addModeSelection(state, "\uf245", CANVAS_MOVE_SELECT_MODE);
-
-            addModeSelection(state, "\uf0c8", CANVAS_DRAW_RECTANGLE_MODE);
-            ImGui::SameLine();
-            addModeSelection(state, "\uf12d", CANVAS_ERASE_MODE);
-            ImGui::SameLine();
-            addModeSelection(state, "\uf068", CANVAS_DRAW_LINE_MODE);
-            ImGui::SameLine();
-            addModeSelection(state, "\uf248", CANVAS_SELECT_RECTANGLE_MODE);
-            ImGui::SameLine();
-            addModeSelection(state, "\uf1fb", CANVAS_COLOR_DROPPER);
-            addModeSelection(state, "\uf5bd", CANVAS_SPRAY_CAN);
-
-            ImGui::Text("Select a Color:");
-            ImGui::SameLine();
-            if (ImGui::Button("\uf141")) {
-              state->showEditPalette = true;
+              ImU32 col = ImGui::GetColorU32(ImVec4(tab->colorPicked.x, tab->colorPicked.y, tab->colorPicked.z, tab->opacity));
               
+              char *strToWrite = easy_createString_printf(&globalPerFrameArena, "0x%x", col);
+              ImGui::InputText("##", strToWrite, easyString_getSizeInBytes_utf8(strToWrite) + 1, ImGuiInputTextFlags_ReadOnly);
+
+              // Detect when the color picker is closed after changes
+              ImGui::SliderFloat("Opacity", &tab->opacity, 0.0f, 1.0f);
+              // ImGui::ColorEdit3("Background", (float*)&state->bgColor);
+              ImGui::Checkbox("Check Background", &tab->checkBackground);
+              // ImGui::Checkbox("nearest", &state->nearest);
+              // ImGui::Checkbox("Draw Grid", &state->drawGrid); 
+              int brushSize = tab->eraserSize;
+              ImGui::SliderInt((state->interactionMode != CANVAS_ERASE_MODE) ? "Brush Size" : "Eraser Size", &brushSize, 1, 100);
+              tab->eraserSize = brushSize;
+              
+              ImGui::Checkbox("SELECT", &state->selectMode);
+
+              const char* brushShapes[] = { "Square", "Circle" };
+              ImGui::Text("Brush Shape");
+              ImGui::SameLine();
+              if (ImGui::BeginCombo("##BrushShape", brushShapes[(int)tab->brushShape])) // Label shown on the combo
+              {
+                  for (int n = 0; n < IM_ARRAYSIZE(brushShapes); n++)
+                  {
+                      bool isSelected = (tab->brushShape == n);
+                      if (ImGui::Selectable(brushShapes[n], isSelected))
+                          tab->brushShape = (BrushShapeType)n;
+
+                      // Set default focus when opening
+                      if (isSelected)
+                          ImGui::SetItemDefaultFocus();
+                  }
+                  ImGui::EndCombo();
+              }
+
+              addModeSelection(state, "\uf0b2", CANVAS_MOVE_MODE);
+              ImGui::SameLine();
+              addModeSelection(state, "\uf1fc", CANVAS_DRAW_MODE);
+              ImGui::SameLine();
+              addModeSelection(state, "\uf575", CANVAS_FILL_MODE);
+              ImGui::SameLine();
+              addModeSelection(state, "\uf111", CANVAS_DRAW_CIRCLE_MODE);
+              ImGui::SameLine();
+              addModeSelection(state, "\uf245", CANVAS_MOVE_SELECT_MODE);
+
+              addModeSelection(state, "\uf0c8", CANVAS_DRAW_RECTANGLE_MODE);
+              ImGui::SameLine();
+              addModeSelection(state, "\uf12d", CANVAS_ERASE_MODE);
+              ImGui::SameLine();
+              addModeSelection(state, "\uf068", CANVAS_DRAW_LINE_MODE);
+              ImGui::SameLine();
+              addModeSelection(state, "\uf248", CANVAS_SELECT_RECTANGLE_MODE);
+              ImGui::SameLine();
+              addModeSelection(state, "\uf1fb", CANVAS_COLOR_DROPPER);
+              addModeSelection(state, "\uf5bd", CANVAS_SPRAY_CAN);
+
+              ImGui::Text("Select a Color:");
+              ImGui::SameLine();
+              if (ImGui::Button("\uf141")) {
+                state->showEditPalette = true;
+                
+              }
+              float size = 30.0f;  // Square size
+              float spacing = 5.0f; // Spacing between squares
+
+              CanvasTab *tab = getActiveCanvasTab(state);
+          
+              if(tab) {
+                ImVec2 child_size = ImVec2(0, 200); // width 0 = fill, height = 200px
+                ImGui::BeginChild("ScrollingRegion", child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
+
+                for (int i = 0; i < tab->palletteCount; ++i) {
+                    ImGui::PushID(i);  // Ensure unique ID for each color
+            
+                    // Get cursor position for drawing the square
+                    ImVec2 pos = ImGui::GetCursorScreenPos();
+                    ImDrawList* drawList = ImGui::GetWindowDrawList();
+            
+                    // Create an invisible button for the selectable color square
+                    if (ImGui::InvisibleButton("color_btn", ImVec2(size, size))) {
+                      tab->colorPicked = u32_to_float4_color(tab->colorsPallete[i]);
+                    }
+                    u32 a = tab->colorsPallete[i];
+
+                    // Draw color square
+                    drawList->AddRectFilled(pos, ImVec2(pos.x + size, pos.y + size), (a));
+            
+                    // Draw border if selected
+                    if (float4_to_u32_color(tab->colorPicked) == a) {
+                        drawList->AddRect(pos, ImVec2(pos.x + size, pos.y + size), IM_COL32(255, 255, 255, 255), 0.0f, 0, 3.0f);
+                    }
+            
+                    ImGui::PopID();
+            
+                    // Layout: Move to next row if needed
+                    if ((i + 1) % 5 != 0) {
+                        ImGui::SameLine(0, spacing);
+                    }
+              }
+              ImGui::EndChild(); // End of scroll area
             }
-            float size = 30.0f;  // Square size
-            float spacing = 5.0f; // Spacing between squares
 
-            CanvasTab *tab = getActiveCanvasTab(state);
-        
-            if(tab) {
-              ImVec2 child_size = ImVec2(0, 200); // width 0 = fill, height = 200px
-              ImGui::BeginChild("ScrollingRegion", child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
+              
 
-              for (int i = 0; i < tab->palletteCount; ++i) {
-                  ImGui::PushID(i);  // Ensure unique ID for each color
-          
-                  // Get cursor position for drawing the square
-                  ImVec2 pos = ImGui::GetCursorScreenPos();
-                  ImDrawList* drawList = ImGui::GetWindowDrawList();
-          
-                  // Create an invisible button for the selectable color square
-                  if (ImGui::InvisibleButton("color_btn", ImVec2(size, size))) {
-                    tab->colorPicked = u32_to_float4_color(tab->colorsPallete[i]);
-                  }
-                  u32 a = tab->colorsPallete[i];
-
-                  // Draw color square
-                  drawList->AddRectFilled(pos, ImVec2(pos.x + size, pos.y + size), (a));
-          
-                  // Draw border if selected
-                  if (float4_to_u32_color(tab->colorPicked) == a) {
-                      drawList->AddRect(pos, ImVec2(pos.x + size, pos.y + size), IM_COL32(255, 255, 255, 255), 0.0f, 0, 3.0f);
-                  }
-          
-                  ImGui::PopID();
-          
-                  // Layout: Move to next row if needed
-                  if ((i + 1) % 5 != 0) {
-                      ImGui::SameLine(0, spacing);
-                  }
-            }
-            ImGui::EndChild(); // End of scroll area
+              ImGui::End();
           }
 
-            
+          
+          exportWindow(state);
+          updateColorPaletteEnter(state);
+          updateEditPaletteWindow(state);
+          drawAnimationTimeline(state, state->dt);
+          drawLayersWindow(state, state->dt);
+          
+          
 
-            ImGui::End();
+          if(startMode != state->interactionMode) {
+            clearSelection(tab);
+          }
         }
-
-        
-        exportWindow(state);
-        updateColorPaletteEnter(state);
-        updateEditPaletteWindow(state);
-        drawAnimationTimeline(state, state->dt);
-        drawLayersWindow(state, state->dt);
-        
-        
-
-        if(startMode != state->interactionMode) {
-          clearSelection(tab);
-        }
+        renderIMGUIToasts();
       }
-      renderIMGUIToasts();
       
 }
 

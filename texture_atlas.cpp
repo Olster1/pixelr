@@ -112,10 +112,9 @@
 
             //NOTE: Draw the texture at the coord
             if(renderer->atlasQuadHUDCount > 0) {
-                TimeOfDayValues timeOfDayValues;
                 //NOTE: Draw circle oultines
                 updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->atlasHUDQuads, renderer->atlasQuadHUDCount*sizeof(InstanceDataWithRotation));
-                drawModels(&renderer->quadModel, &renderer->quadTextureShader, t.handle, renderer->atlasQuadHUDCount, screenGuiT, float16_identity(), make_float3(0, 0, 0), false, timeOfDayValues);
+                drawModels(&renderer->quadModel, &renderer->quadTextureShader, t.handle, renderer->atlasQuadHUDCount, screenGuiT, float16_identity(), make_float3(0, 0, 0), false);
 
                 renderer->atlasQuadHUDCount = 0;
             }

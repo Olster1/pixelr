@@ -30,7 +30,7 @@ void initGameState(GameState *gameState) {
     createBlockFlags(gameState);
     memset(gameState->chunks, 0, arrayCount(gameState->chunks)*sizeof(Chunk *));
 
-    gameState->interactionMode = CANVAS_DRAW_MODE;
+    gameState->lastInteractionMode = gameState->interactionMode = CANVAS_DRAW_MODE;
     
     
     gameState->entitiesToAddCount = 0;
@@ -113,9 +113,9 @@ void initGameState(GameState *gameState) {
 
     loadPalleteDefault_(&gameState->canvasTabs[0]);
 
-    gameState->inited = true;
+    gameState->drawState = EasyProfiler_initProfilerDrawState();
 
-    
+    gameState->inited = true;
 
 }
 

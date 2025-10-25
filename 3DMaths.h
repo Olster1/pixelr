@@ -480,6 +480,13 @@ struct Rect3f {
 	
 };
 
+
+float2 rect2f_getCenter(Rect2f r) {
+	float2 result = make_float2(lerp(r.minX, r.maxX, make_lerpTValue(0.5f)), lerp(r.minY, r.maxY, make_lerpTValue(0.5f)));
+	return result;
+}
+
+
 float3 rect3f_getCenter(Rect3f r) {
 	float3 result = make_float3(lerp(r.minX, r.maxX, make_lerpTValue(0.5f)), lerp(r.minY, r.maxY, make_lerpTValue(0.5f)), lerp(r.minZ, r.maxZ, make_lerpTValue(0.5f)));
 	return result;

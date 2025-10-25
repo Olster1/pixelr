@@ -1,4 +1,6 @@
 #include "./game_defines.h"
+static bool DEBUG_global_ProfilePaused = false;
+#include "./easy_profiler.hpp"
 #include "./easy_memory.h"
 #include "./resize_array.cpp"
 #include "./memory_arena.h"
@@ -27,6 +29,7 @@
 #include "./easel.cpp"
 #include "./resize_canvas.cpp"
 #include "./gameState.cpp"
+#include "./easy_profiler_draw.h"
 #include "./undo_redo.cpp"
 #include "./gameState_init.cpp"
 #include "./chunk.cpp"

@@ -248,14 +248,14 @@ struct Frame {
 
     bool deleted = false; //NOTE: For the undo system we keep all the canvases active, we just say it's deleted
 
-    u32 gpuHandle = 0;
+    FrameBuffer frameBufferHandle = {};
 
     Frame(int w, int h) {
         layers = initResizeArray(Canvas);
         Canvas f = Canvas(w, h);
         pushArrayItem(&layers, f, Canvas);
 
-        gpuHandle = createGPUTexture(w, h, f.pixels).handle;
+        frameBufferHandle = createFrameBuffer(w, h, f.pixels);
     }
 
     void dispose() {
@@ -268,8 +268,12 @@ struct Frame {
             layers = 0;
         }
 
-        if(gpuHandle > 0) {
-            deleteTextureHandle(gpuHandle);
+        if(frameBufferHandle.textureHandle > 0) {
+            deleteTextureHandle(frameBufferHandle.textureHandle);
+        }
+
+          if(frameBufferHandle.handle > 0) {
+            deleteFrameBuffer(&frameBufferHandle);
         }
     }
 
@@ -288,6 +292,9 @@ struct CanvasTab {
     float zoomFactor = 5.0f;
     float2 cameraP = {};
 
+    //NOTE: For backing up the files - every BACKUP_FILE_TIME (in defines) it saves to the backup file
+    float secondsSinceLastBackup = 0;
+
     PlayBackAnimation playback;
     int w = 0;
     int h = 0;
@@ -300,6 +307,7 @@ struct CanvasTab {
     char *fileName = 0; //NOTE: Allocated on heap - need to free on dispose
 
     UndoRedoBlock *savePositionUndoBlock = 0;
+    UndoRedoBlock *savePositionBackupUndoBlock = 0;
     UndoRedoBlock *undoList = 0;
     UndoRedoBlock *undoBlockFreeList = 0;
     UndoRedoBlock *currentUndoBlock = 0;

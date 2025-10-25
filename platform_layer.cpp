@@ -90,6 +90,23 @@ void platform_copyToClipboard(char *str) {
   }
 }
 
+static u64 GlobalTimeFrequencyDatum;
+
+inline u64 EasyTime_GetTimeCount()
+{
+    u64 s = SDL_GetPerformanceCounter();
+    
+    return s;
+}
+inline float EasyTime_GetMillisecondsElapsed(u64 CurrentCount, u64 LastCount)
+{
+    u64 Difference = CurrentCount - LastCount;
+    assert(Difference >= 0); //user put them in the right order
+    double Seconds = (float)Difference / (float)GlobalTimeFrequencyDatum;
+	float millseconds = (float)(Seconds * 1000.0);     
+    return millseconds;
+    
+}
 #include "./main.cpp"
 
 float getBestDt(float secondsElapsed) {
@@ -130,6 +147,8 @@ int main(int argc, char **argv) {
   if (SDL_Init(SDL_INIT_EVERYTHING)) {
     return 0;
   }
+  GlobalTimeFrequencyDatum = SDL_GetPerformanceFrequency();
+  DEBUG_TIME_BLOCK_FOR_FRAME_BEGIN(beginFrameProfiler, "Main: Intial setup");\
 
   SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
   SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);
@@ -157,7 +176,6 @@ int main(int argc, char **argv) {
       gameState->keys.keys[i] = MOUSE_BUTTON_NONE;
     } 
 
-
   SDL_Window *window = SDL_CreateWindow("Pixelr",  SDL_WINDOWPOS_CENTERED,  SDL_WINDOWPOS_CENTERED, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x, flags);
 
   SDL_GLContext renderContext = SDL_GL_CreateContext(window);
@@ -183,6 +201,8 @@ int main(int argc, char **argv) {
 
   //NOTE: Hide the cursor
   // SDL_ShowCursor(SDL_DISABLE);
+
+  gameState->appDataFolderName = getPlatformSaveFilePath();
 
   SDL_Event e;
   Uint32 start = SDL_GetTicks();
@@ -234,7 +254,11 @@ int main(int argc, char **argv) {
       ImGui_ImplSDL2_ProcessEvent(&e);
     }
 
+    //NOTE: This is to get the last interaction mode
+    gameState->interactionModeStartOfFrame = gameState->interactionMode;
+    
     updateMyImgui(gameState, imguiIo);
+    
 
     const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
     
@@ -324,10 +348,24 @@ int main(int argc, char **argv) {
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glClearColor(gameState->bgColor.x, gameState->bgColor.y, gameState->bgColor.z, gameState->bgColor.w);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
-
+    
     updateGame(gameState);
-    imguiEndFrame();
-    SDL_GL_SwapWindow(window);
+
+    {
+      
+      DEBUG_TIME_BLOCK_NAMED("imguiEndFrame")
+      imguiEndFrame();
+      
+    }
+    
+    {
+      DEBUG_TIME_BLOCK_NAMED("SWAP WINDOW")
+      SDL_GL_SwapWindow(window);
+    }
+
+    if(gameState->interactionModeStartOfFrame != gameState->interactionMode) {
+        gameState->lastInteractionMode = gameState->interactionModeStartOfFrame;
+    }
 
     //NOTE: For 3d to move camera aroumd
     gameState->lastMouseP = make_float2(0.5f*gameState->screenWidth, -0.5f*gameState->screenWidth);
@@ -342,6 +380,9 @@ int main(int argc, char **argv) {
       SDL_free(gameState->droppedFilePath);
       gameState->droppedFilePath = 0;
     } 
+
+    DEBUG_TIME_BLOCK_FOR_FRAME_END(beginFrameProfiler, gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_PRESSED);
+    DEBUG_TIME_BLOCK_FOR_FRAME_START(beginFrameProfiler, "Per frame");
   }
 
     // Cleanup

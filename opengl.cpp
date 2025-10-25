@@ -51,9 +51,12 @@ FrameBuffer createFrameBuffer(int width, int height, void *data = 0) {
     result.textureHandle = texture;
     
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
+    renderCheckError();
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);  
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    renderCheckError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    renderCheckError();
 
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0); 
 
@@ -552,7 +555,6 @@ Texture createGPUTexture(int width, int height, void *data = 0) {
     glBindTexture(GL_TEXTURE_2D, texture);
     renderCheckError();
 
-    
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
     renderCheckError();
 
@@ -663,6 +665,22 @@ Texture loadTextureArrayToGPU(char *fileName, int fileNameCount) {
     t.handle = resultId;
 
     return t;
+}
+
+u32 *backendRenderer_getFrameBufferPixels_shortTerm(int w, int h) {
+    //NOTE: Flush the openGL command calls
+    glFlush();
+    
+    u32 *pixelBuffer = pushArray(&globalPerFrameArena, w*h, u32);
+    
+    glReadPixels(0, 0,
+                        w,
+                        h,
+                        GL_RGBA,
+                        GL_UNSIGNED_BYTE,
+                        pixelBuffer);
+
+    return pixelBuffer;
 }
 
 Texture loadTextureToGPU(char *fileName) {
@@ -778,17 +796,14 @@ void prepareChunkRender(ChunkModelBuffer *model, Shader *shader, uint32_t textur
 
     float4 fogColor = make_float4(0.9, 0.9, 0.9, 1);
 
-    if(underWater) {
-        fogColor = make_float4(0.163, 0.551, 0.776, 1);
-    }
 
     glUniform4f(glGetUniformLocation(shader->handle, "fogColor"), fogColor.x, fogColor.y, fogColor.z, fogColor.w);
     renderCheckError();
 
-    glUniform1f(glGetUniformLocation(shader->handle, "fogSeeDistance"), (underWater ? 0 : 100)); //global_fogSeeDistance*1000
+    glUniform1f(glGetUniformLocation(shader->handle, "fogSeeDistance"), (100)); //global_fogSeeDistance*1000
     renderCheckError();
 
-    glUniform1f(glGetUniformLocation(shader->handle, "fogFadeDistance"), (underWater ? 60 : 250)); //global_fogFarDistance*1000
+    glUniform1f(glGetUniformLocation(shader->handle, "fogFadeDistance"), (250)); //global_fogFarDistance*1000
     renderCheckError();
 
     bindTexture("diffuse", 1, textureId, shader, 0);
@@ -796,7 +811,7 @@ void prepareChunkRender(ChunkModelBuffer *model, Shader *shader, uint32_t textur
    
 }
 
-void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int instanceCount, float16 projectionTransform, float16 modelViewTransform, float3 lookingAxis, bool underWater, TimeOfDayValues timeOfDayValues, uint32_t flags = 0, int skinningTextureId = -1, GLenum primitive = GL_TRIANGLES, float time = 0) {
+void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int instanceCount, float16 projectionTransform, float16 modelViewTransform, float3 lookingAxis, uint32_t flags = 0, int skinningTextureId = -1, GLenum primitive = GL_TRIANGLES, float time = 0) {
     // printf("%d\n", instanceCount);
     glUseProgram(shader->handle);
     renderCheckError();
@@ -810,12 +825,6 @@ void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int inst
     glUniformMatrix4fv(glGetUniformLocation(shader->handle, "projection"), 1, GL_FALSE, projectionTransform.E);
     renderCheckError();
 
-    glUniform4f(glGetUniformLocation(shader->handle, "skyColorA"), timeOfDayValues.skyColorA.x, timeOfDayValues.skyColorA.y, timeOfDayValues.skyColorA.z, 1);
-    renderCheckError();
-
-    glUniform4f(glGetUniformLocation(shader->handle, "skyColorB"), timeOfDayValues.skyColorB.x, timeOfDayValues.skyColorB.y, timeOfDayValues.skyColorB.z, 1);
-    renderCheckError();
-
     glUniform3f(glGetUniformLocation(shader->handle, "lookingAxis"), lookingAxis.x, lookingAxis.y, lookingAxis.z);
     renderCheckError();
 
@@ -824,17 +833,13 @@ void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int inst
 
     float4 fogColor = make_float4(0.9, 0.9, 0.9, 1);
 
-    if(underWater) {
-        fogColor = make_float4(0.163, 0.551, 0.776, 1);
-    }
-
     glUniform4f(glGetUniformLocation(shader->handle, "fogColor"), fogColor.x, fogColor.y, fogColor.z, fogColor.w);
     renderCheckError();
 
-    glUniform1f(glGetUniformLocation(shader->handle, "fogSeeDistance"), (underWater ? 0 : 100)); //global_fogSeeDistance*1000
+    glUniform1f(glGetUniformLocation(shader->handle, "fogSeeDistance"), (100)); //global_fogSeeDistance*1000
     renderCheckError();
 
-    glUniform1f(glGetUniformLocation(shader->handle, "fogFadeDistance"), (underWater ? 60 : 250)); //global_fogFarDistance*1000
+    glUniform1f(glGetUniformLocation(shader->handle, "fogFadeDistance"), (250)); //global_fogFarDistance*1000
     renderCheckError();
 
     bindTexture("diffuse", 1, textureId, shader, flags);
@@ -869,19 +874,19 @@ void endChunkRender() {
 //     drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadCount, projectionTransform, modelViewTransform, lookingAxis, false, getTimeOfDayValues());
 // }
 
-void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 modelViewTransform, float16 projectionScreenTransform, float16 textScreenTransform, float3 lookingAxis, float16 cameraTransformWithoutTranslation, TimeOfDayValues timeOfDay, uint32_t perlinNoiseHandle) {
+void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 modelViewTransform, float16 projectionScreenTransform, float16 textScreenTransform, float3 lookingAxis, float16 cameraTransformWithoutTranslation, uint32_t perlinNoiseHandle) {
     if(renderer->cubeCount > 0) {
         //NOTE: Draw Cubes
         // printf("cube size: %lu\n", renderer->cubeCount*sizeof(InstanceData));
         updateInstanceData(renderer->blockModel.instanceBufferhandle, renderer->cubeData, renderer->cubeCount*sizeof(InstanceData));
-        drawModels(&renderer->blockModel, &renderer->blockShader, renderer->terrainTextureHandle, renderer->cubeCount, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay);
+        drawModels(&renderer->blockModel, &renderer->blockShader, renderer->terrainTextureHandle, renderer->cubeCount, projectionTransform, modelViewTransform, lookingAxis);
 
         renderer->cubeCount = 0;
     }
    
     if(renderer->blockItemsCount > 0) {
         updateInstanceData(renderer->blockModelWithInstancedT.instanceBufferhandle, renderer->blockItemsData, renderer->blockItemsCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->blockModelWithInstancedT, &renderer->blockPickupShader, renderer->terrainTextureHandle, renderer->blockItemsCount, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay);
+        drawModels(&renderer->blockModelWithInstancedT, &renderer->blockPickupShader, renderer->terrainTextureHandle, renderer->blockItemsCount, projectionTransform, modelViewTransform, lookingAxis);
 
         renderer->blockItemsCount = 0;
     }
@@ -892,7 +897,7 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
         renderCheckError();
         updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->canvasQuads[i], sizeof(InstanceDataWithRotation));
         renderCheckError();
-        drawModels(&renderer->quadModel, &renderer->quadTextureShader, handle, 1, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay, 0, -1, GL_TRIANGLES, renderer->timeAccum);
+        drawModels(&renderer->quadModel, &renderer->quadTextureShader, handle, 1, projectionTransform, modelViewTransform, lookingAxis, 0, -1, GL_TRIANGLES, renderer->timeAccum);
         renderCheckError();
     }
 
@@ -908,7 +913,7 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     if(renderer->alphaBlockCount > 0) {
         //NOTE: Draw Cubes
         updateInstanceData(renderer->blockModel.instanceBufferhandle, renderer->alphaBlockData, renderer->alphaBlockCount*sizeof(InstanceData));
-        drawModels(&renderer->blockModel, &renderer->blockColorShader, renderer->terrainTextureHandle, renderer->alphaBlockCount, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay);
+        drawModels(&renderer->blockModel, &renderer->blockColorShader, renderer->terrainTextureHandle, renderer->alphaBlockCount, projectionTransform, modelViewTransform, lookingAxis);
 
         renderer->alphaBlockCount = 0;
     }
@@ -916,7 +921,7 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     if(renderer->alphaItemCount > 0) {
         //NOTE: Draw Cubes
         updateInstanceData(renderer->blockModelSameTexture.instanceBufferhandle, renderer->alphaItemData, renderer->alphaItemCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->blockModelSameTexture, &renderer->blockSameTextureShader, renderer->breakBlockTexture, renderer->alphaItemCount, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay);
+        drawModels(&renderer->blockModelSameTexture, &renderer->blockSameTextureShader, renderer->breakBlockTexture, renderer->alphaItemCount, projectionTransform, modelViewTransform, lookingAxis);
 
         renderer->alphaItemCount = 0;
     }
@@ -924,7 +929,7 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     if(renderer->atlasQuadCount > 0) {
         //NOTE: Draw circle oultines
         updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->atlasQuads, renderer->atlasQuadCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadCount, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay);
+        drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadCount, projectionTransform, modelViewTransform, lookingAxis);
 
         renderer->atlasQuadCount = 0;
     }
@@ -932,24 +937,22 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     if(renderer->atlasQuadHUDCount > 0) {
         //NOTE: Draw circle oultines
         updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->atlasHUDQuads, renderer->atlasQuadHUDCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadHUDCount, projectionScreenTransform, float16_identity(), lookingAxis, renderer->underWater, timeOfDay);
+        drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadHUDCount, projectionScreenTransform, float16_identity(), lookingAxis);
 
         renderer->atlasQuadHUDCount = 0;
     }
 
 
     if(renderer->glyphCount > 0) {
-        //NOTE: Draw circle oultines
         updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->glyphData, renderer->glyphCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->quadModel, &renderer->fontTextureShader, renderer->fontAtlasTexture, renderer->glyphCount, textScreenTransform, float16_identity(), lookingAxis, renderer->underWater, timeOfDay);
+        drawModels(&renderer->quadModel, &renderer->fontTextureShader, renderer->fontAtlasTexture, renderer->glyphCount, textScreenTransform, float16_identity(), lookingAxis);
 
         renderer->glyphCount = 0;
     }
 
     if(renderer->lineCount > 0) {
-        //NOTE: Draw circle oultines
         updateInstanceData(renderer->lineModel.instanceBufferhandle, renderer->lineData, renderer->lineCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->lineModel, &renderer->lineShader, renderer->fontAtlasTexture, renderer->lineCount, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay, 0, -1, GL_LINES);
+        drawModels(&renderer->lineModel, &renderer->lineShader, renderer->fontAtlasTexture, renderer->lineCount, projectionTransform, modelViewTransform, lookingAxis, 0, -1, GL_LINES);
 
         renderer->lineCount = 0;
     }
@@ -957,7 +960,7 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     if(renderer->selectionCount > 0) {
         //NOTE: Draw circle oultines
         updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->selectionQuad, sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->quadModel, &renderer->pixelSelectionShader, renderer->selectionTextureHandle, 1, projectionTransform, modelViewTransform, lookingAxis, renderer->underWater, timeOfDay, 0, -1, GL_TRIANGLES, renderer->timeAccum);
+        drawModels(&renderer->quadModel, &renderer->pixelSelectionShader, renderer->selectionTextureHandle, 1, projectionTransform, modelViewTransform, lookingAxis, 0, -1, GL_TRIANGLES, renderer->timeAccum);
 
         renderer->selectionCount = 0;
     }

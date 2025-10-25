@@ -105,10 +105,10 @@ CanvasTab loadPixelrProject(const char *filePath) {
         }
 
         // data->canvasesFileOffset;
-        int frameCount;
-        u32 framesActiveLayer[MAX_FRAME_COUNT];
-        u32 canvasCountPerFrame[MAX_FRAME_COUNT];
-        size_t canvasesFileOffset;
+        // int frameCount;
+        // u32 framesActiveLayer[MAX_FRAME_COUNT];
+        // u32 canvasCountPerFrame[MAX_FRAME_COUNT];
+        // size_t canvasesFileOffset;
 
         easyPlatform_freeMemory(file.memory);
         return tab;
@@ -158,7 +158,13 @@ bool loadProjectFile_(CanvasTab *tab, char *filePath) {
     return result;
 }
 
-bool saveProjectFile_(CanvasTab *tab, char *filePath) {
+struct SaveProjectFileThreadData {
+    CanvasTab *tab; 
+    char *filePath;
+    bool replaceSaveFilePath;
+};
+
+bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) {
     bool result = false;
 
     if(tab) {
@@ -228,13 +234,15 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath) {
 
         platformEndFile(file);
 
-        //NOTE: Update the save state to say the project is now saved
-        tab->savePositionUndoBlock = tab->undoList;
-        
-        //NOTE: If there is no save file path, now add it to save in the future
-        if(!tab->saveFilePath) {
-            tab->saveFilePath = easyString_copyToHeap(filePath);
-            tab->fileName = getFileLastPortion_allocateToHeap(tab->saveFilePath);
+        if(replaceSaveFilePath) {
+            //NOTE: Update the save state to say the project is now saved
+            tab->savePositionUndoBlock = tab->undoList;
+            
+            //NOTE: If there is no save file path, now add it to save in the future
+            if(!tab->saveFilePath) {
+                tab->saveFilePath = easyString_copyToHeap(filePath);
+                tab->fileName = getFileLastPortion_allocateToHeap(tab->saveFilePath);
+            }
         }
     }
 
@@ -242,9 +250,25 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath) {
 
 }
 
-void saveProjectToFile(CanvasTab *tab) {
+void saveProjectFile_threadData(void *data_) {
+    SaveProjectFileThreadData *data = (SaveProjectFileThreadData *)data_;
+
+    CanvasTab *tab = data->tab;
+    char *filePath = data->filePath;
+    bool replaceFilePath = data->replaceSaveFilePath;
+
+    saveProjectFile_(tab, filePath, replaceFilePath);
+
+    easyPlatform_freeMemory(data);
+}
+
+
+void saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *threadsInfo = 0, bool replaceSaveFilePath = true) {
     char *strToWrite = 0;
-    if(tab->saveFilePath) {
+
+    if(optionalFilePath) {
+        strToWrite = optionalFilePath;
+    } else if(tab->saveFilePath) {
         strToWrite = tab->saveFilePath;
     } else {
         char const *fileName = tinyfd_saveFileDialog (
@@ -258,9 +282,38 @@ void saveProjectToFile(CanvasTab *tab) {
     }
     
     if(strToWrite) {
-        saveProjectFile_(tab, strToWrite);
+        if(threadsInfo) {
+            MemoryBarrier();
+            ReadWriteBarrier();
 
+            SaveProjectFileThreadData *data = (SaveProjectFileThreadData *)easyPlatform_allocateMemory(sizeof(SaveProjectFileThreadData));
+            data->tab = tab; 
+            data->filePath = strToWrite;
+            data->replaceSaveFilePath = replaceSaveFilePath;
+
+            //NOTE: Multi-threaded
+            pushWorkOntoQueue(threadsInfo, saveProjectFile_threadData, data);
+        } else {
+            saveProjectFile_(tab, strToWrite, replaceSaveFilePath);
+        }
     }
+}
+
+void saveProjectToFileBackup_multiThreaded(char *appDataFolder, CanvasTab *tab, ThreadsInfo *threadsInfo) {
+#if _WIN32
+//TODO: Add time function
+#else 
+    time_t t = time(NULL);
+#endif
+    char *saveFileName = "Untitled";
+
+    if(tab->fileName) {
+        saveFileName = tab->fileName;
+    }
+    
+    char *uniqueFilePath = easy_createString_printf(&globalPerFrameArena, "%s%ld_%s_backup.pixelr", appDataFolder, t, saveFileName);
+    
+    saveProjectToFile(tab, uniqueFilePath, threadsInfo, false);
 }
 
 void savePalleteDefault_(void *data) {
@@ -270,7 +323,7 @@ void savePalleteDefault_(void *data) {
     if(filePath) {
         char *strToWrite = easy_createString_printf(&globalPerFrameArena, "%sdefault.project", (char *)filePath);
 
-        saveProjectFile_(tab, strToWrite);
+        saveProjectFile_(tab, strToWrite, true);
 
         easyPlatform_freeMemory(filePath);
     }
@@ -289,8 +342,10 @@ void loadPalleteDefault_(void *data) {
     char *filePath = getPlatformSaveFilePath();
 
     if(filePath) {
-        char *strToWrite = easy_createString_printf(&globalPerFrameArena, "%sdefault.project", (char *)filePath);
-        loadProjectFile_(tab, strToWrite);
+        char *strToLoad = easy_createString_printf(&globalPerFrameArena, "%sdefault.project", (char *)filePath);
+        if(platformDoesFileExist(strToLoad)) {
+            loadProjectFile_(tab, strToLoad);
+        }
         easyPlatform_freeMemory(filePath);
     }
 }

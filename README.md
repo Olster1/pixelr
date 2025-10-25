@@ -6,6 +6,11 @@ Uses OpenGL 3.3 and SDL for platform layer.
 
 ![](image1.png) 
 
+## Backups on Crash 
+
+If the program crashes and you lose your progress, backup files are saved every minute and are stored in this location on your device:
+https://wiki.libsdl.org/SDL2/SDL_GetPrefPath
+
 ## Goals
 - [ ] Rewrite the GUI without using Dear IMGUI
 - [ ] Remove C runtime library

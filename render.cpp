@@ -260,6 +260,8 @@ struct Renderer {
 
     float timeAccum;
 
+    float2 textMatrixResolution;
+
     bool underWater;
 };
 
@@ -419,6 +421,10 @@ void pushSprite(Renderer *renderer, AtlasAsset *assetItem, float3 worldP, float2
     float4 coords = assetItem->uv;
 
     pushAtlasQuad_(renderer, worldP, make_float3(scale.x, scale.y, 1), make_float3(0, 0, 0), coords, color, true);
+}
+
+void pushRect(Renderer *renderer, float3 worldP, float2 scale, float4 color) {
+    pushAtlasQuad_(renderer, worldP, make_float3(scale.x, scale.y, 1), make_float3(0, 0, 0), make_float4(0.5f, 0.75f, 0.75, 1.0f), color, true);
 }
 
 void pushPlainQuadHUD(Renderer *renderer, float3 worldP, float2 scale, float4 color) {

@@ -1,4 +1,5 @@
-void saveFileToPNG(Frame *frame, CanvasTab *tab) {
+void saveFileToPNG(Renderer *renderer, Frame *frame, CanvasTab *tab) {
+    DEBUG_TIME_BLOCK()
     char const * result = tinyfd_saveFileDialog (
     "Save File",
     "",
@@ -9,11 +10,14 @@ void saveFileToPNG(Frame *frame, CanvasTab *tab) {
     size_t bytesPerPixel = sizeof(uint32_t);
     int stride_in_bytes = bytesPerPixel*tab->w;
 
+    updateFrameGPUHandles(frame, tab);
+
     char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
-    int writeResult = stbi_write_png(name, tab->w, tab->h, 4, getCompositePixelsForFrame_shortTerm(tab, frame), stride_in_bytes);
+    int writeResult = stbi_write_png(name, tab->w, tab->h, 4, getPixelsForFrame_shortTerm(tab, frame), stride_in_bytes);
 }
 
 void loadPngColorPalette(CanvasTab *tab, bool clearPalette) {
+    DEBUG_TIME_BLOCK()
     const char *filterPatterns[] = { "*.png",};
     const char *filePath = tinyfd_openFileDialog(
         "Load Color Palette",         // Dialog title
@@ -50,6 +54,7 @@ void loadPngColorPalette(CanvasTab *tab, bool clearPalette) {
 }
 
 void openSpriteSheet(GameState *gameState, int w, int h) {
+    DEBUG_TIME_BLOCK()
     const char *filterPatterns[] = { "*.png",};
     const char *filePath = tinyfd_openFileDialog(
         "Open an image",         // Dialog title
@@ -120,7 +125,8 @@ void openSpriteSheet(GameState *gameState, int w, int h) {
    
 }
 
-void saveSpriteSheetToPNG(CanvasTab *canvas, int columns, int rows) {
+void saveSpriteSheetToPNG(Renderer *renderer, CanvasTab *canvas, int columns, int rows) {
+    DEBUG_TIME_BLOCK()
     char const * result = tinyfd_saveFileDialog (
     "Save File",
     "",
@@ -139,7 +145,7 @@ void saveSpriteSheetToPNG(CanvasTab *canvas, int columns, int rows) {
 
     for(int i = 0; i < getArrayLength(canvas->frames); ++i) {
         Frame *frame = canvas->frames + i;
-        u32 *compositePixels = getCompositePixelsForFrame_shortTerm(canvas, frame);
+        u32 *compositePixels = getPixelsForFrame_shortTerm(canvas, frame);
 
         for(int k = 0; k < canvas->h; ++k) {
             for(int j = 0; j < canvas->w; ++j) {
@@ -171,6 +177,7 @@ void saveSpriteSheetToPNG(CanvasTab *canvas, int columns, int rows) {
 }
 
 void exportImport_loadPng(GameState *gameState, const char *filePath) {
+    DEBUG_TIME_BLOCK()
     if (filePath) {
             stbi_set_flip_vertically_on_load(1);
             int width = 0;
@@ -203,6 +210,7 @@ void exportImport_loadPng(GameState *gameState, const char *filePath) {
 }
 
 void checkFileDrop(GameState *gameState) {
+    DEBUG_TIME_BLOCK()
     if(gameState->droppedFilePath) {
         char *extension = getFileExtension(gameState->droppedFilePath);
         if(easyString_stringsMatch_nullTerminated(extension, "png") || easyString_stringsMatch_nullTerminated(extension, "PNG")) {
@@ -219,6 +227,7 @@ void checkFileDrop(GameState *gameState) {
 
 
 void openPlainImage(GameState *gameState) {
+    DEBUG_TIME_BLOCK()
     const char *filterPatterns[] = { "*.png",};
     const char *filePath = tinyfd_openFileDialog(
         "Open an image",         // Dialog title
@@ -230,4 +239,15 @@ void openPlainImage(GameState *gameState) {
     );
 
     exportImport_loadPng(gameState, filePath);
+}
+
+void checkAndSaveBackupFile(GameState *gameState, CanvasTab *tab) {
+    DEBUG_TIME_BLOCK()
+    tab->secondsSinceLastBackup += gameState->dt; 
+    if(tab->secondsSinceLastBackup >= BACKUP_FILE_TIME && canvasTabSaveStateHasChanged(tab)) {
+        //NOTE: Update the save position for the backup
+        tab->savePositionBackupUndoBlock = tab->undoList;
+        saveProjectToFileBackup_multiThreaded(gameState->appDataFolderName, tab, &gameState->threadsInfo);    
+        tab->secondsSinceLastBackup = 0;
+    }
 }

@@ -4,7 +4,12 @@ bool isCanvasTabSaved(CanvasTab *t) {
     return ((t->savePositionUndoBlock == t->undoList) && t->saveFilePath);
 }
 
+bool canvasTabSaveStateHasChanged(CanvasTab *t) {
+    return ((t->savePositionBackupUndoBlock != t->undoList) && !t->currentUndoBlock && t->undoList && !t->undoList->isSentintel);
+}
+
 UndoRedoBlock *CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
+    DEBUG_TIME_BLOCK()
     UndoRedoBlock *block = 0;
     if(c->undoList) {
         //NOTE: Remove all of them off to start at a new undo redo point
@@ -51,6 +56,7 @@ UndoRedoBlock *CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
 }
 
 CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
+    DEBUG_TIME_BLOCK()
     this->w = w;
     this->h = h;
     this->zoomFactor = 0.3f*MathMax(w, h); //NOTE: Zoom out to fit the image in the screen
@@ -99,6 +105,7 @@ CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
 
 
 Canvas *CanvasTab::getActiveCanvas() {
+    DEBUG_TIME_BLOCK()
     Frame *f = this->frames + this->activeFrame;
     assert(f);
 
@@ -110,6 +117,7 @@ Canvas *CanvasTab::getActiveCanvas() {
 }
 
 Canvas *CanvasTab::addEmptyCanvas() {
+    DEBUG_TIME_BLOCK()
     Frame f_ = Frame(w, h);
     Frame *f = pushArrayItem(&frames, f_, Frame);
 
@@ -117,12 +125,14 @@ Canvas *CanvasTab::addEmptyCanvas() {
 }
 
 void CanvasTab::clearSelection() {
+    DEBUG_TIME_BLOCK()
     if(selected) {
         clearResizeArray(selected);
     }
 }
 
 void CanvasTab::addColorToPalette(u32 color) {
+    DEBUG_TIME_BLOCK()
     if(this->palletteCount < arrayCount(this->colorsPallete)) {
         bool isNew = true;
         for(int i = 0; i < this->palletteCount && isNew; ++i) {
@@ -140,6 +150,7 @@ void CanvasTab::addColorToPalette(u32 color) {
 }
 
 void CanvasTab::addUndoInfo(PixelInfo info) {
+    DEBUG_TIME_BLOCK()
     if(!currentUndoBlock) {
         addUndoRedoBlock(this);
         addColorToPalette(float4_to_u32_color(colorPicked));
@@ -149,6 +160,7 @@ void CanvasTab::addUndoInfo(PixelInfo info) {
 }
 
 void CanvasTab::addUndoInfo(FrameInfo info) {
+    DEBUG_TIME_BLOCK()
     if(!currentUndoBlock) {
         addUndoRedoBlock(this);
     }
@@ -160,6 +172,7 @@ void CanvasTab::addUndoInfo(FrameInfo info) {
 }
 
 void CanvasTab::dispose() {
+    DEBUG_TIME_BLOCK()
     //TODO: Clear the undo list 
     if(frames) {
         for(int i = 0; i < getArrayLength(frames); ++i) {

@@ -122,6 +122,9 @@ typedef struct {
 
 char *getPlatformSaveFilePath() {
     char* filePath = SDL_GetPrefPath("edgeeffectmedia", "pixelr");
+    if(!filePath) {
+        filePath = "./";
+    }
     return filePath;
 }
 
