@@ -296,6 +296,8 @@ void saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *
         } else {
             saveProjectFile_(tab, strToWrite, replaceSaveFilePath);
         }
+
+        tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
     }
 }
 
@@ -323,7 +325,7 @@ void savePalleteDefault_(void *data) {
     if(filePath) {
         char *strToWrite = easy_createString_printf(&globalPerFrameArena, "%sdefault.project", (char *)filePath);
 
-        saveProjectFile_(tab, strToWrite, true);
+        saveProjectFile_(tab, strToWrite, false);
 
         easyPlatform_freeMemory(filePath);
     }

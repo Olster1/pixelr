@@ -152,11 +152,16 @@ void CanvasTab::addColorToPalette(u32 color) {
 void CanvasTab::addUndoInfo(PixelInfo info) {
     DEBUG_TIME_BLOCK()
     if(!currentUndoBlock) {
+        DEBUG_TIME_BLOCK_NAMED("CREATE NEW UNDO BLOCK")
         addUndoRedoBlock(this);
         addColorToPalette(float4_to_u32_color(colorPicked));
     }
-    assert(currentUndoBlock);
-    currentUndoBlock->addPixelInfo(info);
+    {
+        DEBUG_TIME_BLOCK_NAMED("ADD PIXEL INFO TO BLOCK")
+        assert(currentUndoBlock);
+        currentUndoBlock->addPixelInfo(info);
+    }
+    
 }
 
 void CanvasTab::addUndoInfo(FrameInfo info) {

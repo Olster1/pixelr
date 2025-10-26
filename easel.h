@@ -125,12 +125,17 @@ struct Clipboard {
     }
 
     void addPixelInfo(float x, float y, u32 color) {
+        DEBUG_TIME_BLOCK()
         if(!pixels) {
+            DEBUG_TIME_BLOCK_NAMED("INIT RESIZE ARRAY")
             pixels = initResizeArray(PixelClipboardInfo);
         }
 
-        PixelClipboardInfo p = PixelClipboardInfo(x, y, color);
-        pushArrayItem(&pixels, p, PixelClipboardInfo);
+        {
+            DEBUG_TIME_BLOCK_NAMED("PUSH PIXEL INFO TO ARRAY")
+            PixelClipboardInfo p = PixelClipboardInfo(x, y, color);
+            pushArrayItem(&pixels, p, PixelClipboardInfo);
+        }
     }
 };
 
@@ -158,6 +163,7 @@ struct UndoRedoBlock {
     }
 
     void addPixelInfo(PixelInfo info) {
+        DEBUG_TIME_BLOCK()
         type = UNDO_REDO_PIXELS;
         if(!pixelInfos) {
             pixelInfos = initResizeArray(PixelInfo);
