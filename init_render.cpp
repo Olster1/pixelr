@@ -5,6 +5,7 @@ Renderer *initRenderer(Texture grassTexture, Texture breakBlockTexture, Texture 
     renderer->cubeCount = 0;
     renderer->atlasQuadCount = 0;
     renderer->glyphCount = 0;
+    renderer->checkerQuadCount = 0;
     renderer->terrainTextureHandle = grassTexture.handle;
     renderer->breakBlockTexture = breakBlockTexture.handle;
     renderer->atlasTexture = atlasTexture.handle;
@@ -19,6 +20,8 @@ Renderer *initRenderer(Texture grassTexture, Texture breakBlockTexture, Texture 
     renderer->skyboxShader = loadShader(skyboxVertexShader, skyboxFragShader);
     renderer->quadShader = loadShader(quadVertexShader, quadFragShader);
     renderer->blockPickupShader = loadShader(blockPickupVertexShader, blockPickupFragShader);
+    renderer->checkQuadShader = loadShader(quadVertexShader, checkQuadFragShader);
+    
     renderer->skeletalModelShader = loadShader(skeletalVertexShader, skeletalFragShader);
     renderer->blockSameTextureShader = loadShader(blockSameTextureVertexShader, blockPickupFragShader);
     renderer->blockColorShader = loadShader(blockVertexShader, blockFragShader);

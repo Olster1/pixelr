@@ -189,9 +189,6 @@ struct InstanceDataWithRotation {
 
 struct Renderer {
     uint32_t terrainTextureHandle;
-    // uint32_t circleHandle;
-    // uint32_t circleOutlineHandle;
-    // uint32_t skyboxTextureHandle;
     uint32_t breakBlockTexture;
     uint32_t atlasTexture;
     uint32_t fontAtlasTexture;
@@ -223,6 +220,9 @@ struct Renderer {
     int glyphCount; 
     InstanceDataWithRotation glyphData[MAX_GLYPHS_PER_RENDER];
 
+    int checkerQuadCount; 
+    InstanceDataWithRotation checkerQuads[1];
+
     int lineCount; 
     InstanceDataWithRotation lineData[MAX_LINES_PER_RENDER];
 
@@ -239,6 +239,7 @@ struct Renderer {
     Shader blockShader;
     Shader blockGreedyShader;
     Shader blockPickupShader;
+    Shader checkQuadShader;
     Shader skeletalModelShader;
     Shader quadShader;
     Shader quadTextureShader;
@@ -264,6 +265,25 @@ struct Renderer {
 
     bool underWater;
 };
+
+InstanceDataWithRotation *pushCheckerQuad(Renderer *renderer, float3 worldP, float3 scale) {
+    InstanceDataWithRotation *c = 0;
+    if(renderer->checkerQuadCount < arrayCount(renderer->checkerQuads)) {
+        c = &renderer->checkerQuads[renderer->checkerQuadCount++];
+    } else {
+        assert(false);
+    }
+    
+    if(c) {
+        float16 T = eulerAnglesToTransform(0, 0, 0);
+        c->M = float16_set_pos(float16_scale(T, scale), worldP);
+        c->color = make_float4(1, 1, 1, 1);
+        c->uv = make_float4(0, 1, 0, 1);
+    }
+
+    return c;
+}
+
 
 InstanceDataWithRotation *pushAtlasQuad_(Renderer *renderer, float3 worldP, float3 scale, float3 rotation, float4 uvs, float4 color, bool isHUD) {
     InstanceDataWithRotation *c = 0;

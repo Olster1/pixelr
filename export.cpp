@@ -202,6 +202,8 @@ void exportImport_loadPng(GameState *gameState, const char *filePath) {
                 }
 
                 stbi_image_free(data);
+            } else {
+                addIMGUIToast("Couldn't load image", 2);
             }
             stbi_set_flip_vertically_on_load(0);
     } else {
@@ -220,6 +222,8 @@ void checkFileDrop(GameState *gameState) {
             tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
             pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
             gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+        } else {
+            addIMGUIToast("Only .png or .pixelr files supported", 2);
         }
     }
 }

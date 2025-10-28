@@ -1,4 +1,3 @@
-
 static char *blockPickupVertexShader = 
 "#version 330\n"
 //per vertex variables
@@ -476,4 +475,31 @@ static char *skyboxFragShader =
 "void main() {"
 "float value = dot(normalize(uv_frag), vec3(0, 1, 0));"
 "color = mix(skyColorA, skyColorB, value);"
+"}";
+
+static char *checkQuadFragShader = 
+"#version 330\n"
+"in vec4 color_frag;" 
+"in vec2 uv_frag; "
+"uniform sampler2D diffuse;"
+"out vec4 color;"
+
+"void main()"
+"{"
+    // Get the pixel size of the target texture
+    "ivec2 size = textureSize(diffuse, 0);"
+
+    // Compute checker width in pixels (same as w / 16)
+    "int checkerWidth = size.x / 16;"
+
+    // Compute checker indices
+    "int x = int(float(size.x)*uv_frag.x);"
+    "int y = int(float(size.y)*uv_frag.y);"
+
+    "vec3 shadeColor = vec3(0.8);"
+    "if((((y / checkerWidth) % 2) == 0 && ((x / checkerWidth) % 2) == 1) || (((y/ checkerWidth) % 2) == 1 && ((x/ checkerWidth) % 2) == 0)) {"
+        "shadeColor = vec3(0.6);"
+    "}"
+
+    "color = vec4(shadeColor, 1.0);"
 "}";

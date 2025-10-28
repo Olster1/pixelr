@@ -164,6 +164,7 @@ struct UndoRedoBlock {
 
     void addPixelInfo(PixelInfo info) {
         DEBUG_TIME_BLOCK()
+        //TODO: This function is making drawing slow @Speed
         type = UNDO_REDO_PIXELS;
         if(!pixelInfos) {
             pixelInfos = initResizeArray(PixelInfo);
@@ -207,7 +208,6 @@ struct PlayBackAnimation {
     }
 };
 
-
 struct Canvas {
     EntityID id;
 
@@ -220,17 +220,21 @@ struct Canvas {
     bool visible; //NOTE: Users can turn layers on and off. When off we don't show this layer.
 
     Canvas(int w_, int h_) {
+        DEBUG_TIME_BLOCK()
         id = makeEntityId(globalRandomStartupSeed);
-        w = w_;
-        h = h_;
-        pixels = (u32 *)easyPlatform_allocateMemory(sizeof(u32)*w_*h_);
+        {
+            DEBUG_TIME_BLOCK_NAMED("ALLOCATE MEMORY")
+            w = w_;
+            h = h_;
+            pixels = (u32 *)easyPlatform_allocateMemory(sizeof(u32)*w_*h_);
+        }
 
         visible = true;
-        for(int y = 0; y < h; ++y) {
-            for(int x = 0; x < w; ++x) {
-                pixels[y*w + x] = 0x00FFFFFF;
-            }
+        {
+            DEBUG_TIME_BLOCK_NAMED("FILL CANVAS TRANSPARENT")
+            fill_pixels_fast(pixels, w*h, 0x00FFFFFF);
         }
+        
 
         gpuHandle = createGPUTexture(w, h, pixels).handle;
     }
@@ -257,6 +261,7 @@ struct Frame {
     FrameBuffer frameBufferHandle = {};
 
     Frame(int w, int h) {
+        DEBUG_TIME_BLOCK()
         layers = initResizeArray(Canvas);
         Canvas f = Canvas(w, h);
         pushArrayItem(&layers, f, Canvas);
@@ -307,7 +312,6 @@ struct CanvasTab {
 
     float2 *selected = 0;//NOTE: Resize array 
     u32 selectionGpuHandle = 0;
-    u32 checkBackgroundHandle = 0; 
 
     char *saveFilePath = 0; //NOTE: Allocated on heap - need to free on dispose
     char *fileName = 0; //NOTE: Allocated on heap - need to free on dispose

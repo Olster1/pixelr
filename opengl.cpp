@@ -40,6 +40,7 @@ void rendererBindFrameBuffer(FrameBuffer *b) {
 }
 
 FrameBuffer createFrameBuffer(int width, int height, void *data = 0) {
+    DEBUG_TIME_BLOCK()
     FrameBuffer result;
     glGenFramebuffers(1, &result.handle);
     glBindFramebuffer(GL_FRAMEBUFFER, result.handle);  
@@ -670,7 +671,7 @@ Texture loadTextureArrayToGPU(char *fileName, int fileNameCount) {
 u32 *backendRenderer_getFrameBufferPixels_shortTerm(int w, int h) {
     //NOTE: Flush the openGL command calls
     glFlush();
-    
+
     u32 *pixelBuffer = pushArray(&globalPerFrameArena, w*h, u32);
     
     glReadPixels(0, 0,
@@ -890,7 +891,18 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
         renderer->blockItemsCount = 0;
     }
+    renderCheckError();
 
+      if(renderer->checkerQuadCount > 0) {
+        u32 canvasTextureHandle = renderer->canvasHandles[0];
+        if(canvasTextureHandle > 0) {
+            //NOTE: Draw circle oultines
+            updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->checkerQuads, renderer->checkerQuadCount*sizeof(InstanceDataWithRotation));
+            drawModels(&renderer->quadModel, &renderer->checkQuadShader, canvasTextureHandle, renderer->checkerQuadCount, projectionTransform, modelViewTransform, lookingAxis);
+        }
+
+        renderer->checkerQuadCount = 0;
+    }
     renderCheckError();
     for(int i = 0; i < renderer->canvasCount; ++i) {
         u32 handle = renderer->canvasHandles[i];

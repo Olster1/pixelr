@@ -57,49 +57,48 @@ UndoRedoBlock *CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
 
 CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
     DEBUG_TIME_BLOCK()
-    this->w = w;
-    this->h = h;
-    this->zoomFactor = 0.3f*MathMax(w, h); //NOTE: Zoom out to fit the image in the screen
-    this->colorPicked = make_float4(1, 1, 1, 1);
-    this->currentUndoBlock = 0;
-    this->palletteCount = 0;
-    this->frames = initResizeArray(Frame);
-    Frame f = Frame(w, h);
-    pushArrayItem(&frames, f, Frame);
-
-    this->playback = PlayBackAnimation();
-    this->playback.frameTime = 0.2f;
-    
-    char *fileName = 0;
-    if(saveFilePath_) {
-        this->saveFilePath = easyString_copyToHeap(saveFilePath_);
-        fileName = getFileLastPortion_allocateToHeap(saveFilePath);
-    } else {
-        this->saveFilePath = 0;
-        fileName = easyString_copyToHeap(easy_createString_printf(&globalPerFrameArena, "Untitled %d x %d", w, h));
+    {
+        DEBUG_TIME_BLOCK_NAMED("DEFAULT SETUP CANVAS")
+        this->w = w;
+        this->h = h;
+        this->zoomFactor = 0.3f*MathMax(w, h); //NOTE: Zoom out to fit the image in the screen
+        this->colorPicked = make_float4(1, 1, 1, 1);
+        this->currentUndoBlock = 0;
+        this->palletteCount = 0;
+        this->frames = initResizeArray(Frame);
+        Frame f = Frame(w, h);
+        pushArrayItem(&frames, f, Frame);
     }
-    this->fileName = fileName;
+    {
+        DEBUG_TIME_BLOCK_NAMED("INIT PLAYBACK ANIMATION")
+        this->playback = PlayBackAnimation();
+        this->playback.frameTime = 0.2f;
+    }
 
-    u32 *checkData = (u32 *)pushArray(&globalPerFrameArena, w*h, u32);
-
-    int checkerWidth = w / 16;
-    //TODO: This should just be a shader that does this
-    for(int y = 0; y < h; ++y) {
-        for(int x = 0; x < w; ++x) {
-            float4 c = make_float4(0.8f, 0.8f, 0.8f, 1);
-            if((((y / checkerWidth) % 2) == 0 && ((x / checkerWidth) % 2) == 1) || (((y/ checkerWidth) % 2) == 1 && ((x/ checkerWidth) % 2) == 0)) {
-                c = make_float4(0.6f, 0.6f, 0.6f, 1);
-            }
-            checkData[y*w + x] = float4_to_u32_color(c);
+    {
+        DEBUG_TIME_BLOCK_NAMED("CREATE FILE NAME CANVAS")
+        char *fileName = 0;
+        if(saveFilePath_) {
+            this->saveFilePath = easyString_copyToHeap(saveFilePath_);
+            fileName = getFileLastPortion_allocateToHeap(saveFilePath);
+        } else {
+            this->saveFilePath = 0;
+            fileName = easyString_copyToHeap(easy_createString_printf(&globalPerFrameArena, "Untitled %d x %d", w, h));
         }
+        this->fileName = fileName;
     }
 
-    this->checkBackgroundHandle = createGPUTexture(w, h, checkData).handle;
-    this->selectionGpuHandle = createGPUTextureRed(w, h).handle;
+    {
+        DEBUG_TIME_BLOCK_NAMED("CREATE GPU TEXTURES")
+        this->selectionGpuHandle = createGPUTextureRed(w, h).handle;
+    }
     this->selected = initResizeArray(float2);
 
     //NOTE:sentintel
-    this->addUndoRedoBlock(this, true);
+    {
+        DEBUG_TIME_BLOCK_NAMED("addUndoRedoBlock FUNC")
+        this->addUndoRedoBlock(this, true);
+    }
     this->savePositionUndoBlock = this->undoList;
 }
 
@@ -199,9 +198,6 @@ void CanvasTab::dispose() {
 
     if(selectionGpuHandle > 0) {
         deleteTextureHandle(selectionGpuHandle);
-    }
-    if(checkBackgroundHandle > 0) {
-        deleteTextureHandle(checkBackgroundHandle);
     }
     
     if(selected) {

@@ -4,11 +4,8 @@ Code for platform depedent functions
 */
 
 void easyMemory_zeroSize(void *memory, size_t bytes) {
-    char *at = (char *)memory;
-    for(int i = 0; i < bytes; i++) {
-        *at = 0;
-        at++;
-    }
+    DEBUG_TIME_BLOCK()
+    memset(memory, 0, bytes);
 }
 
 typedef enum {
@@ -17,7 +14,7 @@ typedef enum {
 } EasyPlatform_MemoryFlag;
 
 static void *easyPlatform_allocateMemory(size_t sizeInBytes, EasyPlatform_MemoryFlag flags = EASY_PLATFORM_MEMORY_ZERO) {
-    
+    DEBUG_TIME_BLOCK()
     void *result = 0;
 #if 0//_WIN32
     

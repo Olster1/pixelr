@@ -53,6 +53,7 @@ struct EntityID {
 static int global_entityIdCreated = 0;
 
 EntityID makeEntityId(int randomStartUpID) {
+    DEBUG_TIME_BLOCK()
     EntityID result = {};
 
     time_t timeSinceEpoch = time(0);

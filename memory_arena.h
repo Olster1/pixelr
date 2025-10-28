@@ -38,6 +38,7 @@ typedef struct {
 #define pushArray(arena, size, type) (type *)pushSize(arena, sizeof(type)*size)
 
 void *pushSize(Arena *arena, size_t size) {
+    DEBUG_TIME_BLOCK()
     if(!arena->pieces || ((arena->pieces->currentSize + size) > arena->pieces->totalSize)){ //doesn't fit in arena
         MemoryPiece *piece = arena->piecesFreeList; //get one of the free list
 

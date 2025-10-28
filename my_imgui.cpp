@@ -595,6 +595,14 @@ void updateNewCanvasWindow(GameState *gameState) {
     if (ImGui::Button("512 x 512")) {
       imgui_createNewCanvasFromSize(gameState, 512, 512);
     }
+    ImGui::SameLine();
+    if (ImGui::Button("1024 x 1024")) {
+      imgui_createNewCanvasFromSize(gameState, 1024, 1024);
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("2048 x 2048")) {
+      imgui_createNewCanvasFromSize(gameState, 2048, 2048);
+    }
     ImGui::Spacing();    
     ImGui::Spacing();    
     if (ImGui::Button("Create")) {
