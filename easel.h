@@ -1,9 +1,11 @@
 
 u32 float4_to_u32_color(float4 c) {
+    DEBUG_TIME_BLOCK()
     return (((u32)(c.w*255.0f)) << 24) | (((u32)(c.z*255.0f)) << 16) | (((u32)(c.y*255.0f)) << 8) | (((u32)(c.x*255.0f)) << 0);
 }
 
 float4 u32_to_float4_color(u32 c) {
+    DEBUG_TIME_BLOCK()
     float a = ((float)((c >> 24) & 0xFF))/255.0f;
     float b = ((float)((c >> 16) & 0xFF))/255.0f;
     float g = ((float)((c >> 8) & 0xFF))/255.0f;
@@ -170,23 +172,7 @@ struct UndoRedoBlock {
             pixelInfos = initResizeArray(PixelInfo);
         }
 
-        bool found = false;
-        //NOTE: Check if we already have this pixel info
-        for(int i = 0; i < getArrayLength(pixelInfos) && !found; ++i) {
-            PixelInfo *infoCheck = &pixelInfos[i];
-
-            if(infoCheck->x == info.x && infoCheck->y == info.y) {
-                //NOTE: Update just the next color - we want to keep the last color as the first one to recreate the board the same
-                infoCheck->thisColor = info.thisColor;
-                found = true;
-                break;
-            }
-        }
-        
-
-        if(!found) {
-            pushArrayItem(&pixelInfos, info, PixelInfo);
-        }
+        pushArrayItem(&pixelInfos, info, PixelInfo);
     }
 
     void dispose() {

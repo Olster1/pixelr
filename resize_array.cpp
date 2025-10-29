@@ -7,6 +7,7 @@ struct ResizeArrayHeader {
 #define initResizeArray(type) (type *)initResizeArray_(sizeof(type))
 
 u8 *initResizeArray_(size_t sizeOfElement) {
+    DEBUG_TIME_BLOCK()
     ResizeArrayHeader *header =(ResizeArrayHeader *)easyPlatform_allocateMemory(sizeOfElement + sizeof(ResizeArrayHeader), EASY_PLATFORM_MEMORY_ZERO);
     u8 *array = ((u8 *)header) + sizeof(ResizeArrayHeader);
 
@@ -18,22 +19,26 @@ u8 *initResizeArray_(size_t sizeOfElement) {
 }
 
 ResizeArrayHeader *getResizeArrayHeader(u8 *array) {
+    DEBUG_TIME_BLOCK()
     ResizeArrayHeader *header = (ResizeArrayHeader *)(((u8 *)array) - sizeof(ResizeArrayHeader));
     return header;
 }
 
 void freeResizeArray(void *array_) {
+    DEBUG_TIME_BLOCK()
     u8 *array = (u8 *)array_;
     ResizeArrayHeader *header = getResizeArrayHeader(array);
     easyPlatform_freeMemory(header);
 }
 
 u8 *getResizeArrayContents(ResizeArrayHeader *header) {
+    DEBUG_TIME_BLOCK()
     u8 *array = ((u8 *)header) + sizeof(ResizeArrayHeader);
     return array;
 }
 
 int getArrayLength(void *array) {
+    DEBUG_TIME_BLOCK()
     if(!array) {
         return 0;
     }
@@ -44,6 +49,7 @@ int getArrayLength(void *array) {
 }
 
 void clearResizeArray(void *array) {
+    DEBUG_TIME_BLOCK()
     if(!array) {
         return;
     }
@@ -53,6 +59,7 @@ void clearResizeArray(void *array) {
 }
 
 bool removeArrayAtIndex(void *array, int index) {
+    DEBUG_TIME_BLOCK()
     bool found = false;
     if(!array) {
         found = false;
@@ -82,6 +89,7 @@ bool removeArrayAtIndex(void *array, int index) {
 
 #define pushArrayItem(array_, data, type)  (type *)pushArrayItem_((void **)array_, &data)
 void *pushArrayItem_(void **array_, void *data) {
+    DEBUG_TIME_BLOCK()
     u8 *array = *((u8 **)array_);
     u8 *newPos = 0;
     if(array) {

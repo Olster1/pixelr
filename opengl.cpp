@@ -1,5 +1,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "./libs/stb_image.h"
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "./libs/stb_image_write.h"
 #include <OpenGL/gl3.h>
 #include "./shaders/shaders_opengl.cpp"
 
@@ -215,7 +217,6 @@ enum AttribInstancingType {
     ATTRIB_INSTANCE_TYPE_NONE,
     ATTRIB_INSTANCE_TYPE_DEFAULT,
     ATTRIB_INSTANCE_TYPE_MODEL_MATRIX,
-    ATTRIB_INSTANCE_TYPE_MODEL_MATRIX_SKELETAL,
 };
 
 void addInstancingAttribsForShader(AttribInstancingType type) {
@@ -237,7 +238,7 @@ void addInstancingAttribsForShader(AttribInstancingType type) {
         unsigned int samplerIndexOffset = (intptr_t)(&(((InstanceData *)0)->samplerIndex));
         addInstancingAttrib_int32(SAMPLER_INDEX_ATTRIB_LOCATION, 1, offsetForStruct, samplerIndexOffset);
         renderCheckError();
-    } else if(type == ATTRIB_INSTANCE_TYPE_MODEL_MATRIX || type == ATTRIB_INSTANCE_TYPE_MODEL_MATRIX_SKELETAL) {
+    } else if(type == ATTRIB_INSTANCE_TYPE_MODEL_MATRIX) {
         size_t offsetForStruct = sizeof(InstanceDataWithRotation); 
 
         unsigned int uvOffset = (intptr_t)(&(((InstanceDataWithRotation *)0)->uv));
@@ -258,76 +259,6 @@ void deleteVao(GLuint handle) {
     glDeleteVertexArrays(1, &handle);
 }
 
-ChunkModelBuffer generateChunkVertexBuffer(void *triangleData, int vertexCount, unsigned int *indicesData, int indexCount) {
-    ChunkModelBuffer result = {};
-    glGenVertexArrays(1, &result.handle);
-    renderCheckError();
-    glBindVertexArray(result.handle);
-    renderCheckError();
-    
-    GLuint vertices;
-    GLuint indices;
-    
-    glGenBuffers(1, &vertices);
-    renderCheckError();
-    
-    glBindBuffer(GL_ARRAY_BUFFER, vertices);
-    renderCheckError();
-
-    size_t sizeOfVertex = sizeof(VertexForChunk);
-    
-    glBufferData(GL_ARRAY_BUFFER, vertexCount*sizeOfVertex, triangleData, GL_DYNAMIC_DRAW);
-    renderCheckError();
-    
-    glGenBuffers(1, &indices);
-    renderCheckError();
-    
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indices);
-    renderCheckError();
-    
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexCount*sizeof(unsigned int), indicesData, GL_DYNAMIC_DRAW);
-    renderCheckError();
-    
-    result.indexCount = indexCount;
-
-    //NOTE: Assign the attribute locations with the data offsets & types
-    GLint vertexAttrib = VERTEX_ATTRIB_LOCATION;
-    renderCheckError();
-    glEnableVertexAttribArray(vertexAttrib);  
-    renderCheckError();
-    glVertexAttribPointer(vertexAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(VertexForChunk), 0);
-    renderCheckError();
-    
-    GLint texUVAttrib = UV_ATTRIB_LOCATION;
-    glEnableVertexAttribArray(texUVAttrib);  
-    renderCheckError();
-    unsigned int uvByteOffset = (intptr_t)(&(((VertexForChunk *)0)->texUV));
-    glVertexAttribPointer(texUVAttrib, 2, GL_FLOAT, GL_FALSE, sizeof(VertexForChunk), ((char *)0) + uvByteOffset);
-    renderCheckError();
-
-    GLint normalsAttrib = NORMAL_ATTRIB_LOCATION;
-    glEnableVertexAttribArray(normalsAttrib);  
-    renderCheckError();
-    unsigned int normalOffset = (intptr_t)(&(((VertexForChunk *)0)->normal));
-    glVertexAttribPointer(normalsAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(VertexForChunk), ((char *)0) + normalOffset);
-    renderCheckError();
-
-    GLint aoAttrib = AO_MASK_ATTRIB_LOCATION;
-    glEnableVertexAttribArray(aoAttrib);  
-    renderCheckError();
-    unsigned int aoOffset = (intptr_t)(&(((VertexForChunk *)0)->aoMask));
-    glVertexAttribPointer(aoAttrib, 1, GL_INT, GL_FALSE, sizeof(VertexForChunk), ((char *)0) + aoOffset);
-    renderCheckError();
-    
-    glBindVertexArray(0);
-        
-    //we can delete these buffers since they are still referenced by the VAO 
-    glDeleteBuffers(1, &vertices);
-    glDeleteBuffers(1, &indices);
-
-    return result;
-}
-
 ModelBuffer generateVertexBuffer(void *triangleData, int vertexCount, unsigned int *indicesData, int indexCount, AttribInstancingType attribInstancingType = ATTRIB_INSTANCE_TYPE_DEFAULT) {
     ModelBuffer result = {};
     glGenVertexArrays(1, &result.handle);
@@ -344,7 +275,7 @@ ModelBuffer generateVertexBuffer(void *triangleData, int vertexCount, unsigned i
     glBindBuffer(GL_ARRAY_BUFFER, vertices);
     renderCheckError();
 
-    size_t sizeOfVertex = (attribInstancingType != ATTRIB_INSTANCE_TYPE_MODEL_MATRIX_SKELETAL) ? sizeof(Vertex) : sizeof(VertexWithJoints);
+    size_t sizeOfVertex = sizeof(Vertex);
     
     glBufferData(GL_ARRAY_BUFFER, vertexCount*sizeOfVertex, triangleData, GL_STATIC_DRAW);
     renderCheckError();
@@ -360,7 +291,6 @@ ModelBuffer generateVertexBuffer(void *triangleData, int vertexCount, unsigned i
     
     result.indexCount = indexCount;
 
-    if(attribInstancingType != ATTRIB_INSTANCE_TYPE_MODEL_MATRIX_SKELETAL) {
     
         //NOTE: Assign the attribute locations with the data offsets & types
         GLint vertexAttrib = VERTEX_ATTRIB_LOCATION;
@@ -384,45 +314,6 @@ ModelBuffer generateVertexBuffer(void *triangleData, int vertexCount, unsigned i
         glVertexAttribPointer(normalsAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), ((char *)0) + normalOffset);
         renderCheckError();
 
-    } else {   
-         //NOTE: Assign the attribute locations with the data offsets & types
-        GLint vertexAttrib = VERTEX_ATTRIB_LOCATION;
-        renderCheckError();
-        glEnableVertexAttribArray(vertexAttrib);  
-        renderCheckError();
-        glVertexAttribPointer(vertexAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(VertexWithJoints), 0);
-        renderCheckError();
-        
-        GLint texUVAttrib = UV_ATTRIB_LOCATION;
-        glEnableVertexAttribArray(texUVAttrib);  
-        renderCheckError();
-        unsigned int uvByteOffset = (intptr_t)(&(((VertexWithJoints *)0)->texUV));
-        glVertexAttribPointer(texUVAttrib, 2, GL_FLOAT, GL_FALSE, sizeof(VertexWithJoints), ((char *)0) + uvByteOffset);
-        renderCheckError();
-
-        GLint normalsAttrib = NORMAL_ATTRIB_LOCATION;
-        glEnableVertexAttribArray(normalsAttrib);  
-        renderCheckError();
-        unsigned int normalOffset = (intptr_t)(&(((VertexWithJoints *)0)->normal));
-        glVertexAttribPointer(normalsAttrib, 3, GL_FLOAT, GL_FALSE, sizeof(VertexWithJoints), ((char *)0) + normalOffset);
-        renderCheckError();
-
-        GLint weightAttrib = JOINT_WEIGHTS;
-        glEnableVertexAttribArray(weightAttrib);  
-        renderCheckError();
-        unsigned int weigthOffset = (intptr_t)(&(((VertexWithJoints *)0)->jointWeights));
-        glVertexAttribPointer(weightAttrib, 4, GL_FLOAT, GL_FALSE, sizeof(VertexWithJoints), ((char *)0) + weigthOffset);
-        renderCheckError();
-
-        GLint jointAttrib = JOINT_INDEXES;
-        glEnableVertexAttribArray(jointAttrib);  
-        renderCheckError();
-        unsigned int jointIndexOffset = (intptr_t)(&(((VertexWithJoints *)0)->jointIndexes));
-        glVertexAttribPointer(jointAttrib, 4, GL_INT, GL_FALSE, sizeof(VertexWithJoints), ((char *)0) + jointIndexOffset);
-        renderCheckError();
-        
-    }
-
     // vbo instance buffer
     {
         glGenBuffers(1, &result.instanceBufferhandle);
@@ -436,34 +327,6 @@ ModelBuffer generateVertexBuffer(void *triangleData, int vertexCount, unsigned i
         addInstancingAttribsForShader(attribInstancingType);
     }
 
-    if(attribInstancingType == ATTRIB_INSTANCE_TYPE_MODEL_MATRIX_SKELETAL) {
-        //NOTE: Generate a UBO to store Joint Transforms i.e. skinning matrix
-        GLuint tbo;
-        glGenBuffers(1, &tbo);
-        renderCheckError();
-        glBindBuffer(GL_TEXTURE_BUFFER, tbo);
-        renderCheckError();
-        //NOTE: No data yet
-        glBufferData(GL_TEXTURE_BUFFER, 0, 0, GL_DYNAMIC_DRAW);
-        renderCheckError();
-
-        GLuint texture;
-        glGenTextures(1, &texture);
-        renderCheckError();
-        glBindTexture(GL_TEXTURE_BUFFER, texture);
-        renderCheckError();
-        glTexBuffer(GL_TEXTURE_BUFFER, GL_RGBA32F, tbo);  // Create a texture buffer using the TBO
-        renderCheckError();
-
-        result.tboHandle = tbo;
-        result.textureHandle = texture;
-
-        glBindTexture(GL_TEXTURE_BUFFER, 0);
-        renderCheckError();
-        glBindBuffer(GL_TEXTURE_BUFFER, 0);
-        renderCheckError();
-    }
-    
     glBindVertexArray(0);
         
     //we can delete these buffers since they are still referenced by the VAO 
@@ -471,19 +334,6 @@ ModelBuffer generateVertexBuffer(void *triangleData, int vertexCount, unsigned i
     glDeleteBuffers(1, &indices);
 
     return result;
-}
-
-void updateSkinningTexture(ModelBuffer *modelBuffer, float16 *skinningMatrix, int jointCount) {
-    glBindBuffer(GL_TEXTURE_BUFFER, modelBuffer->tboHandle);
-    renderCheckError();
-
-    size_t sizeInBytes = sizeof(float16)*jointCount;
-
-    glBufferData(GL_TEXTURE_BUFFER, sizeInBytes, skinningMatrix, GL_STREAM_DRAW); 
-    renderCheckError();
-    
-    glBindBuffer(GL_TEXTURE_BUFFER, 0);
-    renderCheckError();
 }
 
 void initBackendRenderer() {
@@ -570,102 +420,6 @@ Texture createGPUTexture(int width, int height, void *data = 0) {
     result.handle = texture;   
 
     return result;
-}
-
-Texture loadCubeMapTextureToGPU(char *folderName) {
-    Texture result = {};
-
-    glGenTextures(1, &result.handle);
-    glBindTexture(GL_TEXTURE_CUBE_MAP, result.handle);
-
-    char *faces[] = {
-    "right.jpg",
-    "left.jpg",
-    "top.jpg",
-    "bottom.jpg",
-    "front.jpg",
-    "back.jpg"};
-    
-    int width, height, nrChannels;
-    for (unsigned int i = 0; i < arrayCount(faces); i++)
-    {
-        size_t bytesToAlloc = snprintf(NULL, 0, "%s%s", folderName, faces[i]);
-        char *concatFileName = (char *)malloc(bytesToAlloc + 1);
-        snprintf(concatFileName, bytesToAlloc + 1, "%s%s", folderName, faces[i]);
-        unsigned char *data = stbi_load(concatFileName, &width, &height, &nrChannels, 0);
-        if (data)
-        {
-            glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + i, 
-                         0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
-            );
-            stbi_image_free(data);
-        } else {
-            printf("Cubemap tex failed to load\n");
-            stbi_image_free(data);
-        }
-        free(concatFileName);
-        concatFileName = 0;
-    }
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_CUBE_MAP, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_EDGE);
-
-    return result;
-}
-
-Texture loadTextureArrayToGPU(char *fileName, int fileNameCount) {
-    Texture t = {};
-
-    unsigned char **imageDatas = (unsigned char **)malloc(sizeof(unsigned char *)*fileNameCount);
-
-    for(int i = 0; i < fileNameCount; ++i) {
-        imageDatas[i] = (unsigned char *)stbi_load(fileName, &t.w, &t.h, 0, STBI_rgb_alpha);
-
-        if(imageDatas[i]) {
-        // assert(result.comp == 4);
-        } else {
-            printf("%s\n", fileName);
-            assert(!"no image found");
-        }
-    }
-
-    GLuint resultId;
-    glGenTextures(1, &resultId);
-    renderCheckError();
-    
-    glBindTexture(GL_TEXTURE_2D_ARRAY, resultId);
-    renderCheckError();
-    
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-    renderCheckError();
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    renderCheckError();
-
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    renderCheckError();
-    glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    renderCheckError();
-
-    glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGB8, t.w, t.h, fileNameCount, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    renderCheckError();
-
-    for(int i = 0; i < fileNameCount; ++i) {
-        glTexSubImage3D(GL_TEXTURE_2D_ARRAY, 0, 0, 0, i, t.w, t.h, 1, GL_RGB, GL_UNSIGNED_BYTE, imageDatas[i]);
-        stbi_image_free(imageDatas[i]);
-        imageDatas[i] = 0;
-    }
-
-    glGenerateMipmap(GL_TEXTURE_2D_ARRAY);
-    renderCheckError();
-    
-    glBindTexture(GL_TEXTURE_2D, 0);
-    renderCheckError();
-
-    t.handle = resultId;
-
-    return t;
 }
 
 u32 *backendRenderer_getFrameBufferPixels_shortTerm(int w, int h) {
@@ -774,44 +528,6 @@ void bindTexture(char *uniformName, int slotId, GLint textureId, Shader *shader,
     }
 }
 
-
-void bindTextureArray(char *uniformName, GLint textureId, Shader *shader, uint32_t flags) {
-
-}
-
-void prepareChunkRender(ChunkModelBuffer *model, Shader *shader, uint32_t textureId, float16 projectionTransform, float16 modelViewTransform, float3 lookingAxis, bool underWater) {
-     glUseProgram(shader->handle);
-    renderCheckError();
-    
-    glBindVertexArray(model->handle);
-    renderCheckError();
-
-    glUniformMatrix4fv(glGetUniformLocation(shader->handle, "V"), 1, GL_FALSE, modelViewTransform.E);
-    renderCheckError();
-
-    glUniformMatrix4fv(glGetUniformLocation(shader->handle, "projection"), 1, GL_FALSE, projectionTransform.E);
-    renderCheckError();
-
-    glUniform3f(glGetUniformLocation(shader->handle, "lookingAxis"), lookingAxis.x, lookingAxis.y, lookingAxis.z);
-    renderCheckError();
-
-    float4 fogColor = make_float4(0.9, 0.9, 0.9, 1);
-
-
-    glUniform4f(glGetUniformLocation(shader->handle, "fogColor"), fogColor.x, fogColor.y, fogColor.z, fogColor.w);
-    renderCheckError();
-
-    glUniform1f(glGetUniformLocation(shader->handle, "fogSeeDistance"), (100)); //global_fogSeeDistance*1000
-    renderCheckError();
-
-    glUniform1f(glGetUniformLocation(shader->handle, "fogFadeDistance"), (250)); //global_fogFarDistance*1000
-    renderCheckError();
-
-    bindTexture("diffuse", 1, textureId, shader, 0);
-    renderCheckError();
-   
-}
-
 void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int instanceCount, float16 projectionTransform, float16 modelViewTransform, float3 lookingAxis, uint32_t flags = 0, int skinningTextureId = -1, GLenum primitive = GL_TRIANGLES, float time = 0) {
     // printf("%d\n", instanceCount);
     glUseProgram(shader->handle);
@@ -862,37 +578,8 @@ void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int inst
     
 }
 
-void endChunkRender() {
-    glBindVertexArray(0);
-    renderCheckError();    
-
-    glUseProgram(0);
-    renderCheckError();
-}
-
-// void draw() {
-//     updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->atlasQuads, renderer->atlasQuadCount*sizeof(InstanceDataWithRotation));
-//     drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadCount, projectionTransform, modelViewTransform, lookingAxis, false, getTimeOfDayValues());
-// }
-
-void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 modelViewTransform, float16 projectionScreenTransform, float16 textScreenTransform, float3 lookingAxis, float16 cameraTransformWithoutTranslation, uint32_t perlinNoiseHandle) {
-    if(renderer->cubeCount > 0) {
-        //NOTE: Draw Cubes
-        // printf("cube size: %lu\n", renderer->cubeCount*sizeof(InstanceData));
-        updateInstanceData(renderer->blockModel.instanceBufferhandle, renderer->cubeData, renderer->cubeCount*sizeof(InstanceData));
-        drawModels(&renderer->blockModel, &renderer->blockShader, renderer->terrainTextureHandle, renderer->cubeCount, projectionTransform, modelViewTransform, lookingAxis);
-
-        renderer->cubeCount = 0;
-    }
+void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 modelViewTransform, float16 projectionScreenTransform, float16 textScreenTransform, float3 lookingAxis, float16 cameraTransformWithoutTranslation) {
    
-    if(renderer->blockItemsCount > 0) {
-        updateInstanceData(renderer->blockModelWithInstancedT.instanceBufferhandle, renderer->blockItemsData, renderer->blockItemsCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->blockModelWithInstancedT, &renderer->blockPickupShader, renderer->terrainTextureHandle, renderer->blockItemsCount, projectionTransform, modelViewTransform, lookingAxis);
-
-        renderer->blockItemsCount = 0;
-    }
-    renderCheckError();
-
       if(renderer->checkerQuadCount > 0) {
         u32 canvasTextureHandle = renderer->canvasHandles[0];
         if(canvasTextureHandle > 0) {
@@ -914,29 +601,6 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     }
 
     renderer->canvasCount = 0;
-
-
-    
-    // //NOTE: Draw the skybox here
-    // glDepthMask(GL_FALSE); //NOTE: Disable WRITING to the depth buffer
-    // drawModels(&renderer->blockModel, &renderer->skyboxShader, renderer->terrainTextureHandle, 1, projectionTransform, cameraTransformWithoutTranslation, lookingAxis, renderer->underWater, timeOfDay, SHADER_CUBE_MAP);
-    // glDepthMask(GL_TRUE);
-
-    if(renderer->alphaBlockCount > 0) {
-        //NOTE: Draw Cubes
-        updateInstanceData(renderer->blockModel.instanceBufferhandle, renderer->alphaBlockData, renderer->alphaBlockCount*sizeof(InstanceData));
-        drawModels(&renderer->blockModel, &renderer->blockColorShader, renderer->terrainTextureHandle, renderer->alphaBlockCount, projectionTransform, modelViewTransform, lookingAxis);
-
-        renderer->alphaBlockCount = 0;
-    }
-
-    if(renderer->alphaItemCount > 0) {
-        //NOTE: Draw Cubes
-        updateInstanceData(renderer->blockModelSameTexture.instanceBufferhandle, renderer->alphaItemData, renderer->alphaItemCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->blockModelSameTexture, &renderer->blockSameTextureShader, renderer->breakBlockTexture, renderer->alphaItemCount, projectionTransform, modelViewTransform, lookingAxis);
-
-        renderer->alphaItemCount = 0;
-    }
 
     if(renderer->atlasQuadCount > 0) {
         //NOTE: Draw circle oultines

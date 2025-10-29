@@ -5,7 +5,7 @@ DEBUG_TIME_BLOCK(); //put this at the begining of a scope like a fiunction
 DEBUG_TIME_BLOCK_NAMED(name); //this is if you want to profile just a block
 
 */
-#define EASY_PROFILER_ON 1
+#define EASY_PROFILER_ON 0
 
 
 // SPDX-License-Identifier: GPL-2.0

@@ -91,11 +91,13 @@ void updateGame(GameState *gameState) {
     
     updateHotKeys(gameState);
 
-    #if DEBUG_BUILD
+    #if DEBUG_BUILD 
+        #if EASY_PROFILER_ON
         EasyProfile_DrawGraph(gameState->renderer, gameState, gameState->drawState, gameState->dt, gameState->aspectRatio_y_over_x, gameState->mouseP_01);
+        #endif
     #endif
     
     // updateAndDrawDebugCode(gameState);
-    rendererFinish(gameState->renderer, screenT, cameraT, screenGuiT, textGuiT, lookingAxis, cameraTWithoutTranslation, gameState->perlinTestTexture.handle);
+    rendererFinish(gameState->renderer, screenT, cameraT, screenGuiT, textGuiT, lookingAxis, cameraTWithoutTranslation);
     gameState->renderer->timeAccum += 0.1f*gameState->dt;
 }   

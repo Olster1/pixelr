@@ -14,10 +14,7 @@ struct ThreadWork
 struct ThreadsInfo {
     int currentThreadId;
     SDL_sem *Semaphore;
-     //NOTE: This is 9.6megabytes - not sure if this is alright. It's so the main thread never waits to put work on the queue. 
-     //       It could be smaller if the ao mask calucations were batched into jobs as when there are alot it's most likely the whole chunk that's being calculated. 
-     //       So there could be two versions - one where just one offs are caluated when they go to draw & one when the chunk is created
-    ThreadWork WorkQueue[400000];
+    ThreadWork WorkQueue[512];
     SDL_atomic_t IndexToTakeFrom;
     SDL_atomic_t IndexToAddTo;
 };

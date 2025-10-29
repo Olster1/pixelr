@@ -157,6 +157,7 @@ float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h, bool real = f
 }
 
 float4 getBlendedColor(float4 oldColorF, float4 newColorF) {
+    DEBUG_TIME_BLOCK()
     // Convert colors to premultiplied alpha
     float oldR = oldColorF.x * oldColorF.w;
     float oldG = oldColorF.y * oldColorF.w;
@@ -183,12 +184,14 @@ float4 getBlendedColor(float4 oldColorF, float4 newColorF) {
 void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, const u32 color, float opacity, bool useOpacity = true) {
     DEBUG_TIME_BLOCK()
     if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
+        
         u32 oldColor = getCanvasColor(canvas, coordX, coordY);
         float4 oldColorF = u32_to_float4_color(oldColor);
         float4 newColorF = u32_to_float4_color(color);
 
         float4 c;
         if(useOpacity) {
+            DEBUG_TIME_BLOCK_NAMED("Get Blended color")
            newColorF.w = opacity;
            c = getBlendedColor(oldColorF, newColorF);
 
@@ -196,10 +199,11 @@ void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, cons
             c = newColorF;
         }
         u32 u32Color = float4_to_u32_color(c);
-        if(canvas->pixels[coordY*canvas->w + coordX] != u32Color) {
-            //NOTE: Don't add and undo info unless it's a different color
-            tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, u32Color));
-        }
+        // if(canvas->pixels[coordY*canvas->w + coordX] != u32Color) {
+        //     DEBUG_TIME_BLOCK_NAMED("Add Pixel Info for undo")
+        //     //NOTE: Don't add and undo info unless it's a different color
+        //     tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, u32Color));
+        // }
         canvas->pixels[coordY*canvas->w + coordX] = u32Color;
     }
 }
@@ -895,7 +899,7 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                     if(block->type == UNDO_REDO_PIXELS) {
                         Canvas *canvas = getCanvasForUndoBlock(tab, block);
                         if(canvas) {
-                            for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
+                            for(int i = (getArrayLength(block->pixelInfos) - 1); block->pixelInfos && i >= 0; --i) {
                                 PixelInfo info = block->pixelInfos[i];
                                 if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
                                     canvas->pixels[info.y*canvas->w + info.x] = info.lastColor;
@@ -1067,19 +1071,22 @@ void setCanvasColorWithBrushSize(CanvasTab *tab, Canvas *canvas, u32 color, int 
     int startBrushX = centerX - halfBrushSize;
     int startBrushY = centerY - halfBrushSize;
 
-    for(int brushY = 0; brushY < brushSize; brushY++) {
-        for(int brushX = 0; brushX < brushSize; brushX++) {
-            int x = startBrushX + brushX;
-            int y = startBrushY + brushY;
+    {
+        DEBUG_TIME_BLOCK_NAMED("CANVAS COLOR BRUSH SIZE")
+        for(int brushY = 0; brushY < brushSize; brushY++) {
+            for(int brushX = 0; brushX < brushSize; brushX++) {
+                int x = startBrushX + brushX;
+                int y = startBrushY + brushY;
 
-            bool inBounds = true;
-            if(tab->brushShape == BRUSH_SHAPE_CIRCLE) {
-                float lenSqr = float2_magnitude_sqr(minus_float2(make_float2(x, y), make_float2(centerX, centerY)));
-                inBounds = lenSqr <= halfBrushSize*halfBrushSize;
-            } 
+                bool inBounds = true;
+                if(tab->brushShape == BRUSH_SHAPE_CIRCLE) {
+                    float lenSqr = float2_magnitude_sqr(minus_float2(make_float2(x, y), make_float2(centerX, centerY)));
+                    inBounds = lenSqr <= halfBrushSize*halfBrushSize;
+                } 
 
-            if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h && inBounds) {
-                setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase);
+                if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h && inBounds) {
+                    setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase);
+                }
             }
         }
     }
