@@ -21,7 +21,7 @@ void initGameState(GameState *gameState) {
     gameState->lastInteractionMode = gameState->interactionMode = CANVAS_DRAW_MODE;
     
     gameState->grabbedCornerIndex = -1;
-    gameState->nearest = true; 
+    gameState->nearest = false; 
 
     gameState->lastMouseP = gameState->mouseP_screenSpace;
     gameState->runningAverageCount = 1;
@@ -48,16 +48,12 @@ void initGameState(GameState *gameState) {
 
     gameState->selectObject = SelectObject();
 
-    gameState->drawBlocks = false;
-
     initThreadQueue(&gameState->threadsInfo);
     globalThreadInfo = &gameState->threadsInfo;
 
     GLint maxUniformBlockSize;
     glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBlockSize);
     assert((maxUniformBlockSize / sizeof(float16)) > MAX_BONES_PER_MODEL);
-
-    gameState->useCameraMovement = false;
 
     loadPalleteDefault_(&gameState->canvasTabs[0]);
 

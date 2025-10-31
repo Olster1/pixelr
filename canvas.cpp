@@ -216,7 +216,7 @@ bool isValidCanvasTabRange(CanvasTab *canvas, int coordX, int coordY) {
     return (coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w);
 }
 
-bool isInShape(int x, int y, int w, int h, CanvasInteractionMode mode) {
+bool isInShape(int x, int y, int w, int h, CanvasInteractionMode mode, float brushSize) {
     DEBUG_TIME_BLOCK()
     bool result = false;
     if(mode == CANVAS_DRAW_RECTANGLE_MODE) {
@@ -233,7 +233,7 @@ bool isInShape(int x, int y, int w, int h, CanvasInteractionMode mode) {
         float distance = fabs(total - 1.0f);
         
         // Use a pixel-based threshold for thickness
-        float pixelThreshold = 2.0f / std::min(w, h); // Ensures 1-pixel width even for large canvases
+        float pixelThreshold = (brushSize + 1) / std::min(w, h); // Ensures 1-pixel width even for large canvases
         
         if (distance < pixelThreshold) {
             result = true;
@@ -294,16 +294,17 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
     DEBUG_TIME_BLOCK()
     CanvasTab *tab = getActiveCanvasTab(gameState);
     if(tab) {
+        float4 color = tab->colorPicked;
         float2 p = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
         float2 diff1 = minus_float2(p, gameState->drawShapeStart);
         float2 diff = diff1;
         diff.x = abs(diff1.x);
         diff.y = abs(diff1.y);
 
-        float4 color = tab->colorPicked;
-
         float startX = (gameState->drawShapeStart.x < p.x) ? gameState->drawShapeStart.x : p.x;
         float startY = (gameState->drawShapeStart.y < p.y) ? gameState->drawShapeStart.y : p.y;
+
+        float brushSize = tab->eraserSize;
 
         float2 middle = make_float2(startX + 0.5f*diff.x, startY + 0.5f*diff.y);
         
@@ -313,7 +314,7 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
         for(int y = 0; y <= h; ++y) {
             for(int x = 0; x <= w; ++x) {
                 float2 offset = make_float2((startX + x) - gameState->drawShapeStart.x, (startY + y) - gameState->drawShapeStart.y);
-                if(isInShape((mode == CANVAS_DRAW_LINE_MODE) ? round(offset.x) : x, (mode == CANVAS_DRAW_LINE_MODE) ? round(offset.y) : y, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.x) : w, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.y) : h, mode)) {
+                if(isInShape((mode == CANVAS_DRAW_LINE_MODE) ? round(offset.x) : x, (mode == CANVAS_DRAW_LINE_MODE) ? round(offset.y) : y, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.x) : w, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.y) : h, mode, brushSize)) {
                     if((startX + x) >= 0 && (startY + y) >= 0 && (startX + x) < canvas->w && (startY + y) < canvas->h) {
                         if(fill) {
                             float2 p = make_float2(startX + x,startY + y);
@@ -710,7 +711,7 @@ void updateSprayCan(GameState *gameState, Canvas *canvas) {
 
 void drawLinedGrid(GameState *gameState, Canvas *canvas) {
     DEBUG_TIME_BLOCK()
-    float4 greyColor = make_float4(0.6, 0.6, 0.6, 1);
+    float4 greyColor = make_float4(0.4, 0.4, 0.4, 1);
     for(int x = 0; x < canvas->h + 1; ++x) {
         if(gameState->drawGrid || (x == 0 || x == canvas->h)) {
             TransformX T = {};

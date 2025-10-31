@@ -38,44 +38,5 @@ void updateCamera(GameState *gameState) {
         //     gameState->camera.T.pos = plus_float3(gameState->camera.T.pos, scale_float3(gameState->dt*speed, yAxis));
         // }
 
-    } else if(gameState->useCameraMovement) {
-        gameState->camera.T.pos = plus_float3(gameState->cameraOffset, gameState->camera.T.pos);
-
-        float16 rot = eulerAnglesToTransform(gameState->camera.T.rotation.y, gameState->camera.T.rotation.x, gameState->camera.T.rotation.z);
-
-        float3 yAxis = make_float3(rot.E_[1][0], rot.E_[1][1], rot.E_[1][2]);
-        float3 xAxis = make_float3(rot.E_[0][0], rot.E_[0][1], rot.E_[0][2]);
-
-        if(gameState->camera.shakeTimer >= 0) {
-            gameState->camera.shakeTimer -= gameState->dt;
-
-            if(gameState->camera.shakeTimer < 0) {
-                //NOTE: Stop the shaking
-                gameState->camera.shakeTimer = -1;
-                gameState->cameraOffset = CAMERA_OFFSET;
-            } else {
-                float randomOffset = ((float)rand() / RAND_MAX) * 100; 
-                float randomYOffset = ((float)rand() / RAND_MAX) * 50; 
-
-                float tx = gameState->camera.shakeTimer*100 + randomOffset;
-                float ty = gameState->camera.shakeTimer*100 + randomYOffset + randomOffset;
-
-                float px = SimplexNoise_noise(tx);
-                float py = SimplexNoise_noise(ty);
-
-                float x = lerp(-1, 1, make_lerpTValue(px)) * (gameState->camera.shakeTimer);
-                float y = lerp(-1, 1, make_lerpTValue(py)) * (gameState->camera.shakeTimer);
-
-                gameState->cameraOffset = plus_float3(plus_float3(CAMERA_OFFSET, scale_float3(y, yAxis)), scale_float3(x, xAxis));
-            }
-        }
-
-        // if(gameState->player.running && gameState->camera.runShakeTimer >= 0) {
-        //     //NOTE: Do the rotation around z
-        //     gameState->camera.T.rotation.z += (float)sin(20*gameState->camera.runShakeTimer);
-        //     gameState->camera.runShakeTimer += gameState->dt;
-        // } 
     }
-
-    // gameState->camera.fov = lerp(gameState->camera.fov, gameState->camera.targetFov, make_lerpTValue(0.4f));
 }

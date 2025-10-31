@@ -88,7 +88,7 @@ struct GameState {
 
     int mouseIndexAt;
     int mouseCountAt;
-    float2 mouseP_01_array[100];
+    float2 mouseP_01_array[101];
     float2 lastMouseP;
 
     Font mainFont;
@@ -129,11 +129,7 @@ struct GameState {
 
     bool clearPaletteOnLoad;
 
-    int DEBUG_BlocksDrawnForFrame;
-
-    bool drawBlocks;
-
-    bool useCameraMovement;
+    bool showStokeSmoothingWindow;
 
     float4 bgColor;
     char dimStr0[256];

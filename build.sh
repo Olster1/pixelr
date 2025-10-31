@@ -13,6 +13,7 @@ clear
 #     -o ./libs/libimgui.dylib
 
 # -O2
+
 g++ -g -std=c++11 -o Pixelr \
     -I ../imgui \
     -I ../imgui/backends \

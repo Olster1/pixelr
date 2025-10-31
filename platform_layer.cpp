@@ -367,13 +367,8 @@ int main(int argc, char **argv) {
         gameState->lastInteractionMode = gameState->interactionModeStartOfFrame;
     }
 
-    //NOTE: For 3d to move camera aroumd
     gameState->lastMouseP = make_float2(0.5f*gameState->screenWidth, -0.5f*gameState->screenWidth);
-    if(gameState->useCameraMovement) {
-      SDL_WarpMouseInWindow(window, 0.5f*gameState->screenWidth, 0.5f*gameState->screenWidth);
-    } else {
-      gameState->lastMouseP = gameState->mouseP_screenSpace;
-    }         
+    gameState->lastMouseP = gameState->mouseP_screenSpace;
 
     //NOTE: Free the dropped filepath if there was one
     if(gameState->droppedFilePath) {

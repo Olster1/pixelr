@@ -897,6 +897,27 @@ void updateColorPaletteEnter(GameState *gameState) {
   }
 }
 
+
+void updateCanvasSettingsWindow(GameState *gameState) {
+  if(gameState->showStokeSmoothingWindow) {
+    //NOTE: Create new canvas
+    ImGui::SetNextWindowSizeConstraints(ImVec2(200, 150), ImVec2(FLT_MAX, FLT_MAX));
+    ImGui::Begin("Canvas Settings", &gameState->showStokeSmoothingWindow);  
+    ImGui::SliderInt("Stroke Smoothing Percent", &gameState->runningAverageCount, 1, 30);    
+    ImGui::ColorEdit3("Background", (float*)&gameState->bgColor);
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+    if(tab) {
+      ImGui::Checkbox("Check Background", &tab->checkBackground);
+    }
+    
+    ImGui::Checkbox("Draw Per Pixel Grid", &gameState->drawGrid); 
+    ImGui::Checkbox("Nearest Filter", &gameState->nearest);
+    ImGui::Text("Whether to use a Linear or Nearest Filter when moving or rotating select shapes."); 
+
+    ImGui::End();
+  }
+}
+
 void loadProjectAndStoreTab(GameState *gameState) {
   bool valid = true;
   CanvasTab tab = loadProjectFromFile(&valid);
@@ -941,6 +962,13 @@ void showMainMenuBar(GameState *state)
               state->colorsPalleteBuffer[0] = '\0';
               state->showColorPalleteEnter = true; 
             }
+            
+            ImGui::EndMenu();
+        }
+
+         if (ImGui::BeginMenu("Canvas"))
+        {
+            if (ImGui::MenuItem("Settings")) { state->showStokeSmoothingWindow = true; }
             
             ImGui::EndMenu();
         }
@@ -1051,10 +1079,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
               // Detect when the color picker is closed after changes
               ImGui::SliderFloat("Opacity", &tab->opacity, 0.0f, 1.0f);
-              // ImGui::ColorEdit3("Background", (float*)&state->bgColor);
-              ImGui::Checkbox("Check Background", &tab->checkBackground);
-              // ImGui::Checkbox("nearest", &state->nearest);
-              // ImGui::Checkbox("Draw Grid", &state->drawGrid); 
+              
               int brushSize = tab->eraserSize;
               ImGui::SliderInt((state->interactionMode != CANVAS_ERASE_MODE) ? "Brush Size" : "Eraser Size", &brushSize, 1, 100);
               tab->eraserSize = brushSize;
@@ -1157,6 +1182,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           updateEditPaletteWindow(state);
           drawAnimationTimeline(state, state->dt);
           drawLayersWindow(state, state->dt);
+          updateCanvasSettingsWindow(state);
           
           
 

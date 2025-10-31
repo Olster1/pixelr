@@ -67,6 +67,14 @@ float signOf(float val) {
     return (val > 0) - (val < 0);
 }
 
+float safeDivide_float(float a, float b, float defaultVal) {
+    if(b != 0) {
+		return a / b;
+	} else {
+		return defaultVal;
+	}
+}
+
 size_t MathMin_sizet(size_t a, size_t b) {
 	if(b < a) {
 		return b;
