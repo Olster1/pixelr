@@ -118,7 +118,7 @@ CanvasTab loadPixelrProject(const char *filePath) {
     }
 }
 
-CanvasTab loadProjectFromFile() {
+CanvasTab loadProjectFromFile(bool *valid) {
     const char *filterPatterns[] = { "*.pixelr",};
     const char *filePath = tinyfd_openFileDialog(
         "Open Project",         // Dialog title
@@ -129,10 +129,14 @@ CanvasTab loadProjectFromFile() {
         0                      // Allow multiple selection (0 = No, 1 = Yes)
     );    
 
-    CanvasTab tab = loadPixelrProject(filePath);
-    return tab;
+    if(filePath) {
+        CanvasTab tab = loadPixelrProject(filePath);
+        return tab;
+    } else {
+        *valid = false;
+        return CanvasTab(32, 32, 0);
+    }
     
-
 }
 
 bool loadProjectFile_(CanvasTab *tab, char *filePath) {
@@ -278,7 +282,9 @@ void saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *
         NULL,
         NULL);
 
-        strToWrite = easy_createString_printf(&globalPerFrameArena, "%s.pixelr", (char *)fileName);
+        if(fileName) {
+            strToWrite = easy_createString_printf(&globalPerFrameArena, "%s.pixelr", (char *)fileName);
+        }
     }
     
     if(strToWrite) {
@@ -369,22 +375,25 @@ void savePallete(CanvasTab *tab) {
             NULL,
             NULL);
 
-        char *strToWrite = easy_createString_printf(&globalPerFrameArena, "%s.palette", (char *)fileName);
-        game_file_handle atlasJsonFile = platformBeginFileWrite((char *)strToWrite);
-        assert(!atlasJsonFile.HasErrors);
-        size_t offset = 0;
-        
-        for(int i = 0 ; i < tab->palletteCount; i++) {
-            u32 c = tab->colorsPallete[i];
+        if(fileName) {
 
-            strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"color\": %u}\n", c);
+            char *strToWrite = easy_createString_printf(&globalPerFrameArena, "%s.palette", (char *)fileName);
+            game_file_handle atlasJsonFile = platformBeginFileWrite((char *)strToWrite);
+            assert(!atlasJsonFile.HasErrors);
+            size_t offset = 0;
+            
+            for(int i = 0 ; i < tab->palletteCount; i++) {
+                u32 c = tab->colorsPallete[i];
+
+                strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"color\": %u}\n", c);
+                offset = platformWriteFile(&atlasJsonFile, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+            }
+
+            strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"palletteCount\": %d}\n", tab->palletteCount);
             offset = platformWriteFile(&atlasJsonFile, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+            platformEndFile(atlasJsonFile);
         }
-
-        strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"palletteCount\": %d}\n", tab->palletteCount);
-        offset = platformWriteFile(&atlasJsonFile, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
-
-        platformEndFile(atlasJsonFile);
     }
 }
 
@@ -397,34 +406,38 @@ void loadPallete() {
         filterPatterns,        // Filters
         ".palette files only",    // Filter description
         0                      // Allow multiple selection (0 = No, 1 = Yes)
-    );    FileContents contents = getFileContentsNullTerminate((char *)filePath);
-    assert(contents.valid);
-    assert(contents.fileSize > 0);
-    assert(contents.memory);
+    );    
+    if(filePath) {
+    
+        FileContents contents = getFileContentsNullTerminate((char *)filePath);
+        assert(contents.valid);
+        assert(contents.fileSize > 0);
+        assert(contents.memory);
 
-    EasyTokenizer tokenizer = lexBeginParsing(contents.memory, EASY_LEX_OPTION_EAT_WHITE_SPACE);
+        EasyTokenizer tokenizer = lexBeginParsing(contents.memory, EASY_LEX_OPTION_EAT_WHITE_SPACE);
 
-    bool parsing = true;
-    while(parsing) {
-        EasyToken t = lexGetNextToken(&tokenizer);
+        bool parsing = true;
+        while(parsing) {
+            EasyToken t = lexGetNextToken(&tokenizer);
 
-        if(t.type == TOKEN_NULL_TERMINATOR) {
-            parsing = false;
-        } else if(t.type == TOKEN_OPEN_BRACKET) {
-            //NOTE: Get the item out
-            u32 color = 0;
+            if(t.type == TOKEN_NULL_TERMINATOR) {
+                parsing = false;
+            } else if(t.type == TOKEN_OPEN_BRACKET) {
+                //NOTE: Get the item out
+                u32 color = 0;
 
-            t = lexGetNextToken(&tokenizer);
-            assert(t.type == TOKEN_STRING);
-            t = lexGetNextToken(&tokenizer);
-            assert(t.type == TOKEN_COLON);
-
-            if(easyString_stringsMatch_null_and_count("color", t.at, t.size)) {
                 t = lexGetNextToken(&tokenizer);
-                assert(t.type == TOKEN_INTEGER);
-                color = t.intVal;
+                assert(t.type == TOKEN_STRING);
+                t = lexGetNextToken(&tokenizer);
+                assert(t.type == TOKEN_COLON);
 
-                //NOTE: Add the color
+                if(easyString_stringsMatch_null_and_count("color", t.at, t.size)) {
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_INTEGER);
+                    color = t.intVal;
+
+                    //NOTE: Add the color
+                }
             }
         }
     }

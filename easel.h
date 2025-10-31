@@ -166,7 +166,6 @@ struct UndoRedoBlock {
 
     void addPixelInfo(PixelInfo info) {
         DEBUG_TIME_BLOCK()
-        //TODO: This function is making drawing slow @Speed
         type = UNDO_REDO_PIXELS;
         if(!pixelInfos) {
             pixelInfos = initResizeArray(PixelInfo);

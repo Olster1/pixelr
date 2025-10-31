@@ -642,7 +642,11 @@ void updateSpriteSheetWindow(GameState *gameState) {
       int w = atoi(gameState->dimStr0);
       int h = atoi(gameState->dimStr1);
 
-      openSpriteSheet(gameState, w, h);
+      if(w > 0 && h > 0) {
+        openSpriteSheet(gameState, w, h);
+      } else {
+        addIMGUIToast("Width & Height must be more than zero.", 2);
+      }
     }
 
     ImGui::End();
@@ -894,11 +898,13 @@ void updateColorPaletteEnter(GameState *gameState) {
 }
 
 void loadProjectAndStoreTab(GameState *gameState) {
-  CanvasTab tab = loadProjectFromFile();
-  tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
-  pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
-  gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
-  
+  bool valid = true;
+  CanvasTab tab = loadProjectFromFile(&valid);
+  if(valid) {
+    tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
+    pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
+    gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+  }
 }
 
 void showMainMenuBar(GameState *state)

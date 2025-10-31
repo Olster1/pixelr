@@ -7,24 +7,26 @@ void saveFileToPNG(Renderer *renderer, Frame *frame, CanvasTab *tab) {
     NULL,
     NULL);
 
-    size_t bytesPerPixel = sizeof(uint32_t);
-    int stride_in_bytes = bytesPerPixel*tab->w;
+    if(result) {
+        size_t bytesPerPixel = sizeof(uint32_t);
+        int stride_in_bytes = bytesPerPixel*tab->w;
 
-    updateFrameGPUHandles(frame, tab);
+        updateFrameGPUHandles(frame, tab);
 
-    char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
-    int writeResult = stbi_write_png(name, tab->w, tab->h, 4, getPixelsForFrame_shortTerm(tab, frame), stride_in_bytes);
+        char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
+        int writeResult = stbi_write_png(name, tab->w, tab->h, 4, getPixelsForFrame_shortTerm(tab, frame), stride_in_bytes);
+    }
 }
 
 void loadPngColorPalette(CanvasTab *tab, bool clearPalette) {
     DEBUG_TIME_BLOCK()
-    const char *filterPatterns[] = { "*.png",};
+    const char *filterPatterns[] = { };
     const char *filePath = tinyfd_openFileDialog(
         "Load Color Palette",         // Dialog title
         "",                    // Default path
-        1,                     // Number of filters
-        filterPatterns,        // Filters
-        "PNG files only",    // Filter description
+        0,                     // Number of filters
+        NULL,        // Filters
+        NULL,    // Filter description
         0                      // Allow multiple selection (0 = No, 1 = Yes)
     );
     
@@ -50,18 +52,18 @@ void loadPngColorPalette(CanvasTab *tab, bool clearPalette) {
         }
         stbi_set_flip_vertically_on_load(0);
     }
+    
 
 }
 
 void openSpriteSheet(GameState *gameState, int w, int h) {
     DEBUG_TIME_BLOCK()
-    const char *filterPatterns[] = { "*.png",};
     const char *filePath = tinyfd_openFileDialog(
         "Open an image",         // Dialog title
         "",                    // Default path
-        1,                     // Number of filters
-        filterPatterns,        // Filters
-        "PNG files only",    // Filter description
+        0,                     // Number of filters
+        NULL,        // Filters
+        NULL,    // Filter description
         0                      // Allow multiple selection (0 = No, 1 = Yes)
     );
     
@@ -121,8 +123,6 @@ void openSpriteSheet(GameState *gameState, int w, int h) {
     } else {
         printf("No file selected.\n");
     }
-
-   
 }
 
 void saveSpriteSheetToPNG(Renderer *renderer, CanvasTab *canvas, int columns, int rows) {
@@ -134,49 +134,51 @@ void saveSpriteSheetToPNG(Renderer *renderer, CanvasTab *canvas, int columns, in
     NULL,
     NULL);
 
-    // columns = min getArrayLength(canvas->frames) / rows;
+    if(result) {
+        // columns = min getArrayLength(canvas->frames) / rows;
 
-    int totalWidth = columns*canvas->w;
-    int totalHeight = rows*canvas->h;
-    u32 *totalPixels = pushArray(&globalPerFrameArena, totalWidth*totalHeight, u32);
+        int totalWidth = columns*canvas->w;
+        int totalHeight = rows*canvas->h;
+        u32 *totalPixels = pushArray(&globalPerFrameArena, totalWidth*totalHeight, u32);
 
-    int x = 0;
-    int y = 0;
+        int x = 0;
+        int y = 0;
 
-    for(int i = 0; i < getArrayLength(canvas->frames); ++i) {
-        Frame *frame = canvas->frames + i;
-        u32 *compositePixels = getPixelsForFrame_shortTerm(canvas, frame);
+        for(int i = 0; i < getArrayLength(canvas->frames); ++i) {
+            Frame *frame = canvas->frames + i;
+            u32 *compositePixels = getPixelsForFrame_shortTerm(canvas, frame);
 
-        for(int k = 0; k < canvas->h; ++k) {
-            for(int j = 0; j < canvas->w; ++j) {
-                
-                int tempX = x + j;
-                int tempY = y + k;
+            for(int k = 0; k < canvas->h; ++k) {
+                for(int j = 0; j < canvas->w; ++j) {
+                    
+                    int tempX = x + j;
+                    int tempY = y + k;
 
-                if (tempX < totalWidth && tempY < totalHeight) {
-                    totalPixels[tempY * totalWidth + tempX] = compositePixels[k * canvas->w + j];
+                    if (tempX < totalWidth && tempY < totalHeight) {
+                        totalPixels[tempY * totalWidth + tempX] = compositePixels[k * canvas->w + j];
+                    }
                 }
             }
-        }
-        
-        x += canvas->w;
+            
+            x += canvas->w;
 
-        if(((i + 1) % columns) == 0) {
-            y += canvas->h;
-            x = 0;
+            if(((i + 1) % columns) == 0) {
+                y += canvas->h;
+                x = 0;
+            }
+            
         }
-        
+
+        size_t bytesPerPixel = sizeof(uint32_t);
+        int stride_in_bytes = bytesPerPixel*totalWidth;
+
+
+        char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
+        int writeResult = stbi_write_png(name, totalWidth, totalHeight, 4, totalPixels, stride_in_bytes);
     }
-
-    size_t bytesPerPixel = sizeof(uint32_t);
-    int stride_in_bytes = bytesPerPixel*totalWidth;
-
-
-    char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
-    int writeResult = stbi_write_png(name, totalWidth, totalHeight, 4, totalPixels, stride_in_bytes);
 }
 
-void exportImport_loadPng(GameState *gameState, const char *filePath) {
+void exportImport_loadImageFile(GameState *gameState, const char *filePath) {
     DEBUG_TIME_BLOCK()
     if (filePath) {
             stbi_set_flip_vertically_on_load(1);
@@ -215,15 +217,14 @@ void checkFileDrop(GameState *gameState) {
     DEBUG_TIME_BLOCK()
     if(gameState->droppedFilePath) {
         char *extension = getFileExtension(gameState->droppedFilePath);
-        if(easyString_stringsMatch_nullTerminated(extension, "png") || easyString_stringsMatch_nullTerminated(extension, "PNG")) {
-            exportImport_loadPng(gameState, gameState->droppedFilePath);
-        } else if(easyString_stringsMatch_nullTerminated(extension, "pixelr")) {
+        if(easyString_stringsMatch_nullTerminated(extension, "pixelr")) {
             CanvasTab tab = loadPixelrProject(gameState->droppedFilePath);
             tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
             pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
             gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
         } else {
-            addIMGUIToast("Only .png or .pixelr files supported", 2);
+            exportImport_loadImageFile(gameState, gameState->droppedFilePath);
+            // addIMGUIToast("Only .png, .jpg, .jpeg or .pixelr files supported", 2);
         }
     }
 }
@@ -232,17 +233,35 @@ void checkFileDrop(GameState *gameState) {
 
 void openPlainImage(GameState *gameState) {
     DEBUG_TIME_BLOCK()
-    const char *filterPatterns[] = { "*.png",};
     const char *filePath = tinyfd_openFileDialog(
         "Open an image",         // Dialog title
         "",                    // Default path
-        1,                     // Number of filters
-        filterPatterns,        // Filters
-        "PNG files only",    // Filter description
-        0                      // Allow multiple selection (0 = No, 1 = Yes)
+        0,                     // Number of filters
+        NULL,        // Filters
+        NULL,    // Filter description
+        1                      // Allow multiple selection (0 = No, 1 = Yes)
     );
 
-    exportImport_loadPng(gameState, filePath);
+    if(filePath) {
+
+        char *at = (char *)filePath;
+        char *start = (char *)filePath;
+
+        bool parsing = true;
+        while(parsing) {
+            if(!(*at) || *at == '|') {
+                char *str = nullTerminateArena(start, (int)(at - start), &globalPerFrameArena);
+                exportImport_loadImageFile(gameState, str);
+
+                if(!(*at)) {
+                    parsing = false;
+                }
+                start = at + 1;
+            } 
+            at++;
+        }
+    }
+    
 }
 
 void checkAndSaveBackupFile(GameState *gameState, CanvasTab *tab) {

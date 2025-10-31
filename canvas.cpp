@@ -199,11 +199,11 @@ void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, cons
             c = newColorF;
         }
         u32 u32Color = float4_to_u32_color(c);
-        // if(canvas->pixels[coordY*canvas->w + coordX] != u32Color) {
-        //     DEBUG_TIME_BLOCK_NAMED("Add Pixel Info for undo")
-        //     //NOTE: Don't add and undo info unless it's a different color
-        //     tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, u32Color));
-        // }
+        if(canvas->pixels[coordY*canvas->w + coordX] != u32Color) {
+            DEBUG_TIME_BLOCK_NAMED("Add Pixel Info for undo")
+            //NOTE: Don't add and undo info unless it's a different color
+            tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, u32Color));
+        }
         canvas->pixels[coordY*canvas->w + coordX] = u32Color;
     }
 }
