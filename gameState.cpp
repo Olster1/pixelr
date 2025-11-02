@@ -130,6 +130,8 @@ struct GameState {
     bool clearPaletteOnLoad;
 
     bool showStokeSmoothingWindow;
+    bool showAboutWindow;
+    char *versionString;
 
     float4 bgColor;
     char dimStr0[256];

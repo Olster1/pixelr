@@ -897,6 +897,17 @@ void updateColorPaletteEnter(GameState *gameState) {
   }
 }
 
+void updateAboutWindow(GameState *gameState) {
+  if(gameState->showAboutWindow) {
+    ImGui::SetNextWindowSizeConstraints(ImVec2(300, 400), ImVec2(FLT_MAX, FLT_MAX));
+    ImGui::Begin("About Pixelr", &gameState->showAboutWindow);       
+    ImGui::Text("Version %s", gameState->versionString); 
+
+    ImGui::End();
+
+  }
+}
+
 
 void updateCanvasSettingsWindow(GameState *gameState) {
   if(gameState->showStokeSmoothingWindow) {
@@ -933,6 +944,14 @@ void showMainMenuBar(GameState *state)
   CanvasTab *tab = getActiveCanvasTab(state);
     if (ImGui::BeginMainMenuBar()) // Creates the top bar
     {
+        if (ImGui::BeginMenu("Pixelr"))
+        {
+            if (ImGui::MenuItem("About Pixelr")) { state->showAboutWindow = true; }
+            if (ImGui::MenuItem("Quit")) { state->quit = true; }
+            
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("File"))
         {
             bool dummy = false;
@@ -972,6 +991,8 @@ void showMainMenuBar(GameState *state)
             
             ImGui::EndMenu();
         }
+
+        
 
         ImGui::EndMainMenuBar();
     }
@@ -1183,8 +1204,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           drawAnimationTimeline(state, state->dt);
           drawLayersWindow(state, state->dt);
           updateCanvasSettingsWindow(state);
-          
-          
+          updateAboutWindow(state);
 
           if(startMode != state->interactionMode) {
             clearSelection(tab);

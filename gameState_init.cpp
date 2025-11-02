@@ -25,6 +25,7 @@ void initGameState(GameState *gameState) {
 
     gameState->lastMouseP = gameState->mouseP_screenSpace;
     gameState->runningAverageCount = 1;
+    gameState->versionString = "0.0.1";
 
     Texture atlasTexture = loadTextureToGPU("./images/atlas.png");
 
