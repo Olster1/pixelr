@@ -12,7 +12,6 @@ static bool DEBUG_global_ProfilePaused = false;
 #include "./render.h"
 #include "./transform.cpp"
 #include "./animation.h"
-#define GJK_IMPLEMENTATION 1
 #include "./entity.cpp"
 #include "./render.cpp"
 #include "./opengl.cpp"

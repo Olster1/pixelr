@@ -128,8 +128,9 @@ struct GameState {
     char *droppedFilePath;
 
     bool clearPaletteOnLoad;
+    bool checkBackground;
 
-    bool showStokeSmoothingWindow;
+    bool canvasSettingsWindow;
     bool showAboutWindow;
     char *versionString;
 

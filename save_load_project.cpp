@@ -63,7 +63,6 @@ CanvasTab loadPixelrProject(const char *filePath) {
         PlayBackAnimation *anim = &tab.playback;
 
         tab.opacity = data->opacity;
-        tab.checkBackground = data->checkedBackground;
         tab.eraserSize = data->eraserSize;
         tab.onionSkinningFrames = data->onionSkinning;
         anim->frameTime = data->timerPerFrame;
@@ -199,7 +198,6 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
         PlayBackAnimation *anim = &tab->playback;
 
         data.opacity = tab->opacity;
-        data.checkedBackground = tab->checkBackground;
         data.eraserSize = tab->eraserSize;
         data.onionSkinning = tab->onionSkinningFrames;
         data.timerPerFrame = anim->frameTime;

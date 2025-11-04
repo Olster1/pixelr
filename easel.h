@@ -311,7 +311,6 @@ struct CanvasTab {
     float4 colorPicked = make_float4(1, 1, 1, 1);
     float opacity = 1;
     float savedOpacity = 1;//NOTE: When we make a select shape we save the opactiy to reset it to once they finished the select shape editing, so it isn't annoying having to keep chaning the opacity value.
-    bool checkBackground = true;
     float eraserSize = DEFAULT_ERASER_SIZE;
     BrushShapeType brushShape = BRUSH_SHAPE_CIRCLE;
     int onionSkinningFrames = 0;

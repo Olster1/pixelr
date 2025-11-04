@@ -910,19 +910,25 @@ void updateAboutWindow(GameState *gameState) {
 
 
 void updateCanvasSettingsWindow(GameState *gameState) {
-  if(gameState->showStokeSmoothingWindow) {
+  if(gameState->canvasSettingsWindow) {
     //NOTE: Create new canvas
     ImGui::SetNextWindowSizeConstraints(ImVec2(200, 150), ImVec2(FLT_MAX, FLT_MAX));
-    ImGui::Begin("Canvas Settings", &gameState->showStokeSmoothingWindow);  
-    ImGui::SliderInt("Stroke Smoothing Percent", &gameState->runningAverageCount, 1, 30);    
-    ImGui::ColorEdit3("Background", (float*)&gameState->bgColor);
-    CanvasTab *tab = getActiveCanvasTab(gameState);
-    if(tab) {
-      ImGui::Checkbox("Check Background", &tab->checkBackground);
+    ImGui::Begin("Canvas Settings", &gameState->canvasSettingsWindow);  
+    if(ImGui::SliderInt("Stroke Smoothing Percent", &gameState->runningAverageCount, 1, 30)) {
+      saveGlobalProjectSettings(gameState);
     }
-    
-    ImGui::Checkbox("Draw Per Pixel Grid", &gameState->drawGrid); 
-    ImGui::Checkbox("Nearest Filter", &gameState->nearest);
+    if(ImGui::ColorEdit3("Background", (float*)&gameState->bgColor)) {
+      saveGlobalProjectSettings(gameState);
+    }
+    if(ImGui::Checkbox("Check Background", &gameState->checkBackground)) {
+      saveGlobalProjectSettings(gameState);
+    }
+    if(ImGui::Checkbox("Draw Per Pixel Grid", &gameState->drawGrid)) {
+      saveGlobalProjectSettings(gameState);
+    }
+    if(ImGui::Checkbox("Nearest Filter", &gameState->nearest)) {
+      saveGlobalProjectSettings(gameState);
+    }
     ImGui::Text("Whether to use a Linear or Nearest Filter when moving or rotating select shapes."); 
 
     ImGui::End();
@@ -987,7 +993,7 @@ void showMainMenuBar(GameState *state)
 
          if (ImGui::BeginMenu("Canvas"))
         {
-            if (ImGui::MenuItem("Settings")) { state->showStokeSmoothingWindow = true; }
+            if (ImGui::MenuItem("Settings")) { state->canvasSettingsWindow = true; }
             
             ImGui::EndMenu();
         }

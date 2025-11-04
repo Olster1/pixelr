@@ -274,3 +274,30 @@ void checkAndSaveBackupFile(GameState *gameState, CanvasTab *tab) {
         tab->secondsSinceLastBackup = 0;
     }
 }
+
+
+void saveGlobalProjectSettings(GameState *gameState) {
+     char *fileName = easy_createString_printf(&globalPerFrameArena, "%sglobalProjectSettings", gameState->appDataFolderName);
+    game_file_handle fileHandle = platformBeginFileWrite((char *)fileName);
+    assert(!fileHandle.HasErrors);
+    size_t offset = 0;
+    char *strToWrite = "";
+    
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"drawGrid\": %d}\n", gameState->drawGrid);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"nearest\": %d}\n", gameState->nearest);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"checkBackground\": %d}\n", gameState->checkBackground);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"bgColor\": %f %f %f %f}\n", gameState->bgColor.x, gameState->bgColor.y, gameState->bgColor.z, gameState->bgColor.w);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"smoothStrokeCount\": %d}\n", gameState->runningAverageCount);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    platformEndFile(fileHandle);
+
+}

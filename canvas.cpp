@@ -377,9 +377,9 @@ void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
 
 void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
     DEBUG_TIME_BLOCK()
-    if(canvasTab->checkBackground) {
+    if(gameState->checkBackground) {
         pushCheckerQuad(gameState->renderer, make_float3(0, 0, 0), make_float3(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS, 0));
-        // pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 1), canvasTab->checkBackgroundHandle);
+        // pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 1), gameState->checkBackgroundHandle);
     }
 }
 
@@ -956,7 +956,7 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                         Frame *f = tab->frames + block->frameInfo.frameIndex;
                         f->deleted =  (block->type == UNDO_REDO_FRAME_CREATE) ? false : true;
                         tab->activeFrame = block->frameInfo.afterActiveLayer;
-                    } else if(block->type == UNDO_REDO_CANVAS_CREATE || block->type == UNDO_REDO_FRAME_DELETE ) {
+                    } else if(block->type == UNDO_REDO_CANVAS_CREATE || block->type == UNDO_REDO_CANVAS_DELETE ) {
                         assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
                         Frame *f = tab->frames + block->frameInfo.frameIndex;
                         assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
