@@ -31,9 +31,11 @@ struct ProjectFile {
     int canvasH;
     int activeFrame;
     int frameCount;
-    u32 framesActiveLayer[MAX_FRAME_COUNT];
+    u32 framesActiveLayer[MAX_FRAME_COUNT]; //NOTE: This is the canvas index of the active canvas in the layers
     u32 canvasCountPerFrame[MAX_FRAME_COUNT];
     size_t canvasesFileOffset;
+    bool layersVisible[MAX_FRAME_COUNT];
+    float layerOpacity[MAX_FRAME_COUNT];
 };
 #pragma pack(pop) 
 
@@ -70,6 +72,8 @@ CanvasTab loadPixelrProject(const char *filePath) {
         tab.activeFrame = data->activeFrame;
         assert(tab.activeFrame < data->frameCount);
 
+        int visibleIndex = 0;
+
         u8 *startOfData = ((u8 *)file.memory) + data->canvasesFileOffset;
         int totalCavases = 0;
         for(int i = 0; i < data->frameCount; ++i) {
@@ -96,6 +100,10 @@ CanvasTab loadPixelrProject(const char *filePath) {
                     c = pushArrayItem(&f->layers, c_, Canvas);
                 }
                 assert(c);
+                c->visible = data->layersVisible[visibleIndex];
+                c->opacity = data->layerOpacity[visibleIndex];
+                visibleIndex++;
+                
                 size_t dataSize = sizeof(u32)*tab.w*tab.h;
                 u8 *pixelData = startOfData + totalCavases*dataSize;                
                 easyPlatform_copyMemory(c->pixels, pixelData, dataSize);
@@ -167,6 +175,17 @@ struct SaveProjectFileThreadData {
     bool replaceSaveFilePath;
 };
 
+int getAliveLayerCount(Frame *f) {
+    int count = 0;
+    for(int i = 0; i < getArrayLength(f->layers); ++i) {
+        Canvas *c = f->layers + i;
+        if(c && !c->deleted) {
+            count ++;
+        }
+    }
+    return count;
+}
+
 bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) {
     bool result = false;
 
@@ -207,26 +226,42 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
         data.activeFrame = tab->activeFrame;
         data.canvasesFileOffset = sizeof(ProjectFile);
 
-        data.frameCount = getArrayLength(tab->frames);
+
+        int aliveFrameCount = 0;
+        int visibleIndex = 0;
         for(int i = 0; i < getArrayLength(tab->frames); ++i) {
             Frame *f = tab->frames + i;
-            if(f) {
+            if(f && !f->deleted) {
                 assert(i < MAX_FRAME_COUNT);
-                data.framesActiveLayer[i] = f->activeLayer;
-                data.canvasCountPerFrame[i] = getArrayLength(f->layers);
+                data.framesActiveLayer[aliveFrameCount] = f->activeLayer;
+
+                int aliveLayerCount = 0;
+                for(int i = 0; i < getArrayLength(f->layers); ++i) {
+                    Canvas *c = f->layers + i;
+                    if(c && !c->deleted) {
+                        data.layerOpacity[visibleIndex] = c->opacity;
+                        data.layersVisible[visibleIndex] = c->visible;
+                        visibleIndex++;
+                        aliveLayerCount++;
+                    }
+                }
+
+                data.canvasCountPerFrame[aliveFrameCount] = aliveLayerCount;
+                aliveFrameCount++;
             }
         }
+        data.frameCount = aliveFrameCount;
 
         game_file_handle file = platformBeginFileWrite((char *)filePath);
         assert(!file.HasErrors);
-        
+
         size_t offset = platformWriteFile(&file, &data, sizeof(ProjectFile), 0);
         for(int i = 0; i < getArrayLength(tab->frames); ++i) {
             Frame *f = tab->frames + i;
-            if(f) {
+            if(f && !f->deleted) {
                 for(int j = 0; j < getArrayLength(f->layers); ++j) {
                     Canvas *c = f->layers + j;
-                    if(c) {
+                    if(c && !c->deleted) {
                         size_t dataSize = tab->w*tab->h*sizeof(u32);
                         offset = platformWriteFile(&file, c->pixels, dataSize, offset);
                     }

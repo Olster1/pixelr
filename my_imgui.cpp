@@ -33,6 +33,11 @@ ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window) {
 
 #include "imgui.h"
 
+void closeWindowsAssociatedWithThisTab(GameState *state) {
+  state->showLayerOptionsWindow = false;
+  state->closeCanvasTabInfo.UIshowUnsavedWindow = false;
+} 
+
 void closeCanvasTabUI(GameState *state, CanvasTab *t, int i) {
   if(t) {
     t->dispose();
@@ -89,6 +94,7 @@ void drawTabs(GameState *state) {
                       state->camera.T.pos.xy = tab->cameraP;
                       state->camera.fov = tab->zoomFactor;
                     }
+                    closeWindowsAssociatedWithThisTab(state);
                 }
               
                   ImGui::EndTabItem();
@@ -163,6 +169,10 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
       PlayBackAnimation *anim = &canvasTab->playback;
 
       ImGui::SetNextWindowBgAlpha(1);
+      ImGuiIO& io = ImGui::GetIO();
+      ImVec2 window_pos = ImVec2(io.DisplaySize.x, io.DisplaySize.y);
+      ImVec2 window_pivot = ImVec2(1, 1);
+      ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
       ImGui::Begin("Animation Timeline");
 
       // Play/Pause/Reset buttons
@@ -330,6 +340,7 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
         src_flags |= ImGuiDragDropFlags_SourceNoHoldToOpenOthers; // Because our dragging is local, we disable the feature of opening foreign treenodes/tabs while dragging
         if (ImGui::BeginDragDropSource(src_flags))
         {
+            state->showLayerOptionsWindow = false;
             ImGui::SetDragDropPayload("LAYER_ROW", &i, sizeof(int));
             ImGui::Text("Moving Layer %d", i);
             ImGui::EndDragDropSource();
@@ -416,12 +427,22 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
 
         // --- Column 2: Buttons ---
         ImGui::TableNextColumn();
+       
         ImGui::PushID(i);
+        if (ImGui::Button((activeFrame->layers[i].visible) ? "\uf06e" : "\uf070"))
+        {
+            activeFrame->layers[i].visible = !activeFrame->layers[i].visible;
+            updateGpuCanvasTextures(state);
+        }
+        ImGui::PopID();
+        ImGui::SameLine();
+         ImGui::PushID(i);
         if (ImGui::Button("\uf1f8"))
         {
             // Delete canvas logic
             if (getActiveCanvasCount(activeFrame) > 1)
             {
+                state->showLayerOptionsWindow = false;
                 FrameInfo frameUndoInfo = {};
                 activeFrame->layers[i].deleted = true;
                 frameUndoInfo.canvasType = UNDO_REDO_CANVAS_DELETE;
@@ -437,30 +458,28 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
 
                 frameUndoInfo.afterActiveLayer = activeFrame->activeLayer;
                 canvasTab->addUndoInfo(frameUndoInfo);
+            } else {
+              addIMGUIToast("Can't delete all canvases.", 2);
             }
         }
         ImGui::PopID();
 
         ImGui::SameLine();
+
+        // --- Column 2: Buttons ---
         ImGui::PushID(i);
-        if (ImGui::Button((activeFrame->layers[i].visible) ? "\uf06e" : "\uf070"))
+        if (ImGui::Button("\uf141"))
         {
-            activeFrame->layers[i].visible = !activeFrame->layers[i].visible;
-            updateGpuCanvasTextures(state);
+            state->layerOptionsIndex = i;
+            state->showLayerOptionsWindow = true;
         }
         ImGui::PopID();
 
-        // char *id = easy_createString_printf(&globalPerFrameArena, "%s%d", "dragHandle", i);
-        // ImGui::PushID(id);
-        // // small “handle” button with ≡ style
-        // if (ImGui::Button("\uf58e"))
-        // {
-        //     // optional normal click action
-        // }
-        // ImGui::PopID();
+        if(activeFrame->layers[i].opacity < 1.0) {
+          ImGui::Text("%.2f alpha", activeFrame->layers[i].opacity);
+        }
 
-        
-        
+        ImGui::SameLine();
     }
   ImGui::EndTable();
 }
@@ -908,7 +927,27 @@ void updateAboutWindow(GameState *gameState) {
   }
 }
 
+void updateLayerSettingsWindow(GameState *gameState) {
+  if(gameState->showLayerOptionsWindow) {
+    ImGui::Begin("Layer Settings", &gameState->showLayerOptionsWindow, ImGuiWindowFlags_NoCollapse); 
+    Frame *activeFrame = getActiveFrame(gameState);
+    if(activeFrame) {
+      if(gameState->layerOptionsIndex >= 0 && gameState->layerOptionsIndex < getArrayLength(activeFrame->layers)) {
+        Canvas *c = getActiveCanvas(gameState);
+        if(c) {
+          if(ImGui::SliderFloat("Layer Opacity", &c->opacity, 0, 1)) {
+          }
+        }
+        
+      }      
+      
+    }
+    
 
+    ImGui::End();
+
+  }
+}
 void updateCanvasSettingsWindow(GameState *gameState) {
   if(gameState->canvasSettingsWindow) {
     //NOTE: Create new canvas
@@ -1095,9 +1134,10 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
         bool show_demo_window = true;
 
-        ImVec2 window_pos = ImVec2(0, io.DisplaySize.y);
-        ImVec2 window_pivot = ImVec2(0, 1.0f);
+        ImVec2 window_pos = ImVec2(0.5f*io.DisplaySize.x, 0.5f*io.DisplaySize.y);
+        ImVec2 window_pivot = ImVec2(0.5f, 0.5f);
 
+        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
         showUnSavedWindow(state);
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
         ImGui::SetNextWindowBgAlpha(1);
@@ -1109,6 +1149,12 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
         updateSpriteSheetWindow(state);
         if(tab) {
           {
+              ImGuiIO& io = ImGui::GetIO();
+              ImVec2 window_pos = ImVec2(0, io.DisplaySize.y);
+              ImVec2 window_pivot = ImVec2(0, 1);
+              ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, io.DisplaySize.y - 50));
+              ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
+
               ImGui::Begin("Color Palette");
               ImGui::ColorEdit3("Brush", (float*)&tab->colorPicked);
 
@@ -1224,6 +1270,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           drawLayersWindow(state, state->dt);
           updateCanvasSettingsWindow(state);
           updateAboutWindow(state);
+          updateLayerSettingsWindow(state);
 
           if(startMode != state->interactionMode) {
             clearSelection(tab);

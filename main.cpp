@@ -73,9 +73,8 @@ void updateGame(GameState *gameState) {
                 updateColorDropper(gameState, getActiveCanvas(gameState));
             }
 
-            updateGpuCanvasTextures(gameState);
-            
         }
+        updateGpuCanvasTextures(gameState);
 
         updateSelectObject(gameState, getActiveCanvas(gameState));
 

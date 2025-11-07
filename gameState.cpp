@@ -105,8 +105,6 @@ struct GameState {
 
     float3 cameraOffset;
 
-    bool openSpriteSheetWindow;
-
     float16 cameraRotation;
 
     float3 startP;
@@ -132,14 +130,15 @@ struct GameState {
 
     bool canvasSettingsWindow;
     bool showAboutWindow;
+    bool showLayerOptionsWindow;
+    bool openSpriteSheetWindow;
+    int layerOptionsIndex;
     char *versionString;
 
     float4 bgColor;
     char dimStr0[256];
     char dimStr1[256];
-    // u32 canvas[MAX_CANVAS_DIM*MAX_CANVAS_DIM]; 
-    // int canvasW;
-    // int canvasH;
+    
     bool showNewCanvasWindow;
     bool showExportWindow;
     bool maxColumnsExport;

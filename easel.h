@@ -203,6 +203,7 @@ struct Canvas {
     int w = 0;
     int h = 0;
     bool visible; //NOTE: Users can turn layers on and off. When off we don't show this layer.
+    float opacity = 1.0; //NOTE: Layers can have an overall opacity that can be changed
 
     Canvas(int w_, int h_) {
         DEBUG_TIME_BLOCK()

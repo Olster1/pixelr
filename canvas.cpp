@@ -856,8 +856,10 @@ void updateCompositePixelsForFrame_shortTerm(Renderer *renderer, CanvasTab *t, F
             InstanceDataWithRotation data = {};
 
             data.M = float16_set_pos(float16_scale(float16_identity(), make_float3(t->w, t->h, 0)), make_float3(0, 0, 0));
-            data.color = make_float4(1, 1, 1, 1);
+            data.color = make_float4(1, 1, 1, f->layers[j].opacity);
             data.uv = make_float4(0, 1, 1, 0);
+
+            // printf("Updated canvas %f\n", gameState->dt);
 
             updateInstanceData(renderer->quadModel.instanceBufferhandle, &data, sizeof(InstanceDataWithRotation));
             drawModels(&renderer->quadModel, &renderer->quadTextureShader, textureHandle, 1, projectionT, float16_identity(), make_float3(0, 0, 1));
