@@ -14,7 +14,7 @@ static bool DEBUG_global_ProfilePaused = false;
 #include "./animation.h"
 #include "./entity.cpp"
 #include "./render.cpp"
-#include "./opengl.cpp"
+#include "./render_backends/opengl.cpp"
 #include "./font.cpp"
 #include "./init_render.cpp"
 #include "./SimplexNoise.cpp"

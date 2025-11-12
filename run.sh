@@ -1,2 +1,2 @@
 ./build.sh
-./Pixelr
+./bin/Pixelr

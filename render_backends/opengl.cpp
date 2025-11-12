@@ -1,9 +1,9 @@
 #define STB_IMAGE_IMPLEMENTATION
-#include "./libs/stb_image.h"
+#include "../libs/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "./libs/stb_image_write.h"
+#include "../libs/stb_image_write.h"
 #include <OpenGL/gl3.h>
-#include "./shaders/shaders_opengl.cpp"
+#include "../shaders/shaders_opengl.cpp"
 
 // NOTE: Each location index in a vertex attribute index - i.e. 4 floats. that's why for matrix we skip 4 values
 #define VERTEX_ATTRIB_LOCATION 0
@@ -489,13 +489,8 @@ void updateInstanceData(uint32_t bufferHandle, void *data, size_t sizeInBytes) {
     glBindBuffer(GL_ARRAY_BUFFER, bufferHandle);
     renderCheckError();
     
-    //send the data to GPU. glBufferData deletes the old one
-    //NOTE(ollie): We were using glBufferData which deletes the old buffer and resends the create a new buffer, but 
-    //NOTE(ollie): I saw on Dungeoneer code using glsubbufferdata is faster because it doesn't have to delete it.
-    // glBufferSubData(GL_ARRAY_BUFFER, 0, sizeInBytes, data);
     glBufferData(GL_ARRAY_BUFFER, sizeInBytes, data, GL_STREAM_DRAW); 
     renderCheckError();
-
     
     glBindBuffer(GL_ARRAY_BUFFER, 0);
     renderCheckError();
@@ -529,7 +524,6 @@ void bindTexture(char *uniformName, int slotId, GLint textureId, Shader *shader,
 }
 
 void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int instanceCount, float16 projectionTransform, float16 modelViewTransform, float3 lookingAxis, uint32_t flags = 0, int skinningTextureId = -1, GLenum primitive = GL_TRIANGLES, float time = 0) {
-    // printf("%d\n", instanceCount);
     glUseProgram(shader->handle);
     renderCheckError();
     
@@ -545,27 +539,11 @@ void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int inst
     glUniform3f(glGetUniformLocation(shader->handle, "lookingAxis"), lookingAxis.x, lookingAxis.y, lookingAxis.z);
     renderCheckError();
 
-    glUniform1f(glGetUniformLocation(shader->handle, "u_time"), time); //global_fogSeeDistance*1000
-    renderCheckError();
-
-    float4 fogColor = make_float4(0.9, 0.9, 0.9, 1);
-
-    glUniform4f(glGetUniformLocation(shader->handle, "fogColor"), fogColor.x, fogColor.y, fogColor.z, fogColor.w);
-    renderCheckError();
-
-    glUniform1f(glGetUniformLocation(shader->handle, "fogSeeDistance"), (100)); //global_fogSeeDistance*1000
-    renderCheckError();
-
-    glUniform1f(glGetUniformLocation(shader->handle, "fogFadeDistance"), (250)); //global_fogFarDistance*1000
+    glUniform1f(glGetUniformLocation(shader->handle, "u_time"), time);
     renderCheckError();
 
     bindTexture("diffuse", 1, textureId, shader, flags);
     renderCheckError();
-
-    if(skinningTextureId >= 0) {
-        bindTexture("boneMatrixBuffer", 2, skinningTextureId, shader, SHADER_TEXTURE_BUFFER);
-        renderCheckError(); 
-    }
 
     glDrawElementsInstanced(primitive, model->indexCount, GL_UNSIGNED_INT, 0, instanceCount); 
     renderCheckError();
@@ -583,7 +561,6 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
       if(renderer->checkerQuadCount > 0) {
         u32 canvasTextureHandle = renderer->canvasHandles[0];
         if(canvasTextureHandle > 0) {
-            //NOTE: Draw circle oultines
             updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->checkerQuads, renderer->checkerQuadCount*sizeof(InstanceDataWithRotation));
             drawModels(&renderer->quadModel, &renderer->checkQuadShader, canvasTextureHandle, renderer->checkerQuadCount, projectionTransform, modelViewTransform, lookingAxis);
         }
@@ -603,7 +580,6 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     renderer->canvasCount = 0;
 
     if(renderer->atlasQuadCount > 0) {
-        //NOTE: Draw circle oultines
         updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->atlasQuads, renderer->atlasQuadCount*sizeof(InstanceDataWithRotation));
         drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadCount, projectionTransform, modelViewTransform, lookingAxis);
 
@@ -611,7 +587,6 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     }
 
     if(renderer->atlasQuadHUDCount > 0) {
-        //NOTE: Draw circle oultines
         updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->atlasHUDQuads, renderer->atlasQuadHUDCount*sizeof(InstanceDataWithRotation));
         drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadHUDCount, projectionScreenTransform, float16_identity(), lookingAxis);
 
@@ -634,7 +609,6 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     }
 
     if(renderer->selectionCount > 0) {
-        //NOTE: Draw circle oultines
         updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->selectionQuad, sizeof(InstanceDataWithRotation));
         drawModels(&renderer->quadModel, &renderer->pixelSelectionShader, renderer->selectionTextureHandle, 1, projectionTransform, modelViewTransform, lookingAxis, 0, -1, GL_TRIANGLES, renderer->timeAccum);
 
@@ -642,7 +616,4 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
     }
 
     renderCheckError();
-    
-
-    
 }

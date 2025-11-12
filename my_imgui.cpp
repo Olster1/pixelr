@@ -933,7 +933,7 @@ void updateLayerSettingsWindow(GameState *gameState) {
     Frame *activeFrame = getActiveFrame(gameState);
     if(activeFrame) {
       if(gameState->layerOptionsIndex >= 0 && gameState->layerOptionsIndex < getArrayLength(activeFrame->layers)) {
-        Canvas *c = getActiveCanvas(gameState);
+        Canvas *c = activeFrame->layers + gameState->layerOptionsIndex;
         if(c) {
           if(ImGui::SliderFloat("Layer Opacity", &c->opacity, 0, 1)) {
           }

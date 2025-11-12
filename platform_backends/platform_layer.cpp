@@ -4,10 +4,10 @@
 #include <cstdio>
 #include <map>
 #define arrayCount(array1) (sizeof(array1) / sizeof(array1[0]))
-#include "./murmur3.c"
-#include "./3DMaths.h"
+#include "../libs/murmur3.c"
+#include "../3DMaths.h"
 #include <cstdio>
-#include "./threads.cpp"
+#include "../threads.cpp"
 static ThreadsInfo *globalThreadInfo = 0;
 
 #define ENUM(value) value,
@@ -107,7 +107,7 @@ inline float EasyTime_GetMillisecondsElapsed(u64 CurrentCount, u64 LastCount)
     return millseconds;
     
 }
-#include "./main.cpp"
+#include "../main.cpp"
 
 float getBestDt(float secondsElapsed) {
       float frameRates[] = {1.0f/15.0f, 1.0f/20.0f, 1.0f/30.0f, 1.0f/60.0f, 1.0f/120.0f};
