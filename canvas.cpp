@@ -498,8 +498,8 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
 
             float4 circleColor = make_float4(1, 1, 1, 1);
             
-            float diameter = 0.05f;
-            if(isInsideCircle(handleP, diameter, worldMouseP)) {
+            float diameter = clamp(0.1f, 0.01f*tab->w, tab->zoomFactor*0.01f);
+            if(isInsideCircle(handleP, 2*diameter, worldMouseP)) {
                 circleColor = make_float4(1, 1, 0, 1);
                 if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED && !isInteractingWithIMGUI()) {
                     assert(!gameState->selectObject.dragging);
@@ -508,6 +508,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             }
 
             if(gameState->grabbedCornerIndex == i) {
+                // printf("%d\n", gameState->grabbedCornerIndex);
                 circleColor = make_float4(1, 0.5, 0, 1);
 
                 if(gameState->grabbedCornerIndex == arrayCount(bounds)) {
@@ -530,25 +531,12 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
 
                     gameState->selectObject.T.rotation.z = angle;
                 } else {
-                    
-                    //NOTE: Scale handles
-                    
-                    float2 diff = minus_float2(getWorldPFromMouse(gameState), bounds[i]);
-                    float scaleX = float2_dot(xHat, diff);
-                    float scaleY = float2_dot(yHat, diff);
-
-                    float flipX = 1.0f;
-                    float flipY = 1.0f;
-
-                    if(i == 0 || i == 1) { //NOTE: On the bott
-                        flipX = -1.0f;
-                    }
-                    if(i == 0 || i == 3) { //NOTE: On the bott
-                        flipY = -1.0f;
-                    }
-
-                    gameState->selectObject.T.scale.x += flipX*scaleX;
-                    gameState->selectObject.T.scale.y += flipY*scaleY;
+                    float2 halfScale = minus_float2(getCanvasCoordFromMouse(gameState, canvas->w, canvas->h, true), plus_float2(gameState->selectObject.startCanvasP, gameState->selectObject.T.pos.xy));
+                    float2 originalScale = get_scale_rect2f(gameState->selectObject.boundsCanvasSpace);
+                    float fullScaleFactor = 2.0f; //NOTE: To convert the half scale to the full scale
+                    //NOTE: We divide by the original scale, becuase the scale of the select object's units is in the original scale size i.e. 1 scale is just the shape at it's original size.
+                    gameState->selectObject.T.scale.x = fullScaleFactor*get_abs_value(halfScale.x) / originalScale.x;
+                    gameState->selectObject.T.scale.y = fullScaleFactor*get_abs_value(halfScale.y) / originalScale.y;
                 }
             }
 
@@ -558,7 +546,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             drawBundles[i].isRotationHandle = (i == arrayCount(bounds));
 
         }
-
+        
         if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
             float2 mousePWorld = getWorldPFromMouse(gameState);
             //TODO: Fix this. Should be able to handle rotated rect in bounds
