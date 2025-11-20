@@ -40,4 +40,5 @@ static bool DEBUG_global_ProfilePaused = false;
 #include "./premade_palette.cpp"
 #include "./my_imgui.cpp"
 #include "./hot_keys.cpp"
+#include "./battery_saver.cpp"
 

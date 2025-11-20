@@ -142,6 +142,32 @@ void updateKeyState(GameState *gameState, KeyTypes type, bool value) {
   }
 }
 
+void processEvent(GameState *gameState, SDL_Event *e) {
+  if (e->type == SDL_QUIT) {
+        gameState->quit = true;
+      } else if (e->type == SDL_DROPFILE) {
+        char *file = e->drop.file; // path to the dropped file
+        gameState->droppedFilePath = file;
+        
+      } else if (e->type == SDL_MOUSEWHEEL) {
+        gameState->scrollSpeed = e->wheel.y;
+      } else if(e->type == SDL_KEYDOWN) {
+        //NOTE: We do this here just for z becuase we want the lag between when the user presses the first z for undo redo
+        SDL_Scancode scancode = e->key.keysym.scancode; 
+        if(scancode == SDL_SCANCODE_Z) {
+          gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_DOWN;
+        }
+      } else if(e->type == SDL_KEYUP) {
+        //NOTE: We do this here just for z becuase we want the lag between when the user presses the first z for undo redo
+        SDL_Scancode scancode = e->key.keysym.scancode; 
+        if(scancode == SDL_SCANCODE_Z) {
+          gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_RELEASED;
+        }
+      } 
+    
+    ImGui_ImplSDL2_ProcessEvent(e);
+}
+
 int main(int argc, char **argv) {
   int flags = SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL;
   if (SDL_Init(SDL_INIT_EVERYTHING)) {
@@ -199,13 +225,12 @@ int main(int argc, char **argv) {
 
   SDL_EventState(SDL_MULTIGESTURE, SDL_ENABLE);
 
-  //NOTE: Hide the cursor
-  // SDL_ShowCursor(SDL_DISABLE);
-
   gameState->appDataFolderName = getPlatformSaveFilePath();
 
   SDL_Event e;
   Uint32 start = SDL_GetTicks();
+  bool firstFrame = true;
+  bool secondFrame = false;
   while (!gameState->quit) {
     
     Uint32 end = SDL_GetTicks();
@@ -223,35 +248,14 @@ int main(int argc, char **argv) {
 
     gameState->scrollSpeed = 0;
 
-    while (SDL_PollEvent(&e)) {
-       if (e.type == SDL_QUIT) {
-          gameState->quit = true;
-       } else if (e.type == SDL_DROPFILE) {
-          char *file = e.drop.file; // path to the dropped file
-          gameState->droppedFilePath = file;
-          
-        } else if (e.type == SDL_MOUSEWHEEL) {
-          gameState->scrollSpeed = e.wheel.y;
-        } else if(e.type == SDL_KEYDOWN) {
-          SDL_Scancode scancode = e.key.keysym.scancode; 
-          if(scancode == SDL_SCANCODE_Z) {
-            
-            gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_DOWN;
-          }
-        } else if(e.type == SDL_KEYUP) {
-          SDL_Scancode scancode = e.key.keysym.scancode; 
-         if(scancode == SDL_SCANCODE_Z) {
-            gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_RELEASED;
-          }
-        } 
-        // else if(e.type == SDL_WINDOWEVENT) {
-        //     if (e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-        //         int newWidth = e.window.data1;
-        //         int newHeight = e.window.data2;
-        //         updateNewWindowSize(gameState, newWidth, newWidth);
-        //     }
-        // }
-      ImGui_ImplSDL2_ProcessEvent(&e);
+    if(shouldKeepUpdateing(gameState) || firstFrame || secondFrame) {
+      while(SDL_PollEvent(&e)) {
+        processEvent(gameState, &e);
+      }
+    } else if (SDL_WaitEvent(&e)) {
+        do {
+          processEvent(gameState, &e);
+        } while(SDL_PollEvent(&e));
     }
 
     //NOTE: This is to get the last interaction mode
@@ -259,7 +263,6 @@ int main(int argc, char **argv) {
     
     updateMyImgui(gameState, imguiIo);
     
-
     const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
     
     updateKeyState(gameState, KEY_UP, currentKeyStates[SDL_SCANCODE_UP] == 1);
@@ -378,6 +381,14 @@ int main(int argc, char **argv) {
 
     DEBUG_TIME_BLOCK_FOR_FRAME_END(beginFrameProfiler, gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_PRESSED);
     DEBUG_TIME_BLOCK_FOR_FRAME_START(beginFrameProfiler, "Per frame");
+    if(firstFrame) {
+      secondFrame = true;
+    } else {
+      secondFrame = false;
+    }
+    
+    firstFrame = false;
+    
   }
 
     // Cleanup

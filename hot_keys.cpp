@@ -107,7 +107,6 @@ void updateHotKeys(GameState *gameState) {
             Canvas *c = getActiveCanvas(gameState);
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t && c && gameState->clipboard.hasCopy()) {
-
                 //NOTE: Inititate the Select Object
                 gameState->selectObject.isActive = true;
                 t->savedOpacity = t->opacity;

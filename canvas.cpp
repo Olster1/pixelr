@@ -324,7 +324,6 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
                             color.w = tab->opacity;
                             pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
                         }
-
                     }
                 }
             }
@@ -656,8 +655,10 @@ void updateColorDropper(GameState *gameState, Canvas *canvas) {
                 gameState->interactionMode = gameState->lastInteractionMode;
             }
             float2 worldMouseP = getWorldPFromMouse(gameState);
-            pushFillCircle(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), 0.5f, color);
-            pushCircleOutline(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), 0.5f, make_float4(1, 1, 1, 1));
+            float sizeFactor = 0.06;
+            float diameter = clamp(0.1f, sizeFactor*tab->w, tab->zoomFactor*sizeFactor);
+            pushFillCircle(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), diameter, color);
+            pushCircleOutline(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), diameter, make_float4(1, 1, 1, 1));
         }
     }
 }

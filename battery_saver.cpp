@@ -1,0 +1,9 @@
+//NOTE: This is whether the app should rest or keep updating at high frame rate 
+bool shouldKeepUpdateing(GameState *gameState) {
+    bool result = false;
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+    if(isInteractingWithIMGUI() || gameState->selectObject.isActive || (tab && fabsf(gameState->scrollDp) > 1e-6f) || gameState->drawingShape || (tab && getArrayLength(tab->selected) > 0)) {
+        result = true;
+    }
+    return result;
+}
