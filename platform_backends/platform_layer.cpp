@@ -229,8 +229,7 @@ int main(int argc, char **argv) {
 
   SDL_Event e;
   Uint32 start = SDL_GetTicks();
-  bool firstFrame = true;
-  bool secondFrame = false;
+  Uint32 startFinal = SDL_GetTicks();
   while (!gameState->quit) {
     
     Uint32 end = SDL_GetTicks();
@@ -248,11 +247,13 @@ int main(int argc, char **argv) {
 
     gameState->scrollSpeed = 0;
 
-    if(shouldKeepUpdateing(gameState) || firstFrame || secondFrame) {
+    if(shouldKeepUpdateing(gameState) || ((end - startFinal) < 5000)) {
+      // printf("UPDATEING %f\n", gameState->dt);
       while(SDL_PollEvent(&e)) {
         processEvent(gameState, &e);
       }
     } else if (SDL_WaitEvent(&e)) {
+        // printf("WAITING %f\n", gameState->dt);
         do {
           processEvent(gameState, &e);
         } while(SDL_PollEvent(&e));
@@ -381,14 +382,6 @@ int main(int argc, char **argv) {
 
     DEBUG_TIME_BLOCK_FOR_FRAME_END(beginFrameProfiler, gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_PRESSED);
     DEBUG_TIME_BLOCK_FOR_FRAME_START(beginFrameProfiler, "Per frame");
-    if(firstFrame) {
-      secondFrame = true;
-    } else {
-      secondFrame = false;
-    }
-    
-    firstFrame = false;
-    
   }
 
     // Cleanup

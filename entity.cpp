@@ -1,8 +1,7 @@
 static int globalRandomStartupSeed = 0;
 
 struct EntityID {
-    size_t stringSizeInBytes; //NOTE: Not include null terminator
-    char stringID[256]; 
+    char *stringID; //NOTE: Null terminated string
     uint32_t crc32Hash;
 };
 
@@ -17,12 +16,11 @@ EntityID makeEntityId(int randomStartUpID) {
     #define ENTITY_ID_PRINTF_STRING "%ld-%d-%d", timeSinceEpoch, randomStartUpID, global_entityIdCreated
 
     //NOTE: Allocate the string
-    size_t bufsz = snprintf(NULL, 0, ENTITY_ID_PRINTF_STRING) + 1;
-    assert(bufsz < arrayCount(result.stringID));
-    result.stringSizeInBytes = MathMin_sizet(arrayCount(result.stringID), bufsz);
-    snprintf(result.stringID, bufsz, ENTITY_ID_PRINTF_STRING);
+    size_t stringLengthInBytes = snprintf(NULL, 0, ENTITY_ID_PRINTF_STRING);
+    result.stringID = pushArray(&globalLongTermArena, stringLengthInBytes + 1, char);//NOTE: +1 for null terminator
+    snprintf(result.stringID, stringLengthInBytes + 1, ENTITY_ID_PRINTF_STRING);
 
-    result.crc32Hash = get_crc32(result.stringID, result.stringSizeInBytes);
+    result.crc32Hash = get_crc32(result.stringID, stringLengthInBytes);
 
     #undef ENTITY_ID_PRINTF_STRING
 

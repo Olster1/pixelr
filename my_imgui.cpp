@@ -58,6 +58,15 @@ void closeCanvasTabUI(GameState *state, CanvasTab *t, int i) {
   }
 }
 
+void addToolTip(char *tooltip) {
+  if (ImGui::IsItemHovered())
+    {
+        ImGui::BeginTooltip();
+        ImGui::Text("%s", tooltip);
+        ImGui::EndTooltip();
+    }
+}
+
 void drawTabs(GameState *state) {
       // Push a style to keep the tab bar at the top of the screen
       ImGui::SetNextWindowPos(ImVec2(0, 15));
@@ -72,7 +81,7 @@ void drawTabs(GameState *state) {
             for(int i = 0; i < getArrayLength(state->canvasTabs); ++i) {
               CanvasTab *t = state->canvasTabs + i;
 
-              char *id = easy_createString_printf(&globalPerFrameArena, "%ld", t->frames);
+              char *id = easy_createString_printf(&globalPerFrameArena, "%ld", t->id);
               ImGui::PushID(id);
 
               u32 unsavedFlag = ImGuiTabItemFlags_UnsavedDocument;
@@ -179,12 +188,14 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
       if (ImGui::Button(anim->playing ? "\uf04c Pause" : "\uf04b Play")) {
           anim->playing = !anim->playing;
       }
+      addToolTip("Pause or Play the animation.");
       ImGui::SameLine();
       if (ImGui::Button("\uf2f9 Reset")) {
-          anim->currentFrame = 0;
           anim->elapsedTime = 0.0f;
+          canvasTab->activeFrame = 0;
           anim->playing = false;
       }
+      addToolTip("Stop and reset the current animation.");
       ImGui::SameLine();
       if (ImGui::Button("\uf1f8 Delete Frame")) {
           if(getArrayLength(canvasTab->frames) > 1) {
@@ -203,6 +214,7 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
             canvasTab->addUndoInfo(frameUndoInfo);
           }
       }
+      addToolTip("Delete the currently selected frame.");
 
       ImGui::Separator();
 
@@ -264,6 +276,7 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
       
 
       ImGui::Checkbox("Copy Frame on add", &canvasTab->copyFrameOnAdd);
+      addToolTip("When you create a new frame, the currently selected frame contents will be copied to the new frame.");
       if (ImGui::Button("Add New Frame +")) {
           Frame f_ = Frame(canvasTab->w, canvasTab->h);
           Frame *f = pushArrayItem(&canvasTab->frames, f_, Frame);
@@ -290,10 +303,10 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
           frameUndoInfo.frameIndex = getArrayLength(canvasTab->frames) - 1;
           frameUndoInfo.beforeActiveLayer = canvasTab->activeFrame;
           canvasTab->activeFrame = getArrayLength(canvasTab->frames) - 1;
-          printf("%d\n", getArrayLength(canvasTab->frames));
           frameUndoInfo.afterActiveLayer = canvasTab->activeFrame;
           canvasTab->addUndoInfo(frameUndoInfo);
       }
+      addToolTip("Adds a new frame to the animation.");
 
       // Animation playback logic
       if (anim->playing && getArrayLength(canvasTab->frames) > 1) {
@@ -434,7 +447,9 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
             activeFrame->layers[i].visible = !activeFrame->layers[i].visible;
             updateGpuCanvasTextures(state);
         }
+        addToolTip("Make this layer either visible or not.");
         ImGui::PopID();
+        
         ImGui::SameLine();
          ImGui::PushID(i);
         if (ImGui::Button("\uf1f8"))
@@ -462,6 +477,7 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
               addIMGUIToast("Can't delete all canvases.", 2);
             }
         }
+        addToolTip("Delete this layer.");
         ImGui::PopID();
 
         ImGui::SameLine();
@@ -473,6 +489,7 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
             state->layerOptionsIndex = i;
             state->showLayerOptionsWindow = true;
         }
+        addToolTip("See more layer settings.");
         ImGui::PopID();
 
         if(activeFrame->layers[i].opacity < 1.0) {
@@ -975,13 +992,15 @@ void updateCanvasSettingsWindow(GameState *gameState) {
     if(ImGui::Checkbox("Check Background", &gameState->checkBackground)) {
       saveGlobalProjectSettings(gameState);
     }
+    addToolTip("Draws background checker pattern.");
     if(ImGui::Checkbox("Draw Per Pixel Grid", &gameState->drawGrid)) {
       saveGlobalProjectSettings(gameState);
     }
+    addToolTip("Draws the outline of individual pixels.");
     if(ImGui::Checkbox("Nearest Filter", &gameState->nearest)) {
       saveGlobalProjectSettings(gameState);
     }
-    ImGui::Text("Whether to use a Linear or Nearest Filter when moving or rotating select shapes."); 
+    addToolTip("Whether to use a Linear or Nearest Filter when moving or rotating select shapes.");
 
     ImGui::End();
   }
@@ -1120,9 +1139,7 @@ void showUnSavedWindow(GameState *gameState) {
 }
 
 void updateMyImgui(GameState *state, ImGuiIO& io) {
-
       CanvasInteractionMode startMode = state->interactionMode;
-
       CanvasTab *tab = getActiveCanvasTab(state);
   
       // Start the Dear ImGui frame
@@ -1171,6 +1188,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
               tab->eraserSize = brushSize;
               
               ImGui::Checkbox("SELECT", &state->selectMode);
+              addToolTip("By toggling this on, you can use the bucket tool select pixels.");
 
               const char* brushShapes[] = { "Square", "Circle" };
               ImGui::Text("Brush Shape");
@@ -1191,25 +1209,35 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
               }
 
               addModeSelection(state, "\uf0b2", CANVAS_MOVE_MODE);
+              addToolTip("Move the canvas");
               ImGui::SameLine();
               addModeSelection(state, "\uf1fc", CANVAS_DRAW_MODE);
+              addToolTip("Regular paint mode");
               ImGui::SameLine();
               addModeSelection(state, "\uf575", CANVAS_FILL_MODE);
+              addToolTip("Fill Bucket");
               ImGui::SameLine();
               addModeSelection(state, "\uf111", CANVAS_DRAW_CIRCLE_MODE);
+              addToolTip("Draw Circle Outline");
               ImGui::SameLine();
               addModeSelection(state, "\uf245", CANVAS_MOVE_SELECT_MODE);
-
+              addToolTip("Move selected pixels");
               addModeSelection(state, "\uf0c8", CANVAS_DRAW_RECTANGLE_MODE);
+              addToolTip("Draw Rectangle Outline");
               ImGui::SameLine();
               addModeSelection(state, "\uf12d", CANVAS_ERASE_MODE);
+              addToolTip("Eraser");
               ImGui::SameLine();
               addModeSelection(state, "\uf068", CANVAS_DRAW_LINE_MODE);
+              addToolTip("Draw Line");
               ImGui::SameLine();
               addModeSelection(state, "\uf248", CANVAS_SELECT_RECTANGLE_MODE);
+              addToolTip("Select pixels from canvas");
               ImGui::SameLine();
               addModeSelection(state, "\uf1fb", CANVAS_COLOR_DROPPER);
+              addToolTip("Pick a color from the canvas");
               addModeSelection(state, "\uf5bd", CANVAS_SPRAY_CAN);
+              addToolTip("Draw Spray Can Pattern");
 
               ImGui::Text("Select a Color:");
               ImGui::SameLine();
@@ -1261,7 +1289,6 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
               ImGui::End();
           }
-
           
           exportWindow(state);
           updateColorPaletteEnter(state);
@@ -1284,7 +1311,6 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
 
 void imguiEndFrame() {
-    // Rendering
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

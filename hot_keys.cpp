@@ -109,6 +109,7 @@ void updateHotKeys(GameState *gameState) {
             if(t && c && gameState->clipboard.hasCopy()) {
                 //NOTE: Inititate the Select Object
                 gameState->selectObject.isActive = true;
+                gameState->selectObject.toast = addIMGUIToast("Press 'Enter' to commit your shape to the canvas", -1);
                 t->savedOpacity = t->opacity;
                 t->opacity = 1; //NOTE: Reset the opacity
                 gameState->selectObject.timeAt = 0;

@@ -59,6 +59,7 @@ CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
     DEBUG_TIME_BLOCK()
     {
         DEBUG_TIME_BLOCK_NAMED("DEFAULT SETUP CANVAS")
+        this->id = makeEntityId(globalRandomStartupSeed);
         this->w = w;
         this->h = h;
         this->zoomFactor = 0.3f*MathMax(w, h); //NOTE: Zoom out to fit the image in the screen

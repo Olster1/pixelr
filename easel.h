@@ -58,6 +58,7 @@ struct PixelClipboardInfo {
 };
 
 struct SelectObject {
+    Toast *toast;
     bool isActive = false;
     TransformX T;
     float2 startCanvasP;
@@ -70,6 +71,7 @@ struct SelectObject {
     float timeAt = 0;
 
     SelectObject() {
+        toast = 0;
         T = initTransformX();
         pixels = 0;
         isActive = false;
@@ -95,6 +97,10 @@ struct SelectObject {
     }
 
     void clear() {
+        if(toast) {
+            endImguiToast(toast);
+            toast = 0;
+        }
         if(pixels) {
             easyPlatform_freeMemory(pixels);
             pixels = 0;
@@ -102,6 +108,7 @@ struct SelectObject {
     }
 
     void dispose() {
+        toast = 0;
         if(pixels) {
             easyPlatform_freeMemory(pixels);
             pixels = 0;
@@ -183,7 +190,6 @@ struct UndoRedoBlock {
 };
 
 struct PlayBackAnimation {
-    int currentFrame = 0;
     bool playing = false;
     float frameTime = 0.2f;
     float elapsedTime = 0;
@@ -283,6 +289,7 @@ enum BrushShapeType {
 
 #define MAX_PALETTE_COUNT 1028
 struct CanvasTab {
+    EntityID id; //NOTE: Lives on the long term storeage
     Frame *frames = 0;
     int activeFrame = 0;
 

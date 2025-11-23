@@ -20,6 +20,7 @@ static bool DEBUG_global_ProfilePaused = false;
 #include "./SimplexNoise.cpp"
 #include "./interaction.cpp"
 #include "./fill_pixels_fast.cpp"
+#include "./imgui_toast.h"
 #include "./easel.h"
 #include "imgui.h"
 #include "./save_load_project.cpp"
