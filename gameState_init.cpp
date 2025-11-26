@@ -129,10 +129,6 @@ void initGameState(GameState *gameState) {
     initThreadQueue(&gameState->threadsInfo);
     globalThreadInfo = &gameState->threadsInfo;
 
-    GLint maxUniformBlockSize;
-    glGetIntegerv(GL_MAX_UNIFORM_BLOCK_SIZE, &maxUniformBlockSize);
-    assert((maxUniformBlockSize / sizeof(float16)) > MAX_BONES_PER_MODEL);
-
     loadPalleteDefault_(&gameState->canvasTabs[0]);
     loadDefaultProjectSettings(gameState);
 

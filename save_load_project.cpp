@@ -300,7 +300,7 @@ void saveProjectFile_threadData(void *data_) {
 }
 
 
-void saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *threadsInfo = 0, bool replaceSaveFilePath = true) {
+bool saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *threadsInfo = 0, bool replaceSaveFilePath = true) {
     char *strToWrite = 0;
 
     if(optionalFilePath) {
@@ -338,6 +338,7 @@ void saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *
 
         tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
     }
+    return strToWrite != 0;
 }
 
 void saveProjectToFileBackup_multiThreaded(char *appDataFolder, CanvasTab *tab, ThreadsInfo *threadsInfo) {

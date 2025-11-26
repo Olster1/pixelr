@@ -215,16 +215,16 @@ void exportImport_loadImageFile(GameState *gameState, const char *filePath) {
 
 void checkFileDrop(GameState *gameState) {
     DEBUG_TIME_BLOCK()
-    if(gameState->droppedFilePath) {
-        char *extension = getFileExtension(gameState->droppedFilePath);
+    for(int i = 0; i < gameState->droppedFileCount; ++i) {
+        char *filePath = gameState->droppedFilePaths[i];
+        char *extension = getFileExtension(filePath);
         if(easyString_stringsMatch_nullTerminated(extension, "pixelr")) {
-            CanvasTab tab = loadPixelrProject(gameState->droppedFilePath);
+            CanvasTab tab = loadPixelrProject(filePath);
             tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
             pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
             gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
         } else {
-            exportImport_loadImageFile(gameState, gameState->droppedFilePath);
-            // addIMGUIToast("Only .png, .jpg, .jpeg or .pixelr files supported", 2);
+            exportImport_loadImageFile(gameState, filePath);
         }
     }
 }

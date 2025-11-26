@@ -26,18 +26,19 @@ void endImguiToast(Toast *t) {
     }
 }
 
-void renderIMGUIToasts() {
+void renderIMGUIToasts(float dt) {
     ImGuiIO* io = &ImGui::GetIO();
 
     float y_offset = 50.0f;
     for (int i = 0; i < g_toast_count;) {
+        
         Toast* t = &g_toasts[i];
 
         float alpha = 1.0f;
         if(t->total_time < 0) {
             //NOTE: Stays forever until removed by user
         } else {
-            t->time_remaining -= io->DeltaTime;
+            t->time_remaining -= dt;
 
             // Compute fade based on time left (fade in/out effect)
             
@@ -63,6 +64,8 @@ void renderIMGUIToasts() {
         float window_width = 300.0f; // approximate width; ImGui will autosize
         ImVec2 window_pos = ImVec2(io->DisplaySize.x * 0.5f, io->DisplaySize.y - y_offset);
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, ImVec2(0.5f, 1.0f));
+
+        
 
         char title[32];
         snprintf(title, sizeof(title), "Toast_%d", i);

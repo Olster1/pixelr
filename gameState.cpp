@@ -18,6 +18,7 @@ struct CloseCanvasTabInfo {
     bool UIshowUnsavedWindow;
     CanvasTab *canvasTab;
     int arrayIndex;
+    bool closeAppAfterwards;
 };
 
 typedef enum {
@@ -123,7 +124,9 @@ struct GameState {
     int randomStartUpID;
 
     KeyStates keys;
-    char *droppedFilePath;
+
+    int droppedFileCount;
+    char *droppedFilePaths[MAX_DROPPED_FILES];
 
     bool clearPaletteOnLoad;
     bool checkBackground;
@@ -169,4 +172,5 @@ struct GameState {
 
     Clipboard clipboard;
     bool quit;
+    bool shouldQuit;
 };

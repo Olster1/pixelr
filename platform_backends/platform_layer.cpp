@@ -110,7 +110,7 @@ inline float EasyTime_GetMillisecondsElapsed(u64 CurrentCount, u64 LastCount)
 #include "../main.cpp"
 
 float getBestDt(float secondsElapsed) {
-      float frameRates[] = {1.0f/15.0f, 1.0f/20.0f, 1.0f/30.0f, 1.0f/60.0f, 1.0f/120.0f};
+      float frameRates[] = {1.0f/15.0f, 1.0f/20.0f, 1.0f/30.0f, 1.0f/60.0f, 1.0f/120.0f, 1.0f/240.0f};
         //NOTE: Clmap the dt so werid bugs happen if huge lag like startup
       float closestFrameRate = 0;
       float minDiff = FLT_MAX;
@@ -144,26 +144,26 @@ void updateKeyState(GameState *gameState, KeyTypes type, bool value) {
 
 void processEvent(GameState *gameState, SDL_Event *e) {
   if (e->type == SDL_QUIT) {
-        gameState->quit = true;
-      } else if (e->type == SDL_DROPFILE) {
-        char *file = e->drop.file; // path to the dropped file
-        gameState->droppedFilePath = file;
-        
-      } else if (e->type == SDL_MOUSEWHEEL) {
-        gameState->scrollSpeed = e->wheel.y;
-      } else if(e->type == SDL_KEYDOWN) {
-        //NOTE: We do this here just for z becuase we want the lag between when the user presses the first z for undo redo
-        SDL_Scancode scancode = e->key.keysym.scancode; 
-        if(scancode == SDL_SCANCODE_Z) {
-          gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_DOWN;
-        }
-      } else if(e->type == SDL_KEYUP) {
-        //NOTE: We do this here just for z becuase we want the lag between when the user presses the first z for undo redo
-        SDL_Scancode scancode = e->key.keysym.scancode; 
-        if(scancode == SDL_SCANCODE_Z) {
-          gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_RELEASED;
-        }
-      } 
+      gameState->shouldQuit = true;
+    } else if (e->type == SDL_DROPFILE) {
+      if(gameState->droppedFileCount < arrayCount(gameState->droppedFilePaths)) {
+        gameState->droppedFilePaths[gameState->droppedFileCount++] = e->drop.file;
+      }
+    } else if (e->type == SDL_MOUSEWHEEL) {
+      gameState->scrollSpeed = e->wheel.y;
+    } else if(e->type == SDL_KEYDOWN) {
+      //NOTE: We do this here just for z becuase we want the lag between when the user presses the first z for undo redo
+      SDL_Scancode scancode = e->key.keysym.scancode; 
+      if(scancode == SDL_SCANCODE_Z) {
+        gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_DOWN;
+      }
+    } else if(e->type == SDL_KEYUP) {
+      //NOTE: We do this here just for z becuase we want the lag between when the user presses the first z for undo redo
+      SDL_Scancode scancode = e->key.keysym.scancode; 
+      if(scancode == SDL_SCANCODE_Z) {
+        gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_RELEASED;
+      }
+    } 
     
     ImGui_ImplSDL2_ProcessEvent(e);
 }
@@ -196,6 +196,7 @@ int main(int argc, char **argv) {
   gameState->screenWidth = 0.5f*1920;
   gameState->aspectRatio_y_over_x = (1080.f / 1920.0f);
   gameState->mouseLeftBtn = MOUSE_BUTTON_NONE;
+  gameState->shouldQuit = false;
   gameState->quit = false;
 
   for(int i = 0; i < arrayCount(gameState->keys.keys); ++i) {
@@ -375,9 +376,12 @@ int main(int argc, char **argv) {
     gameState->lastMouseP = gameState->mouseP_screenSpace;
 
     //NOTE: Free the dropped filepath if there was one
-    if(gameState->droppedFilePath) {
-      SDL_free(gameState->droppedFilePath);
-      gameState->droppedFilePath = 0;
+    if(gameState->droppedFileCount > 0) {
+      for(int i = 0; i < gameState->droppedFileCount; ++i) {
+        SDL_free(gameState->droppedFilePaths[i]);  
+      }
+      
+      gameState->droppedFileCount = 0;
     } 
 
     DEBUG_TIME_BLOCK_FOR_FRAME_END(beginFrameProfiler, gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_PRESSED);

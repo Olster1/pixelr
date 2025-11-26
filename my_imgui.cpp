@@ -55,6 +55,12 @@ void closeCanvasTabUI(GameState *state, CanvasTab *t, int i) {
     if(tab) {
       tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
     }
+
+    if(state->closeCanvasTabInfo.closeAppAfterwards && !tab) {
+      state->quit = true;
+    } 
+    //NOTE: Reset the value just for safety for silly bugs, don;t want to unesseraily close the app
+    state->closeCanvasTabInfo.closeAppAfterwards = false;
   }
 }
 
@@ -138,6 +144,7 @@ void drawTabs(GameState *state) {
             state->closeCanvasTabInfo.UIshowUnsavedWindow = true;
             state->closeCanvasTabInfo.canvasTab = t;
             state->closeCanvasTabInfo.arrayIndex = i;
+            state->closeCanvasTabInfo.closeAppAfterwards = false;
             t->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;  
             t->isOpen = true;
             i++;
@@ -1024,7 +1031,7 @@ void showMainMenuBar(GameState *state)
         if (ImGui::BeginMenu("Pixelr"))
         {
             if (ImGui::MenuItem("About Pixelr")) { state->showAboutWindow = true; }
-            if (ImGui::MenuItem("Quit")) { state->quit = true; }
+            if (ImGui::MenuItem("Quit")) { state->shouldQuit = true; }
             
             ImGui::EndMenu();
         }
@@ -1041,7 +1048,7 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("Load Pallete", "")) {  }
             if (ImGui::MenuItem("Export Image", "Ctrl+E", &dummy, tab)) { saveFileToPNG(state->renderer, getActiveFrame(state), getActiveCanvasTab(state)); }
             if (ImGui::MenuItem("Export Sprite Sheet", "", &dummy, tab)) { state->showExportWindow = true; }
-            if (ImGui::MenuItem("Exit")) { state->quit = true;  }
+            if (ImGui::MenuItem("Exit")) { state->shouldQuit = true;  }
             ImGui::EndMenu();
         }
 
@@ -1120,11 +1127,17 @@ void showUnSavedWindow(GameState *gameState) {
 
     ImGui::Text("You have unsaved changes. Do you want to save?"); 
     if (ImGui::Button("Yes")) {
+      bool didComitSave = true;  //NOTE: Becuase the user might press 'cancel' on the save popup and we want to do nothing. So we have to use this variable.
       if(!isCanvasTabSaved(gameState->closeCanvasTabInfo.canvasTab)) {
-        saveProjectToFile(gameState->closeCanvasTabInfo.canvasTab);
-        addIMGUIToast("Project Saved", 2);
+        didComitSave = saveProjectToFile(gameState->closeCanvasTabInfo.canvasTab);
+        if(didComitSave) {
+          addIMGUIToast("Project Saved", 2);
+        }
       } 
-      closeCanvasTabUI(gameState, gameState->closeCanvasTabInfo.canvasTab, gameState->closeCanvasTabInfo.arrayIndex);
+      if(didComitSave) {
+        closeCanvasTabUI(gameState, gameState->closeCanvasTabInfo.canvasTab, gameState->closeCanvasTabInfo.arrayIndex);
+      }
+      
       gameState->closeCanvasTabInfo.UIshowUnsavedWindow = false;
     }
     ImGui::SameLine();
@@ -1146,6 +1159,33 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       ImGui_ImplOpenGL3_NewFrame();
       ImGui_ImplSDL2_NewFrame();
       ImGui::NewFrame();
+
+      if(state->shouldQuit) {
+        bool unsavedItems = false;
+        CanvasTab *tab = 0;
+        int tabIndex = 0;
+        //NOTE: Check if there are any unsaved canvases
+        for(int i = 0; i < getArrayLength(state->canvasTabs) && !unsavedItems; ++i) {
+          CanvasTab *t = state->canvasTabs + i;
+          //NOTE: Check if the tab is at a saved state
+          if(!isCanvasTabSaved(t)) {
+            tab = t;
+            tabIndex = i;
+            unsavedItems = true;
+          }
+        }
+
+        if(unsavedItems && tab) {
+          state->closeCanvasTabInfo.UIshowUnsavedWindow = true;
+          state->closeCanvasTabInfo.canvasTab = tab;
+          state->closeCanvasTabInfo.arrayIndex = tabIndex;
+          state->closeCanvasTabInfo.closeAppAfterwards = true;
+        } else {
+          state->quit = true;  
+        }
+        
+        state->shouldQuit = false;
+      }
 
       if(state->drawState && state->drawState->openState == EASY_PROFILER_DRAW_CLOSED) {
 
@@ -1295,17 +1335,17 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           updateEditPaletteWindow(state);
           drawAnimationTimeline(state, state->dt);
           drawLayersWindow(state, state->dt);
-          updateCanvasSettingsWindow(state);
-          updateAboutWindow(state);
+          
           updateLayerSettingsWindow(state);
 
           if(startMode != state->interactionMode) {
             clearSelection(tab);
           }
         }
-        renderIMGUIToasts();
       }
-      
+      updateCanvasSettingsWindow(state);
+      updateAboutWindow(state);
+      renderIMGUIToasts(state->dt);
 }
 
 
