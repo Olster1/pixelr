@@ -1,9 +1,4 @@
 
-
-bool isCanvasTabSaved(CanvasTab *t) {
-    return ((t->savePositionUndoBlock == t->undoList) && t->saveFilePath);
-}
-
 bool canvasTabSaveStateHasChanged(CanvasTab *t) {
     return ((t->savePositionBackupUndoBlock != t->undoList) && !t->currentUndoBlock && t->undoList && !t->undoList->isSentintel);
 }
@@ -60,6 +55,7 @@ CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
     {
         DEBUG_TIME_BLOCK_NAMED("DEFAULT SETUP CANVAS")
         this->id = makeEntityId(globalRandomStartupSeed);
+        this->saveId = this->id;
         this->w = w;
         this->h = h;
         this->zoomFactor = 0.3f*MathMax(w, h); //NOTE: Zoom out to fit the image in the screen

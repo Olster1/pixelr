@@ -1,5 +1,6 @@
 
-void loadDefaultProjectSettings(GameState *gameState) {
+bool loadDefaultProjectSettings(GameState *gameState) {
+    bool loadedFilesAsUnsaved = false;
     char *fileName = easy_createString_printf(&globalPerFrameArena, "%sglobalProjectSettings", gameState->appDataFolderName);
     if(platformDoesFileExist(fileName)) {
          FileContents contents = getFileContentsNullTerminate((char *)fileName);
@@ -52,6 +53,27 @@ void loadDefaultProjectSettings(GameState *gameState) {
                     gameState->nearest = t.intVal;
                 }
 
+                 if(easyString_stringsMatch_null_and_count("filesReopenFilePaths", t.at, t.size)) {
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_COLON);
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_OPEN_SQUARE_BRACKET);
+
+                    t = lexGetNextToken(&tokenizer);
+                    while(t.type == TOKEN_STRING) {
+                        loadedFilesAsUnsaved = true;
+                        char *fileNameToLoad = nullTerminateArena(t.at, t.size, &globalPerFrameArena);
+                        CanvasTab tab = loadPixelrProject(fileNameToLoad);
+                        if(tab.valid) {
+                            tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
+                            pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
+                            gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+                        }
+
+                        t = lexGetNextToken(&tokenizer);
+                    }
+                }
+
                 if(easyString_stringsMatch_null_and_count("bgColor", t.at, t.size)) {
                     t = lexGetNextToken(&tokenizer);
                     assert(t.type == TOKEN_COLON);
@@ -75,6 +97,7 @@ void loadDefaultProjectSettings(GameState *gameState) {
             }
         }
     }
+    return loadedFilesAsUnsaved;
 }
 
 void initGameState(GameState *gameState) {
@@ -89,6 +112,7 @@ void initGameState(GameState *gameState) {
     gameState->cameraOffset = CAMERA_OFFSET;
     gameState->camera.shakeTimer = -1;
     gameState->camera.runShakeTimer = -1;
+    gameState->checkBackground = true;
 
     gameState->bgColor = make_float4(0.3f,0, 0.3f, 1); //u32_to_float4_color(0xFF6D5F72)
     gameState->drawGrid = false;
@@ -106,14 +130,8 @@ void initGameState(GameState *gameState) {
 
     Texture atlasTexture = loadTextureToGPU("./images/atlas.png");
 
-    {
-        gameState->canvasTabs = initResizeArray(CanvasTab);
-        CanvasTab tab = CanvasTab(DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, 0);
-        pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
-        gameState->activeCanvasTab = 0;
-    }
-
     gameState->editPaletteIndex = -1;
+    gameState->canvasTabs = initResizeArray(CanvasTab);
 
     gameState->renderer = initRenderer(atlasTexture);
 
@@ -130,7 +148,13 @@ void initGameState(GameState *gameState) {
     globalThreadInfo = &gameState->threadsInfo;
 
     loadPalleteDefault_(&gameState->canvasTabs[0]);
-    loadDefaultProjectSettings(gameState);
+    int loadedFiles = loadDefaultProjectSettings(gameState);
+
+    if(loadedFiles <= 0) {
+        CanvasTab tab = CanvasTab(DEFAULT_CANVAS_WIDTH, DEFAULT_CANVAS_HEIGHT, 0);
+        pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
+        gameState->activeCanvasTab = 0;
+    }
 
     gameState->drawState = EasyProfiler_initProfilerDrawState();
 

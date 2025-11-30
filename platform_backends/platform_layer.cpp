@@ -230,7 +230,7 @@ int main(int argc, char **argv) {
 
   SDL_Event e;
   Uint32 start = SDL_GetTicks();
-  Uint32 startFinal = SDL_GetTicks();
+  int framesAfterEventCount = 0;
   while (!gameState->quit) {
     
     Uint32 end = SDL_GetTicks();
@@ -248,15 +248,17 @@ int main(int argc, char **argv) {
 
     gameState->scrollSpeed = 0;
 
-    if(shouldKeepUpdateing(gameState) || ((end - startFinal) < 5000)) {
+    if(shouldKeepUpdateing(gameState) || framesAfterEventCount < MAX_FRAMES_AFTER_EVENT_TO_RUN) {
       // printf("UPDATEING %f\n", gameState->dt);
       while(SDL_PollEvent(&e)) {
         processEvent(gameState, &e);
+        framesAfterEventCount = 0;
       }
     } else if (SDL_WaitEvent(&e)) {
         // printf("WAITING %f\n", gameState->dt);
         do {
           processEvent(gameState, &e);
+          framesAfterEventCount = 0;
         } while(SDL_PollEvent(&e));
     }
 
@@ -347,12 +349,9 @@ int main(int argc, char **argv) {
     gameState->mouseCountAt = 0;
     gameState->mouseIndexAt = 0;
   }
-  
 
     // Clear screen
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glClearColor(gameState->bgColor.x, gameState->bgColor.y, gameState->bgColor.z, gameState->bgColor.w);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
+    backendRenderer_clearDefaultFrameBuffer(gameState->bgColor);
     
     updateGame(gameState);
 
@@ -375,7 +374,7 @@ int main(int argc, char **argv) {
     gameState->lastMouseP = make_float2(0.5f*gameState->screenWidth, -0.5f*gameState->screenWidth);
     gameState->lastMouseP = gameState->mouseP_screenSpace;
 
-    //NOTE: Free the dropped filepath if there was one
+    //NOTE: Free the dropped filepaths if there were ones
     if(gameState->droppedFileCount > 0) {
       for(int i = 0; i < gameState->droppedFileCount; ++i) {
         SDL_free(gameState->droppedFilePaths[i]);  
@@ -386,6 +385,10 @@ int main(int argc, char **argv) {
 
     DEBUG_TIME_BLOCK_FOR_FRAME_END(beginFrameProfiler, gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_PRESSED);
     DEBUG_TIME_BLOCK_FOR_FRAME_START(beginFrameProfiler, "Per frame");
+
+    if(framesAfterEventCount < MAX_FRAMES_AFTER_EVENT_TO_RUN) {
+      framesAfterEventCount++;
+    }
   }
 
     // Cleanup

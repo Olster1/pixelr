@@ -341,9 +341,110 @@ void platformDeleteFile(char *fileName) {
 #ifdef __APPLE__ 
 #include <errno.h>
 #include <sys/stat.h> //for mkdir S_IRWXU
+#include <unistd.h>
 #elif _WIN32
 #include <shlwapi.h>
 #endif
+
+bool platformDeleteDirectory(char *fileName_) {
+    char *fileName = easyString_copyToHeap(fileName_);
+
+    // Remove trailing slashes
+    while (fileName[strlen(fileName) - 1] == '/' ||
+           fileName[strlen(fileName) - 1] == '\\') {
+        fileName[strlen(fileName) - 1] = '\0';
+    }
+
+    bool result = true;
+
+#ifdef __APPLE__
+    DIR *dir = opendir(fileName);
+    if (!dir) {
+        easyPlatform_freeMemory(fileName);
+        return false;
+    }
+
+    struct dirent *entry;
+    while ((entry = readdir(dir)) != NULL) {
+
+        // skip . and ..
+        if (strcmp(entry->d_name, ".") == 0 ||
+            strcmp(entry->d_name, "..") == 0) {
+            continue;
+        }
+
+        // build full path
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "%s/%s", fileName, entry->d_name);
+
+        struct stat st;
+        if (stat(path, &st) == 0) {
+            if (S_ISDIR(st.st_mode)) {
+                // recursive delete
+                if (!platformDeleteDirectory(path)) {
+                    result = false;
+                }
+            } else {
+                // delete file
+                if (unlink(path) != 0) {
+                    result = false;
+                }
+            }
+        }
+    }
+    closedir(dir);
+
+    // Delete empty directory
+    if (rmdir(fileName) != 0)
+        result = false;
+
+#elif _WIN32
+    WIN32_FIND_DATAA ffd;
+    char searchPath[MAX_PATH];
+    snprintf(searchPath, sizeof(searchPath), "%s\\*.*", fileName);
+
+    HANDLE hFind = FindFirstFileA(searchPath, &ffd);
+    if (hFind == INVALID_HANDLE_VALUE) {
+        easyPlatform_freeMemory(fileName);
+        return false;
+    }
+
+    do {
+        const char *name = ffd.cFileName;
+
+        // skip . and ..
+        if (strcmp(name, ".") == 0 || strcmp(name, "..") == 0) {
+            continue;
+        }
+
+        char path[MAX_PATH];
+        snprintf(path, sizeof(path), "%s\\%s", fileName, name);
+
+        if (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            // recursive delete
+            if (!platformDeleteDirectory(path)) {
+                result = false;
+            }
+        } else {
+            // remove file
+            if (!DeleteFileA(path)) {
+                result = false;
+            }
+        }
+    } while (FindNextFileA(hFind, &ffd));
+    FindClose(hFind);
+
+    // Delete the now-empty directory
+    if (!RemoveDirectoryA(fileName)) {
+        result = false;
+    }
+
+#endif
+
+    easyPlatform_freeMemory(fileName);
+    return result;
+}
+
 
 bool platformCreateDirectory(char *fileName_) {
     bool result = false;

@@ -36,6 +36,15 @@ struct ProjectFile {
     size_t canvasesFileOffset;
     bool layersVisible[MAX_FRAME_COUNT];
     float layerOpacity[MAX_FRAME_COUNT];
+    size_t offsetToFileName;
+    size_t offsetToSavePath;
+    size_t offsetToId;
+    uint32_t crc32HashForId;
+    u32 lengthOfSaveFilePath;
+    u32 lengthOfFilePath;
+    u32 idLengthInBytes;
+    
+    bool wasInSavedState;
 };
 #pragma pack(pop) 
 
@@ -48,6 +57,8 @@ ProjectFile initProjectFile() {
 }
 
 CanvasTab loadPixelrProject(const char *filePath) {
+    DEBUG_TIME_BLOCK()
+    
     FileContents file = platformReadEntireFile((char *)filePath, false);
     if(file.valid && file.memory) {
         ProjectFile *data = (ProjectFile *)file.memory;
@@ -59,6 +70,7 @@ CanvasTab loadPixelrProject(const char *filePath) {
         tab.colorPicked = u32_to_float4_color(data->brushColor);
         tab.palletteCount = data->palletteCount;
         for(int i = 0; i < data->palletteCount; ++i) {
+            DEBUG_TIME_BLOCK_NAMED("PALLETE DATA")
             tab.colorsPallete[i] = data->colorsPallete[i];
         }
 
@@ -70,6 +82,32 @@ CanvasTab loadPixelrProject(const char *filePath) {
         anim->frameTime = data->timerPerFrame;
         tab.copyFrameOnAdd = data->copyOnFrame;
         tab.activeFrame = data->activeFrame;
+        tab.isInSaveState = data->wasInSavedState;
+
+        if(data->offsetToSavePath > 0) {
+            DEBUG_TIME_BLOCK_NAMED("SAVE FILE PATH")
+            char *saveFilePath = ((char *)file.memory) + data->offsetToSavePath;
+            tab.saveFilePath = easyString_copyToHeap(saveFilePath, data->lengthOfSaveFilePath);
+        } else {
+            //NOTE: Didn't have a save file path when the project was saved
+            tab.saveFilePath = 0;
+        }
+
+        if(data->offsetToFileName > 0) {
+            DEBUG_TIME_BLOCK_NAMED("FILE PATH")
+            char *fileName = ((char *)file.memory) + data->offsetToFileName;
+            tab.fileName = easyString_copyToHeap(fileName, data->lengthOfFilePath);
+        } else {
+            //NOTE: Didn't have a file name when the pr oject was saved
+            tab.fileName = "Untitled";
+        }
+
+         if(data->offsetToId > 0) {
+            char *id = ((char *)file.memory) + data->offsetToId;
+            tab.saveId.stringID = easyString_copyToHeap(id, data->idLengthInBytes);
+            tab.saveId.crc32Hash = data->crc32HashForId;
+        } 
+
         assert(tab.activeFrame < data->frameCount);
 
         int visibleIndex = 0;
@@ -77,6 +115,7 @@ CanvasTab loadPixelrProject(const char *filePath) {
         u8 *startOfData = ((u8 *)file.memory) + data->canvasesFileOffset;
         int totalCavases = 0;
         for(int i = 0; i < data->frameCount; ++i) {
+            DEBUG_TIME_BLOCK_NAMED("CANVAS DATA")
             Frame *f = 0;
             if(i == 0) {
                 //NOTE: Use the one that's added by defdault when you create a canvasTab
@@ -111,17 +150,13 @@ CanvasTab loadPixelrProject(const char *filePath) {
             }
         }
 
-        // data->canvasesFileOffset;
-        // int frameCount;
-        // u32 framesActiveLayer[MAX_FRAME_COUNT];
-        // u32 canvasCountPerFrame[MAX_FRAME_COUNT];
-        // size_t canvasesFileOffset;
-
         easyPlatform_freeMemory(file.memory);
         return tab;
     } else {
         //NOTE: Return an empty one
-        return CanvasTab(16, 16, 0);
+        CanvasTab tab = CanvasTab(16, 16, 0);
+        tab.valid = false; //NOTE: No Longer valid
+        return tab;
     }
 }
 
@@ -186,10 +221,28 @@ int getAliveLayerCount(Frame *f) {
     return count;
 }
 
+bool isCanvasTabSaved(CanvasTab *t) {
+    return ((t->savePositionUndoBlock == t->undoList) && t->saveFilePath && t->isInSaveState);
+}
+
 bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) {
     bool result = false;
+    DEBUG_TIME_BLOCK()
 
     if(tab) {
+        DEBUG_TIME_BLOCK_NAMED("MAIN LOOP")
+        if(replaceSaveFilePath) {
+            //NOTE: Update the save state to say the project is now saved
+            tab->savePositionUndoBlock = tab->undoList;
+            tab->isInSaveState = true;
+
+            //NOTE: If there is no save file path, now add it to save in the future
+            if(!tab->saveFilePath) {
+                tab->saveFilePath = easyString_copyToHeap(filePath);
+                tab->fileName = getFileLastPortion_allocateToHeap(tab->saveFilePath);
+            }
+        }
+
         /*NOTE: Things to save:
             - color picked
             - palette colors 
@@ -225,11 +278,13 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
         data.canvasH = tab->h;
         data.activeFrame = tab->activeFrame;
         data.canvasesFileOffset = sizeof(ProjectFile);
-
-
+        
+        data.wasInSavedState = isCanvasTabSaved(tab);
+        
         int aliveFrameCount = 0;
         int visibleIndex = 0;
         for(int i = 0; i < getArrayLength(tab->frames); ++i) {
+            DEBUG_TIME_BLOCK_NAMED("SAVE FRAMES")
             Frame *f = tab->frames + i;
             if(f && !f->deleted) {
                 assert(i < MAX_FRAME_COUNT);
@@ -237,6 +292,7 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
 
                 int aliveLayerCount = 0;
                 for(int i = 0; i < getArrayLength(f->layers); ++i) {
+                    DEBUG_TIME_BLOCK_NAMED("SAVE lAYERS")
                     Canvas *c = f->layers + i;
                     if(c && !c->deleted) {
                         data.layerOpacity[visibleIndex] = c->opacity;
@@ -255,8 +311,9 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
         game_file_handle file = platformBeginFileWrite((char *)filePath);
         assert(!file.HasErrors);
 
-        size_t offset = platformWriteFile(&file, &data, sizeof(ProjectFile), 0);
+        size_t offset = sizeof(ProjectFile);
         for(int i = 0; i < getArrayLength(tab->frames); ++i) {
+            DEBUG_TIME_BLOCK_NAMED("WRITE CANVAS DATA")
             Frame *f = tab->frames + i;
             if(f && !f->deleted) {
                 for(int j = 0; j < getArrayLength(f->layers); ++j) {
@@ -269,18 +326,38 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
             }
         }
 
+        
+        data.crc32HashForId = tab->saveId.crc32Hash;
+        data.idLengthInBytes = easyString_getSizeInBytes_utf8(tab->saveId.stringID);
+
+        if(tab->saveFilePath) {
+            int strLengthBytes = easyString_getSizeInBytes_utf8(tab->saveFilePath);
+            data.lengthOfSaveFilePath = strLengthBytes;
+            data.offsetToSavePath = offset;
+            offset = platformWriteFile(&file, tab->saveFilePath, strLengthBytes, offset);
+        } else {
+            data.offsetToSavePath = 0; //NOTE: Invalid string
+            data.lengthOfSaveFilePath = 0;
+        }
+
+        if(tab->fileName) {
+            int strLengthBytes = easyString_getSizeInBytes_utf8(tab->fileName);
+            data.lengthOfFilePath = strLengthBytes;
+            data.offsetToFileName = offset;
+            offset = platformWriteFile(&file, tab->fileName, strLengthBytes, offset);
+        } else {
+            data.offsetToFileName = 0; //NOTE: Invalid string
+            data.lengthOfFilePath = 0;
+        }
+
+        data.offsetToId = offset;
+        offset = platformWriteFile(&file, tab->saveId.stringID, data.idLengthInBytes, offset);
+
+        //NOTE: Write the header since we have all the offset data now
+        platformWriteFile(&file, &data, sizeof(ProjectFile), 0);
+
         platformEndFile(file);
 
-        if(replaceSaveFilePath) {
-            //NOTE: Update the save state to say the project is now saved
-            tab->savePositionUndoBlock = tab->undoList;
-            
-            //NOTE: If there is no save file path, now add it to save in the future
-            if(!tab->saveFilePath) {
-                tab->saveFilePath = easyString_copyToHeap(filePath);
-                tab->fileName = getFileLastPortion_allocateToHeap(tab->saveFilePath);
-            }
-        }
     }
 
     return result;
@@ -341,6 +418,10 @@ bool saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *
     return strToWrite != 0;
 }
 
+char *getBackupFileNameForTab(Arena *arena, CanvasTab *tab, char *appDataFolderName) {
+    return easy_createString_printf(arena, "%s%s_backup.pixelr", appDataFolderName, tab->saveId.stringID);
+}
+
 void saveProjectToFileBackup_multiThreaded(char *appDataFolder, CanvasTab *tab, ThreadsInfo *threadsInfo) {
 #if _WIN32
 //TODO: Add time function
@@ -353,7 +434,7 @@ void saveProjectToFileBackup_multiThreaded(char *appDataFolder, CanvasTab *tab, 
         saveFileName = tab->fileName;
     }
     
-    char *uniqueFilePath = easy_createString_printf(&globalPerFrameArena, "%s%ld_%s_backup.pixelr", appDataFolder, t, saveFileName);
+    char *uniqueFilePath = getBackupFileNameForTab(&globalPerFrameArena, tab, appDataFolder);
     
     saveProjectToFile(tab, uniqueFilePath, threadsInfo, false);
 }

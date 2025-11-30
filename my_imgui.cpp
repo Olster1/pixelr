@@ -1161,29 +1161,21 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       ImGui::NewFrame();
 
       if(state->shouldQuit) {
-        bool unsavedItems = false;
-        CanvasTab *tab = 0;
-        int tabIndex = 0;
+        char **unsavedFileNames = pushArray(&globalPerFrameArena, getArrayLength(state->canvasTabs), char *);
+
         //NOTE: Check if there are any unsaved canvases
-        for(int i = 0; i < getArrayLength(state->canvasTabs) && !unsavedItems; ++i) {
+        for(int i = 0; i < getArrayLength(state->canvasTabs); ++i) {
           CanvasTab *t = state->canvasTabs + i;
           //NOTE: Check if the tab is at a saved state
-          if(!isCanvasTabSaved(t)) {
-            tab = t;
-            tabIndex = i;
-            unsavedItems = true;
+          {
+            unsavedFileNames[i] = getBackupFileNameForTab(&globalPerFrameArena, t, state->appDataFolderName);
+            saveProjectToFile(t, unsavedFileNames[i], 0, false);
           }
         }
 
-        if(unsavedItems && tab) {
-          state->closeCanvasTabInfo.UIshowUnsavedWindow = true;
-          state->closeCanvasTabInfo.canvasTab = tab;
-          state->closeCanvasTabInfo.arrayIndex = tabIndex;
-          state->closeCanvasTabInfo.closeAppAfterwards = true;
-        } else {
-          state->quit = true;  
-        }
+        saveGlobalProjectSettings(state, unsavedFileNames, getArrayLength(state->canvasTabs));
         
+        state->quit = true;  
         state->shouldQuit = false;
       }
 
@@ -1306,6 +1298,9 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
                       tab->colorPicked = u32_to_float4_color(tab->colorsPallete[i]);
                     }
                     u32 a = tab->colorsPallete[i];
+
+                    //NOTE: Should always have a alpha color of full, since they don't store the alpha value.
+                    a |= 0xFF << 24;
 
                     // Draw color square
                     drawList->AddRectFilled(pos, ImVec2(pos.x + size, pos.y + size), (a));

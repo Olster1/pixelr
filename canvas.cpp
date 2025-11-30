@@ -345,7 +345,7 @@ float2 canvasCoordToWorldSpace(Canvas *canvas, float x, float y, bool offsetP = 
 void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
     DEBUG_TIME_BLOCK()
     renderer->selectionTextureHandle = t->selectionGpuHandle;
-    glBindTexture(GL_TEXTURE_2D, t->selectionGpuHandle);
+    backendRenderer_bindTexture2D(t->selectionGpuHandle);
     renderCheckError();
 
     u8 *pixels = (u8 *)pushArray(&globalPerFrameArena, t->w*t->h, u8);
@@ -370,7 +370,7 @@ void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
     );
 
     renderCheckError();
-    glBindTexture(GL_TEXTURE_2D, 0);
+    backendRenderer_bindTexture2D(0);
     renderCheckError();
 }
 
@@ -644,7 +644,7 @@ void updateColorDropper(GameState *gameState, Canvas *canvas) {
     if(tab) {
         float2 canvasP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
 
-        if(isValidCanvasRange(canvas, round(canvasP.x), round(canvasP.x))) {
+        if(isValidCanvasRange(canvas, round(canvasP.x), round(canvasP.y))) {
             float4 color = u32_to_float4_color(getCanvasColor(canvas, round(canvasP.x), round(canvasP.y)));
 
             if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
@@ -780,7 +780,7 @@ void updateFrameGPUHandles(Frame *f, CanvasTab *t) {
         Canvas *c = f->layers + j;
         assert(c->gpuHandle > 0);
 
-        glBindTexture(GL_TEXTURE_2D, c->gpuHandle);
+        backendRenderer_bindTexture2D(c->gpuHandle);
         renderCheckError();
 
         glTexSubImage2D(
@@ -794,7 +794,7 @@ void updateFrameGPUHandles(Frame *f, CanvasTab *t) {
         );
 
         renderCheckError();
-        glBindTexture(GL_TEXTURE_2D, 0);
+        backendRenderer_bindTexture2D(0);
         renderCheckError();
     }
 }
@@ -824,9 +824,9 @@ void updateFrameGPUHandles(Frame *f, CanvasTab *t) {
 // }
 
 u32 *getPixelsForFrame_shortTerm(CanvasTab *t, Frame *f) {
-    glBindFramebuffer(GL_FRAMEBUFFER, f->frameBufferHandle.handle);
+    backendRenderer_BindFrameBuffer(f->frameBufferHandle.handle);
     u32 *pixels = backendRenderer_getFrameBufferPixels_shortTerm(t->w, t->h);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    backendRenderer_BindFrameBuffer(0);
     return pixels;
 }
 
@@ -834,7 +834,7 @@ void updateCompositePixelsForFrame_shortTerm(Renderer *renderer, CanvasTab *t, F
     DEBUG_TIME_BLOCK()
     float16 projectionT = make_ortho_matrix_origin_center(t->w, t->h, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
     //NOTE: Draw to the frame buffer all the images 
-    glBindFramebuffer(GL_FRAMEBUFFER, f->frameBufferHandle.handle);
+    backendRenderer_BindFrameBuffer(f->frameBufferHandle.handle);
     glClearColor(1, 1, 1, 0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
 
@@ -872,7 +872,7 @@ void updateGpuCanvasTextures(GameState *gameState) {
             }
         }
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        backendRenderer_BindFrameBuffer(0);
         glViewport(0, 0, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x);
     }
 }

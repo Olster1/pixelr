@@ -220,9 +220,11 @@ void checkFileDrop(GameState *gameState) {
         char *extension = getFileExtension(filePath);
         if(easyString_stringsMatch_nullTerminated(extension, "pixelr")) {
             CanvasTab tab = loadPixelrProject(filePath);
-            tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
-            pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
-            gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+            if(tab.valid) {
+                tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
+                pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
+                gameState->activeCanvasTab = getArrayLength(gameState->canvasTabs) - 1;
+            }
         } else {
             exportImport_loadImageFile(gameState, filePath);
         }
@@ -267,7 +269,7 @@ void openPlainImage(GameState *gameState) {
 void checkAndSaveBackupFile(GameState *gameState, CanvasTab *tab) {
     DEBUG_TIME_BLOCK()
     tab->secondsSinceLastBackup += gameState->dt; 
-    if(tab->secondsSinceLastBackup >= BACKUP_FILE_TIME && canvasTabSaveStateHasChanged(tab)) {
+    if(tab->secondsSinceLastBackup >= BACKUP_FILE_TIME_SECONDS && canvasTabSaveStateHasChanged(tab)) {
         //NOTE: Update the save position for the backup
         tab->savePositionBackupUndoBlock = tab->undoList;
         saveProjectToFileBackup_multiThreaded(gameState->appDataFolderName, tab, &gameState->threadsInfo);    
@@ -276,7 +278,7 @@ void checkAndSaveBackupFile(GameState *gameState, CanvasTab *tab) {
 }
 
 
-void saveGlobalProjectSettings(GameState *gameState) {
+void saveGlobalProjectSettings(GameState *gameState, char **filePaths = 0, int filePathsCount = 0) {
      char *fileName = easy_createString_printf(&globalPerFrameArena, "%sglobalProjectSettings", gameState->appDataFolderName);
     game_file_handle fileHandle = platformBeginFileWrite((char *)fileName);
     assert(!fileHandle.HasErrors);
@@ -296,6 +298,17 @@ void saveGlobalProjectSettings(GameState *gameState) {
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"smoothStrokeCount\": %d}\n", gameState->runningAverageCount);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"filesReopenFilePaths\": [", gameState->drawGrid);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    for(int i = 0; i < filePathsCount; ++i) {
+        strToWrite = easy_createString_printf(&globalPerFrameArena, "\"%s\" ", filePaths[i]);
+        offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+    }
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "]}\n", gameState->drawGrid);
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
     platformEndFile(fileHandle);

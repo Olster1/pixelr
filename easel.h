@@ -290,13 +290,16 @@ enum BrushShapeType {
 #define MAX_PALETTE_COUNT 1028
 struct CanvasTab {
     EntityID id; //NOTE: Lives on the long term storeage
+    EntityID saveId; //NOTE: This is conistent across runs of the program so in backups folder
     Frame *frames = 0;
     int activeFrame = 0;
+    bool isInSaveState = true; //NOTE: This is because we save and load the files in the app directory no matter what, so when they reload, even though they're technically saved (in the app dir), it wasn't at a save point when it was saved to the actual user's file. 
+    bool valid = true; //NOTE: Whether when the canvasTab is a valid one - used when we load project files and for some reason can't load them
 
     float zoomFactor = 5.0f;
     float2 cameraP = {};
 
-    //NOTE: For backing up the files - every BACKUP_FILE_TIME (in defines) it saves to the backup file
+    //NOTE: For backing up the files - every BACKUP_FILE_TIME_SECONDS (in defines) it saves to the backup file
     float secondsSinceLastBackup = 0;
 
     PlayBackAnimation playback;

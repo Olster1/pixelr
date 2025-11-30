@@ -34,8 +34,10 @@ char *concat_(char *a, int lengthA, char *b, int lengthB, Arena *arena) {
     return newString;
 }
 
-static char *easyString_copyToHeap(char *at) {
-    size_t length = easyString_getSizeInBytes_utf8(at);
+static char *easyString_copyToHeap(char *at, size_t length = 0) {
+    if(length == 0) {
+        length = easyString_getSizeInBytes_utf8(at);
+    } 
     //NOTE(ollie): Get memory from heap
     char *result = (char *)easyPlatform_allocateMemory(sizeof(char)*(length + 1), EASY_PLATFORM_MEMORY_NONE);
     //NOTE(ollie): Copy the string

@@ -16,8 +16,8 @@ Renderer *initRenderer(Texture atlasTexture) {
     
     renderer->pixelSelectionShader = loadShader(quadVertexShader, selectionFragShader);
     
-    renderer->quadModel = generateVertexBuffer(global_quadData, 4, global_quadIndices, 6, ATTRIB_INSTANCE_TYPE_MODEL_MATRIX);
-    renderer->lineModel = generateVertexBuffer(global_lineModelData, 2, global_lineIndicies, 2, ATTRIB_INSTANCE_TYPE_MODEL_MATRIX);
+    renderer->quadModel = generateVertexBuffer(global_quadData, 4, global_quadIndices, 6);
+    renderer->lineModel = generateVertexBuffer(global_lineModelData, 2, global_lineIndicies, 2);
 
     return renderer;
 }
