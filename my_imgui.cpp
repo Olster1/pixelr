@@ -1,4 +1,4 @@
-ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window) {
+ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window, char *exePath) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -19,7 +19,11 @@ ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window) {
     static const ImWchar icon_ranges[] = { 0x0020, 0xFFFF, 0 };
     ImFontConfig config;
     config.MergeMode = true;
-    ImFont* iconFont = io.Fonts->AddFontFromFileTTF("./fonts/fa1.otf", 16.0f, &config, icon_ranges);
+
+    char *fontFile = (char *)easyPlatform_allocateMemory(arrayCount(fa1_otf), EASY_PLATFORM_MEMORY_NONE);
+    easyPlatform_copyMemory(fontFile, fa1_otf, arrayCount(fa1_otf));
+    
+    ImFont* iconFont = io.Fonts->AddFontFromMemoryTTF(fontFile, arrayCount(fa1_otf), 16.0f, &config, icon_ranges);
     if (!iconFont) {
         assert(false);
     }
@@ -943,7 +947,7 @@ void updateColorPaletteEnter(GameState *gameState) {
 void updateAboutWindow(GameState *gameState) {
   if(gameState->showAboutWindow) {
     ImGui::SetNextWindowSizeConstraints(ImVec2(300, 400), ImVec2(FLT_MAX, FLT_MAX));
-    ImGui::Begin("About Pixelr", &gameState->showAboutWindow);       
+    ImGui::Begin("About Spixl", &gameState->showAboutWindow);       
     ImGui::Text("Version %s", gameState->versionString); 
 
     ImGui::End();
@@ -1028,9 +1032,9 @@ void showMainMenuBar(GameState *state)
   CanvasTab *tab = getActiveCanvasTab(state);
     if (ImGui::BeginMainMenuBar()) // Creates the top bar
     {
-        if (ImGui::BeginMenu("Pixelr"))
+        if (ImGui::BeginMenu(DEFINED_APP_NAME))
         {
-            if (ImGui::MenuItem("About Pixelr")) { state->showAboutWindow = true; }
+            if (ImGui::MenuItem("About Spixl")) { state->showAboutWindow = true; }
             if (ImGui::MenuItem("Quit")) { state->shouldQuit = true; }
             
             ImGui::EndMenu();

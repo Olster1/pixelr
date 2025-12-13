@@ -106,7 +106,6 @@ static void EasyProfile_DrawGraph(Renderer *renderer, GameState *gameState, Easy
 						color = make_float4(1, 1, 1, 1);
 						if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
 							drawState->holdingScrollBar = true;
-							//TODO:
 							// drawState->grabOffset = easyInput_mouseToResolution_originLeftBottomCorner(keyStates, resolution).x - (drawState->xOffset*graphWidth + xMin);
 							assert(drawState->grabOffset >= 0); //xOffset is the start of the handle
 						}					

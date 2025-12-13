@@ -57,7 +57,7 @@ struct PixelClipboardInfo {
     }
 };
 
-struct SelectObject {
+struct EaselSelectObject {
     Toast *toast;
     bool isActive = false;
     TransformX T;
@@ -70,7 +70,7 @@ struct SelectObject {
     float2 dragOffset;
     float timeAt = 0;
 
-    SelectObject() {
+    EaselSelectObject() {
         toast = 0;
         T = initTransformX();
         pixels = 0;

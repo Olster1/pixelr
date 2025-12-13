@@ -3,7 +3,7 @@ clear
 
 # clang++ -std=c++17 -dynamiclib \
 #     -install_name @rpath/libimgui.dylib \
-#     -arch arm64 \
+#     -arch x86_64 -arch arm64 \
 #     -I ~/Documents/dev/imgui \
 #     ~/Documents/dev/imgui/imgui.cpp \
 #     ~/Documents/dev/imgui/imgui_draw.cpp \
@@ -21,10 +21,13 @@ clear
 
 
 # -O2
+# -arch x86_64  -mcrc32 \
 
-g++ -g -std=c++11 -o ./bin/Pixelr \
+g++ -g -std=c++11 -o ./bin/Spixl \
+    -arch arm64 \
     -I ../imgui \
     -I ../imgui/backends \
+    -I ./libs/GLAD/include \
     ./platform_backends/platform_layer.cpp \
     -Wno-deprecated-declarations \
     -Wno-writable-strings \

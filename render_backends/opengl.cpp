@@ -1,8 +1,13 @@
+#include "../libs/GLAD/include/glad/glad.h"
+#include "../libs/GLAD/src/glad.c"
+#ifndef __APPLE__
+#include <GL/gl.h>
+#endif
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "../libs/stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "../libs/stb_image_write.h"
-#include <OpenGL/gl3.h>
 #include "../shaders/shaders_opengl.cpp"
 
 // NOTE: Each location index in a vertex attribute index - i.e. 4 floats. that's why for matrix we skip 4 values
@@ -393,10 +398,15 @@ u32 *backendRenderer_getFrameBufferPixels_shortTerm(int w, int h) {
     return pixelBuffer;
 }
 
-Texture loadTextureToGPU(char *fileName) {
+Texture loadTextureToGPU(char *fileName, unsigned char* rawData = 0, int bufferLen = 0) {
     Texture t = {};
     // stbi_set_flip_vertically_on_load(true);
-    unsigned char *imageData = (unsigned char *)stbi_load(fileName, &t.w, &t.h, 0, STBI_rgb_alpha);
+    unsigned char *imageData = 0;
+    if(rawData) {
+        imageData = (unsigned char *)stbi_load_from_memory(rawData, bufferLen, &t.w, &t.h, 0, STBI_rgb_alpha);
+    } else {
+        imageData = (unsigned char *)stbi_load(fileName, &t.w, &t.h, 0, STBI_rgb_alpha);
+    }
     
     if(imageData) {
         // assert(result.comp == 4);

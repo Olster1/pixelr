@@ -2,6 +2,8 @@
 static bool DEBUG_global_ProfilePaused = false;
 #include "./easy_profiler.hpp"
 #include "./easy_memory.h"
+#include "./fa1_font.h"
+#include "./atlas_png.h"
 #include "./resize_array.cpp"
 #include "./memory_arena.h"
 #include "./easy_string_utf8.h"

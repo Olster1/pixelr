@@ -161,13 +161,13 @@ CanvasTab loadPixelrProject(const char *filePath) {
 }
 
 CanvasTab loadProjectFromFile(bool *valid) {
-    const char *filterPatterns[] = { "*.pixelr",};
+    const char *filterPatterns[] = { "*.spixl",};
     const char *filePath = tinyfd_openFileDialog(
         "Open Project",         // Dialog title
         "",                    // Default path
         1,                     // Number of filters
         filterPatterns,        // Filters
-        ".pixelr files only",    // Filter description
+        ".spixl files only",    // Filter description
         0                      // Allow multiple selection (0 = No, 1 = Yes)
     );    
 
@@ -393,7 +393,7 @@ bool saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *
         NULL);
 
         if(fileName) {
-            strToWrite = easy_createString_printf(&globalPerFrameArena, "%s.pixelr", (char *)fileName);
+            strToWrite = easy_createString_printf(&globalPerFrameArena, "%s.spixl", (char *)fileName);
         }
     }
     
@@ -419,15 +419,11 @@ bool saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *
 }
 
 char *getBackupFileNameForTab(Arena *arena, CanvasTab *tab, char *appDataFolderName) {
-    return easy_createString_printf(arena, "%s%s_backup.pixelr", appDataFolderName, tab->saveId.stringID);
+    return easy_createString_printf(arena, "%s%s_backup.spixl", appDataFolderName, tab->saveId.stringID);
 }
 
 void saveProjectToFileBackup_multiThreaded(char *appDataFolder, CanvasTab *tab, ThreadsInfo *threadsInfo) {
-#if _WIN32
-//TODO: Add time function
-#else 
-    time_t t = time(NULL);
-#endif
+
     char *saveFileName = "Untitled";
 
     if(tab->fileName) {

@@ -218,7 +218,7 @@ void checkFileDrop(GameState *gameState) {
     for(int i = 0; i < gameState->droppedFileCount; ++i) {
         char *filePath = gameState->droppedFilePaths[i];
         char *extension = getFileExtension(filePath);
-        if(easyString_stringsMatch_nullTerminated(extension, "pixelr")) {
+        if(easyString_stringsMatch_nullTerminated(extension, DEFINED_APP_NAME)) {
             CanvasTab tab = loadPixelrProject(filePath);
             if(tab.valid) {
                 tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;

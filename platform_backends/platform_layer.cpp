@@ -8,6 +8,7 @@
 #include "../3DMaths.h"
 #include <cstdio>
 #include "../threads.cpp"
+#include <ctime>
 static ThreadsInfo *globalThreadInfo = 0;
 
 #define ENUM(value) value,
@@ -197,13 +198,14 @@ int main(int argc, char **argv) {
   gameState->aspectRatio_y_over_x = (1080.f / 1920.0f);
   gameState->mouseLeftBtn = MOUSE_BUTTON_NONE;
   gameState->shouldQuit = false;
+  gameState->exePath = SDL_GetBasePath();
   gameState->quit = false;
 
   for(int i = 0; i < arrayCount(gameState->keys.keys); ++i) {
       gameState->keys.keys[i] = MOUSE_BUTTON_NONE;
     } 
 
-  SDL_Window *window = SDL_CreateWindow("Pixelr",  SDL_WINDOWPOS_CENTERED,  SDL_WINDOWPOS_CENTERED, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x, flags);
+  SDL_Window *window = SDL_CreateWindow(DEFINED_APP_NAME,  SDL_WINDOWPOS_CENTERED,  SDL_WINDOWPOS_CENTERED, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x, flags);
 
   SDL_GLContext renderContext = SDL_GL_CreateContext(window);
 
@@ -220,8 +222,14 @@ int main(int argc, char **argv) {
       }
   }
 
-  ImGuiIO& imguiIo = initMyImGui(renderContext, window);
 
+  if (!gladLoadGL()) {
+    assert(false);
+  }
+
+
+  ImGuiIO& imguiIo = initMyImGui(renderContext, window, gameState->exePath);
+  
   initBackendRenderer();
 
   SDL_EventState(SDL_MULTIGESTURE, SDL_ENABLE);

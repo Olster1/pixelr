@@ -9,7 +9,7 @@
                 "-std=c++11",
                 "-g",
                 "-o",
-                "${workspaceFolder}/bin/Pixelr",
+                "${workspaceFolder}/bin/Spixl",
                 "-I", "../imgui",
                 "-I", "../imgui/backends/",
                 "./platform_backends/platform_layer.cpp",

@@ -122,27 +122,28 @@ void initGameState(GameState *gameState) {
     gameState->lastInteractionMode = gameState->interactionMode = CANVAS_DRAW_MODE;
     
     gameState->grabbedCornerIndex = -1;
-    gameState->nearest = false; 
+    gameState->nearest = true; 
 
     gameState->lastMouseP = gameState->mouseP_screenSpace;
     gameState->runningAverageCount = 1;
-    gameState->versionString = "0.0.1";
-
-    Texture atlasTexture = loadTextureToGPU("./images/atlas.png");
+    gameState->versionString = BUILD_VERSION;
+    
+    Texture atlasTexture = loadTextureToGPU(0, (unsigned char *)atlas_png, arrayCount(atlas_png));
 
     gameState->editPaletteIndex = -1;
     gameState->canvasTabs = initResizeArray(CanvasTab);
 
     gameState->renderer = initRenderer(atlasTexture);
 
+#if DEBUG_BUILD
     gameState->mainFont = initFontAtlas("./fonts/Roboto-Regular.ttf");
-    
     gameState->renderer->fontAtlasTexture = gameState->mainFont.textureHandle;
+#endif
 
     gameState->clipboard = Clipboard();
     gameState->selectMode = false;
 
-    gameState->selectObject = SelectObject();
+    gameState->selectObject = EaselSelectObject();
 
     initThreadQueue(&gameState->threadsInfo);
     globalThreadInfo = &gameState->threadsInfo;

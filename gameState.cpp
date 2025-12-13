@@ -91,7 +91,7 @@ struct GameState {
     int mouseCountAt;
     float2 mouseP_01_array[101];
     float2 lastMouseP;
-
+    
     Font mainFont;
 
     CanvasInteractionMode interactionMode;
@@ -137,6 +137,7 @@ struct GameState {
     bool openSpriteSheetWindow;
     int layerOptionsIndex;
     char *versionString;
+    char *exePath;
 
     float4 bgColor;
     char dimStr0[256];
@@ -159,7 +160,7 @@ struct GameState {
     
     int runningAverageCount;
 
-    SelectObject selectObject;
+    EaselSelectObject selectObject;
 
     CanvasTab *canvasTabs; //NOTE: resize array
     int activeCanvasTab;
