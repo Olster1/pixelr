@@ -1,5 +1,6 @@
 #include "includes.h"
 
+
 void updateGame(GameState *gameState) {
     DEBUG_TIME_BLOCK()
     checkInitGameState(gameState);
@@ -19,12 +20,20 @@ void updateGame(GameState *gameState) {
     float3 lookingAxis = make_float3(rot.E_[2][0], rot.E_[2][1], rot.E_[2][2]);
 
     checkFileDrop(gameState);
+
+    
     
    CanvasTab *t = getActiveCanvasTab(gameState);
    if(t) {
+        sanityCheckCanvasSize(t);
+    
         checkAndSaveBackupFile(gameState, t);
         
         drawCanvasGridBackground(gameState, getActiveCanvas(gameState), getActiveCanvasTab(gameState));
+        sanityCheckCanvasSize(t);
+        Frame *f = getActiveFrame(gameState);
+        Canvas *c = f->layers + f->activeLayer;
+        
         drawLinedGrid(gameState, getActiveCanvas(gameState));
         {
         

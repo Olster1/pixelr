@@ -1,6 +1,6 @@
 void saveFileToPNG(Renderer *renderer, Frame *frame, CanvasTab *tab) {
     DEBUG_TIME_BLOCK()
-    char const * result = tinyfd_saveFileDialog (
+    char *result = (char *)tinyfd_saveFileDialog (
     "Save File",
     "",
     0,
@@ -10,11 +10,71 @@ void saveFileToPNG(Renderer *renderer, Frame *frame, CanvasTab *tab) {
     if(result) {
         size_t bytesPerPixel = sizeof(uint32_t);
         int stride_in_bytes = bytesPerPixel*tab->w;
+        
+        char *ending = ".png";
+        char *extension = getFileExtension((char *)result);
+
+        if(extension && easyString_stringsMatch_nullTerminated(extension, "png")) {
+            ending = "";
+        }
 
         updateFrameGPUHandles(frame, tab);
 
-        char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
+        char *name = easy_createString_printf(&globalPerFrameArena, "%s%s", (char *)result, ending);
         int writeResult = stbi_write_png(name, tab->w, tab->h, 4, getPixelsForFrame_shortTerm(tab, frame), stride_in_bytes);
+    }
+}
+
+void exportFramesToGif(Renderer *renderer, CanvasTab *tab) {
+    DEBUG_TIME_BLOCK()
+    char *result = (char *)tinyfd_saveFileDialog (
+    "Save Gif",
+    "",
+    0,
+    NULL,
+    NULL);
+
+    if(result) {
+        size_t bytesPerPixel = sizeof(uint32_t);
+        int stride_in_bytes = bytesPerPixel*tab->w;
+
+        char *ending = ".gif";
+        char *extension = getFileExtension((char *)result);
+
+        if(extension && easyString_stringsMatch_nullTerminated(extension, "gif")) {
+            ending = "";
+        }
+        
+        char *fileName = easy_createString_printf(&globalPerFrameArena, "%s%s", (char *)result, ending);
+
+        int pitch = tab->w * 4 * -1; //NOTE: * -1 since we can flip the image vertically by passing a negative pitch, so the imgae is the correct way up
+
+        int centisecondsPerFrame = (tab->playback.frameTime / 100.0f); 
+
+        int quality = 16;
+        MsfGifState gifState = {};
+        // msf_gif_bgra_flag = true; //optionally, set this flag if your pixels are in BGRA format instead of RGBA
+        msf_gif_alpha_threshold = 128; //optionally, enable transparency (see function documentation below for details)
+        msf_gif_begin(&gifState, tab->w, tab->h);
+
+        for(int i = 0; i < getArrayLength(tab->frames); i++) {
+            Frame *frame = tab->frames + i;
+            if(!frame->deleted) {
+                updateFrameGPUHandles(frame, tab);
+                msf_gif_frame(&gifState, (u8 *)getPixelsForFrame_shortTerm(tab, frame), centisecondsPerFrame, quality, pitch);
+            }
+        }
+
+        MsfGifResult result = msf_gif_end(&gifState);
+        if (result.data) {
+            game_file_handle fileHandle = platformBeginFileWrite((char *)fileName);
+            assert(!fileHandle.HasErrors);
+            platformWriteFile(&fileHandle, result.data, result.dataSize, 0);
+            platformEndFile(fileHandle);
+        } else {
+            addIMGUIToast("Couldn't save GIF. Please try again.", 2);
+        }
+        msf_gif_free(result);
     }
 }
 
@@ -127,7 +187,7 @@ void openSpriteSheet(GameState *gameState, int w, int h) {
 
 void saveSpriteSheetToPNG(Renderer *renderer, CanvasTab *canvas, int columns, int rows) {
     DEBUG_TIME_BLOCK()
-    char const * result = tinyfd_saveFileDialog (
+    char *result = (char *)tinyfd_saveFileDialog (
     "Save File",
     "",
     0,
@@ -172,8 +232,14 @@ void saveSpriteSheetToPNG(Renderer *renderer, CanvasTab *canvas, int columns, in
         size_t bytesPerPixel = sizeof(uint32_t);
         int stride_in_bytes = bytesPerPixel*totalWidth;
 
+        char *ending = ".png";
+        char *extension = getFileExtension((char *)result);
 
-        char *name = easy_createString_printf(&globalPerFrameArena, "%s.png", (char *)result);
+        if(extension && easyString_stringsMatch_nullTerminated(extension, "png")) {
+            ending = "";
+        }
+
+        char *name = easy_createString_printf(&globalPerFrameArena, "%s%s", (char *)result, ending);
         int writeResult = stbi_write_png(name, totalWidth, totalHeight, 4, totalPixels, stride_in_bytes);
     }
 }
@@ -218,7 +284,7 @@ void checkFileDrop(GameState *gameState) {
     for(int i = 0; i < gameState->droppedFileCount; ++i) {
         char *filePath = gameState->droppedFilePaths[i];
         char *extension = getFileExtension(filePath);
-        if(easyString_stringsMatch_nullTerminated(extension, DEFINED_APP_NAME)) {
+        if(extension && easyString_stringsMatch_nullTerminated(extension, DEFINED_FILE_NAME)) {
             CanvasTab tab = loadPixelrProject(filePath);
             if(tab.valid) {
                 tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;

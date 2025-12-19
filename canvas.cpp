@@ -378,7 +378,6 @@ void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *c
     DEBUG_TIME_BLOCK()
     if(gameState->checkBackground) {
         pushCheckerQuad(gameState->renderer, make_float3(0, 0, 0), make_float3(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS, 0));
-        // pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 1), gameState->checkBackgroundHandle);
     }
 }
 
@@ -701,6 +700,8 @@ void updateSprayCan(GameState *gameState, Canvas *canvas) {
 void drawLinedGrid(GameState *gameState, Canvas *canvas) {
     DEBUG_TIME_BLOCK()
     float4 greyColor = make_float4(0.4, 0.4, 0.4, 1);
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+    assert(tab->h == canvas->h && tab->h == canvas->h);
     for(int x = 0; x < canvas->h + 1; ++x) {
         if(gameState->drawGrid || (x == 0 || x == canvas->h)) {
             TransformX T = {};
@@ -798,30 +799,6 @@ void updateFrameGPUHandles(Frame *f, CanvasTab *t) {
         renderCheckError();
     }
 }
-
-// u32 *getCompositePixelsForFrame_shortTerm(CanvasTab *t, Frame *f) {
-//     DEBUG_TIME_BLOCK()
-//     u32 *compositePixels = pushArray(&globalPerFrameArena, t->w*t->h, u32);
-
-//     for (int j = 0; j < getArrayLength(f->layers); j++) {
-//         if(f->layers[j].visible && !f->layers[j].deleted) {
-//             for(int y = 0; y < t->h; y++) {
-//                 for(int x = 0; x < t->w; x++) {
-//                     u32 compositeIndex = y*t->w + x;
-//                     assert(compositeIndex < t->h*t->w);
-//                     if(compositeIndex < t->h*t->w) {
-//                         float4 colorA = u32_to_float4_color(compositePixels[compositeIndex]);
-//                         float4 colorB = u32_to_float4_color(f->layers[j].pixels[compositeIndex]);
-//                         float4 newColor = getBlendedColor(colorA, colorB);
-//                         compositePixels[compositeIndex] = float4_to_u32_color(newColor);
-//                     }
-//                 }
-//             }
-//         }
-//     }
-
-//     return compositePixels;
-// }
 
 u32 *getPixelsForFrame_shortTerm(CanvasTab *t, Frame *f) {
     backendRenderer_BindFrameBuffer(f->frameBufferHandle.handle);

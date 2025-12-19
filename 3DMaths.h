@@ -1,10 +1,5 @@
 #include <math.h> //NOTE: For FLT_MAX
 #include <float.h> //NOTE: For FLT_MAX
-#if defined(__x86_64__) || defined(__i386)  // x86 architecture
-#include <nmmintrin.h>  // For _mm_crc32_u8
-#else
-#include <arm_acle.h>
-#endif
 
 #define PI32 3.14159265358979
 #define SIN45 0.70710678118
@@ -1196,15 +1191,11 @@ float16 eulerAnglesToTransform(float y, float x, float z) {
 	return result;
 }
 
-// uint32_t get_crc32(char *bytes, size_t bytes_length) {
-// 	uint32_t result = 0;
-// 	for(int i = 0; i < bytes_length; ++i) {
-// 		result = __crc32b (result, bytes[i]);
-
-// 	}
-// 	return result;
-// }
-
+#if defined(__x86_64__) || defined(__i386)  // x86 architecture
+#include <nmmintrin.h>  // For _mm_crc32_u8
+#else
+#include <arm_acle.h>
+#endif
 
 uint32_t get_crc32(char *bytes, size_t bytes_length) {
 	uint32_t result = 0;
@@ -1214,20 +1205,6 @@ uint32_t get_crc32(char *bytes, size_t bytes_length) {
 		#else
 		result = __crc32b (result, bytes[i]);
 		#endif
-	}
-	return result;
-}
-
-int get_crc32_for_string(char *string_nullterminated) {
-	int result = 0;
-	while(*string_nullterminated) {
-		#if defined(__x86_64__) || defined(__i386)
-		result = _mm_crc32_u8 (result, *string_nullterminated);
-		#else
-		result = __crc32b (result, *string_nullterminated);
-		#endif
-		
-		string_nullterminated++;
 	}
 	return result;
 }

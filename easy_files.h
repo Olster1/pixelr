@@ -121,7 +121,7 @@ typedef struct {
 }  game_file_handle;
 
 char *getPlatformSaveFilePath() {
-    char* filePath = SDL_GetPrefPath("edgeeffectmedia", DEFINED_APP_NAME);
+    char* filePath = SDL_GetPrefPath("edgeeffectmedia", DEFINED_FILE_NAME);
     if(!filePath) {
         filePath = "./";
     }

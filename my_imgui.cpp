@@ -91,7 +91,7 @@ void drawTabs(GameState *state) {
             for(int i = 0; i < getArrayLength(state->canvasTabs); ++i) {
               CanvasTab *t = state->canvasTabs + i;
 
-              char *id = easy_createString_printf(&globalPerFrameArena, "%ld", t->id);
+              char *id = easy_createString_printf(&globalPerFrameArena, "%ld", t->id.stringID);
               ImGui::PushID(id);
 
               u32 unsavedFlag = ImGuiTabItemFlags_UnsavedDocument;
@@ -193,6 +193,11 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
       ImVec2 window_pos = ImVec2(io.DisplaySize.x, io.DisplaySize.y);
       ImVec2 window_pivot = ImVec2(1, 1);
       ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
+
+        ImGui::SetNextWindowSize(
+          ImVec2(400, 0),
+          ImGuiCond_FirstUseEver
+      );
       ImGui::Begin("Animation Timeline");
 
       // Play/Pause/Reset buttons
@@ -301,10 +306,9 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
                   Canvas newCanvas = Canvas(canvasTab->w, canvasTab->h);
                   pushArrayItem(&f->layers, newCanvas, Canvas);
                 }
-                easyPlatform_copyMemory(f->layers[j].pixels, activeFrame->layers[j].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
+                easyPlatform_copyMemory(f->layers[addedIndex].pixels, activeFrame->layers[j].pixels, sizeof(u32)*canvasTab->w*canvasTab->h);
                 addedIndex++;
               }
-              
             }
             updateGpuCanvasTextures(state);
           }
@@ -738,6 +742,7 @@ void outputPalette(GameState *gameState, CanvasTab *tab, u32 *palette, int count
 
 void updateEditPaletteWindow (GameState *gameState) {
   if(gameState->showEditPalette) {
+
     //NOTE: Edit palette 
     ImGui::Begin("Edit Palette", &gameState->showEditPalette);    
     ImGui::Text("Your Palette");   
@@ -949,6 +954,11 @@ void updateAboutWindow(GameState *gameState) {
     ImGui::SetNextWindowSizeConstraints(ImVec2(300, 400), ImVec2(FLT_MAX, FLT_MAX));
     ImGui::Begin("About Spixl", &gameState->showAboutWindow);       
     ImGui::Text("Version %s", gameState->versionString); 
+    
+    ImGui::Text("Backup Files Found At: "); 
+    ImGui::SameLine();
+    char *backUpPath = easy_createString_printf(&globalPerFrameArena, "%s", gameState->appDataFolderName);
+    ImGui::InputText("##", backUpPath, easyString_getSizeInBytes_utf8(backUpPath) + 1, ImGuiInputTextFlags_ReadOnly); 
 
     ImGui::End();
 
@@ -966,14 +976,9 @@ void updateLayerSettingsWindow(GameState *gameState) {
           if(ImGui::SliderFloat("Layer Opacity", &c->opacity, 0, 1)) {
           }
         }
-        
       }      
-      
     }
-    
-
     ImGui::End();
-
   }
 }
 void updateCanvasSettingsWindow(GameState *gameState) {
@@ -1046,12 +1051,19 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("New")) { showNewCanvas(state); }
             if (ImGui::MenuItem("Open Image", "Ctrl+O")) { openPlainImage(state); }
             if (ImGui::MenuItem("Load Sprite Sheet", "")) { setDefaultSpriteSize(state); state->openSpriteSheetWindow = true; }
-            if (ImGui::MenuItem("Save Project", "Ctrl+S", &dummy, tab)) { saveProjectToFile(tab); }
+            if (ImGui::MenuItem("Save Project", "Ctrl+S", &dummy, tab)) { 
+              if(saveProjectToFile(tab)) {
+                addIMGUIToast("Project Saved", 2);
+              }
+              
+            }
             if (ImGui::MenuItem("Open Project", "Ctrl+O")) { loadProjectAndStoreTab(state); }
             if (ImGui::MenuItem("Save Pallete", "", &dummy, tab)) {  }
             if (ImGui::MenuItem("Load Pallete", "")) {  }
             if (ImGui::MenuItem("Export Image", "Ctrl+E", &dummy, tab)) { saveFileToPNG(state->renderer, getActiveFrame(state), getActiveCanvasTab(state)); }
             if (ImGui::MenuItem("Export Sprite Sheet", "", &dummy, tab)) { state->showExportWindow = true; }
+            if (ImGui::MenuItem("Export To Gif", "", &dummy, tab)) { exportFramesToGif(state->renderer, tab); }
+            
             if (ImGui::MenuItem("Exit")) { state->shouldQuit = true;  }
             ImGui::EndMenu();
         }
@@ -1208,6 +1220,10 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
               ImGui::SetNextWindowSizeConstraints(ImVec2(0, 0), ImVec2(FLT_MAX, io.DisplaySize.y - 50));
               ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
 
+            ImGui::SetNextWindowSize(
+              ImVec2(300, 0),
+              ImGuiCond_FirstUseEver
+          );
               ImGui::Begin("Color Palette");
               ImGui::ColorEdit3("Brush", (float*)&tab->colorPicked);
 

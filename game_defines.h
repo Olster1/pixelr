@@ -1,5 +1,5 @@
-#define BUILD_VERSION "0.0.1"
-#define DEBUG_BUILD 1
+#define BUILD_VERSION "0.0.2"
+#define DEBUG_BUILD 0
 #define CAMERA_OFFSET make_float3(0, 0, 0)
 #define VOXEL_SIZE_IN_METERS 0.1f
 #define INVERSE_VOXEL_SIZE_IN_METERS (1.0f / (float)VOXEL_SIZE_IN_METERS)
@@ -11,3 +11,4 @@
 #define MAX_DROPPED_FILES 128
 #define MAX_FRAMES_AFTER_EVENT_TO_RUN 20
 #define DEFINED_APP_NAME "Spixl"
+#define DEFINED_FILE_NAME "spixl"

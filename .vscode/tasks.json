@@ -12,6 +12,7 @@
                 "${workspaceFolder}/bin/Spixl",
                 "-I", "../imgui",
                 "-I", "../imgui/backends/",
+                "-I", "./libs/GLAD/include",
                 "./platform_backends/platform_layer.cpp",
                 "-Wno-deprecated-declarations",
                 "-Wno-writable-strings",

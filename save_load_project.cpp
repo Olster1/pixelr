@@ -56,6 +56,21 @@ ProjectFile initProjectFile() {
 
 }
 
+void sanityCheckCanvasSize(CanvasTab *tab) {
+    for(int i = 0; i < getArrayLength(tab->frames); ++i) {
+        Frame *f = tab->frames + i;
+        for(int j = 0; j < getArrayLength(f->layers); ++j) {
+            Canvas *c = f->layers + j;
+            assert(c->w == tab->w && c->h == tab->h);
+        }
+
+        Canvas *c = f->layers + f->activeLayer;
+        int layerCount = getArrayLength(f->layers);
+        assert(f->activeLayer < layerCount);
+        assert(c->w == tab->w && c->h == tab->h);
+    }
+}
+
 CanvasTab loadPixelrProject(const char *filePath) {
     DEBUG_TIME_BLOCK()
     
@@ -126,7 +141,7 @@ CanvasTab loadPixelrProject(const char *filePath) {
                 f = pushArrayItem(&tab.frames, f_, Frame);
             }
             assert(f);
-            f->activeLayer = data->framesActiveLayer[i];
+            
             u32 canvasCount = data->canvasCountPerFrame[i];
             for(int j = 0; j < canvasCount; ++j) {
                 Canvas *c = 0;
@@ -148,9 +163,16 @@ CanvasTab loadPixelrProject(const char *filePath) {
                 easyPlatform_copyMemory(c->pixels, pixelData, dataSize);
                 totalCavases++;
             }
+            assert(data->framesActiveLayer[i] < getArrayLength(f->layers));
+            f->activeLayer = MathMin(data->framesActiveLayer[i], getArrayLength(f->layers) - 1);
         }
 
         easyPlatform_freeMemory(file.memory);
+
+        //DEBUG: CHECK CANVAS SIZE
+        sanityCheckCanvasSize(&tab);
+        
+
         return tab;
     } else {
         //NOTE: Return an empty one
@@ -289,6 +311,7 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
             if(f && !f->deleted) {
                 assert(i < MAX_FRAME_COUNT);
                 data.framesActiveLayer[aliveFrameCount] = f->activeLayer;
+                assert(f->activeLayer < getArrayLength(f->layers));
 
                 int aliveLayerCount = 0;
                 for(int i = 0; i < getArrayLength(f->layers); ++i) {

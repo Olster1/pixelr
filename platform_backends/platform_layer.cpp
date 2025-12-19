@@ -287,7 +287,13 @@ int main(int argc, char **argv) {
     updateKeyState(gameState, KEY_V, currentKeyStates[SDL_SCANCODE_V] == 1);
     updateKeyState(gameState, KEY_X, currentKeyStates[SDL_SCANCODE_X] == 1);
     updateKeyState(gameState, KEY_A, currentKeyStates[SDL_SCANCODE_A] == 1);
+#if defined(__APPLE__)
+//NOTE: Command for mac
     updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_SCANCODE_LGUI] == 1);
+#else
+  updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_SCANCODE_LCTRL] == 1);
+#endif
+    
     updateKeyState(gameState, KEY_DOWN, currentKeyStates[SDL_SCANCODE_DOWN] == 1);
     updateKeyState(gameState, KEY_LEFT, currentKeyStates[SDL_SCANCODE_LEFT] == 1);
     updateKeyState(gameState, KEY_RIGHT, currentKeyStates[SDL_SCANCODE_RIGHT] == 1);

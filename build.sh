@@ -22,8 +22,9 @@ clear
 
 # -O2
 # -arch x86_64  -mcrc32 \
-
-g++ -g -std=c++11 -o ./bin/Spixl \
+#-g
+#-DNDEBUG 
+g++ -std=c++11 -g -o ./bin/Spixl \
     -arch arm64 \
     -I ../imgui \
     -I ../imgui/backends \
@@ -35,6 +36,7 @@ g++ -g -std=c++11 -o ./bin/Spixl \
     -L./bin -limgui \
     -Wl,-rpath,@executable_path \
     -Wl,-rpath,/Library/Frameworks \
+    -Wl,-rpath,@executable_path/../Frameworks \
     -I/Library/Frameworks/SDL2.framework/Headers \
     -I/Library/Frameworks/SDL2_image.framework/Headers \
     -F/Library/Frameworks \
