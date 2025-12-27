@@ -104,7 +104,7 @@ static void EasyProfile_DrawGraph(Renderer *renderer, GameState *gameState, Easy
 
 					if(in_rect2f_bounds(r, easyInput_mouseToResolution_originLeftBottomCorner(mouseP_01, resolution))) {
 						color = make_float4(1, 1, 1, 1);
-						if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+						if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
 							drawState->holdingScrollBar = true;
 							// drawState->grabOffset = easyInput_mouseToResolution_originLeftBottomCorner(keyStates, resolution).x - (drawState->xOffset*graphWidth + xMin);
 							assert(drawState->grabOffset >= 0); //xOffset is the start of the handle
@@ -148,7 +148,7 @@ static void EasyProfile_DrawGraph(Renderer *renderer, GameState *gameState, Easy
 					////////////////////////////////////////////////////////////////////
 					
 
-					if(gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED) {
+					if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_RELEASED) {
 						drawState->holdingScrollBar = false;
 					}
 
@@ -322,7 +322,7 @@ static void EasyProfile_DrawGraph(Renderer *renderer, GameState *gameState, Easy
 							renderText(renderer, &gameState->mainFont, strBuffer, make_float2(10, 40), fontSize, make_float4(1, 1, 1 ,1)); 
 							////////////////////////////////////////////////////////////////////
 
-							if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+							if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
 								state->lookingAtSingleFrame = frame;
 								state->queuePause = true;
 							}

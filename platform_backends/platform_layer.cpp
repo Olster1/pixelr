@@ -10,6 +10,7 @@
 #include "../threads.cpp"
 #include <ctime>
 static ThreadsInfo *globalThreadInfo = 0;
+static SDL_Window *global_windowHandle = 0;
 
 #define ENUM(value) value,
 #define STRING(value) #value,
@@ -33,6 +34,16 @@ typedef u32 bool;
 #endif 
 
 #define internal static 
+
+
+enum MouseButtonType {
+  MOUSE_BUTTON_LEFT_CLICK,
+  MOUSE_BUTTON_RIGHT_CLICK,
+  MOUSE_BUTTON_MIDDLE_CLICK,
+
+  MOUSE_BUTTON_TYPE_COUNT,
+};
+
 
 
 enum MouseKeyState {
@@ -108,7 +119,40 @@ inline float EasyTime_GetMillisecondsElapsed(u64 CurrentCount, u64 LastCount)
     return millseconds;
     
 }
+
+float2 platform_getWindowPosition() {
+  int x = 0;
+  int y = 0;
+  SDL_GetWindowPosition(global_windowHandle, &x, &y);
+  return make_float2(x, y);
+                           
+}
+float2 platform_getWindowSize() {
+  int x = 0;
+  int y = 0;
+  SDL_GetWindowSize(global_windowHandle, &x, &y);
+  return make_float2(x, y);
+                           
+}
+
+
 #include "../main.cpp"
+
+void updateMouseButton(u32 mouseState, GameState *gameState, MouseButtonType index, u32 sdlButtonType) {
+  if(mouseState & SDL_BUTTON(sdlButtonType)) {
+    if(gameState->mouseBtn[index] == MOUSE_BUTTON_NONE) {
+      gameState->mouseBtn[index] = MOUSE_BUTTON_PRESSED;
+    } else if(gameState->mouseBtn[index] == MOUSE_BUTTON_PRESSED) {
+      gameState->mouseBtn[index] = MOUSE_BUTTON_DOWN;
+    }
+  } else {
+    if(gameState->mouseBtn[index] == MOUSE_BUTTON_DOWN || gameState->mouseBtn[index] == MOUSE_BUTTON_PRESSED) {
+      gameState->mouseBtn[index] = MOUSE_BUTTON_RELEASED;
+    } else {
+      gameState->mouseBtn[index] = MOUSE_BUTTON_NONE;
+    }
+  }
+}
 
 float getBestDt(float secondsElapsed) {
       float frameRates[] = {1.0f/15.0f, 1.0f/20.0f, 1.0f/30.0f, 1.0f/60.0f, 1.0f/120.0f, 1.0f/240.0f};
@@ -146,6 +190,12 @@ void updateKeyState(GameState *gameState, KeyTypes type, bool value) {
 void processEvent(GameState *gameState, SDL_Event *e) {
   if (e->type == SDL_QUIT) {
       gameState->shouldQuit = true;
+  } else if(e->type == SDL_WINDOWEVENT) {
+      u8 id = e->window.event;
+      if(id == SDL_WINDOWEVENT_RESIZED || id == SDL_WINDOWEVENT_MOVED) {
+        saveGlobalProjectSettings_multiThreaded(gameState);
+      }
+    
     } else if (e->type == SDL_DROPFILE) {
       if(gameState->droppedFileCount < arrayCount(gameState->droppedFilePaths)) {
         gameState->droppedFilePaths[gameState->droppedFileCount++] = e->drop.file;
@@ -154,14 +204,14 @@ void processEvent(GameState *gameState, SDL_Event *e) {
       gameState->scrollSpeed = e->wheel.y;
     } else if(e->type == SDL_KEYDOWN) {
       //NOTE: We do this here just for z becuase we want the lag between when the user presses the first z for undo redo
-      SDL_Scancode scancode = e->key.keysym.scancode; 
-      if(scancode == SDL_SCANCODE_Z) {
+      SDL_Keycode keyCode = e->key.keysym.sym; 
+      if(keyCode == SDLK_z) {
         gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_DOWN;
       }
     } else if(e->type == SDL_KEYUP) {
       //NOTE: We do this here just for z becuase we want the lag between when the user presses the first z for undo redo
-      SDL_Scancode scancode = e->key.keysym.scancode; 
-      if(scancode == SDL_SCANCODE_Z) {
+      SDL_Keycode keyCode = e->key.keysym.sym; 
+      if(keyCode == SDLK_z) {
         gameState->keys.keys[KEY_Z] = MOUSE_BUTTON_RELEASED;
       }
     } 
@@ -194,9 +244,10 @@ int main(int argc, char **argv) {
 
   GameState *gameState = (GameState *)malloc(sizeof(GameState));
   memset(gameState, 0, sizeof(GameState));
+
   gameState->screenWidth = 0.5f*1920;
   gameState->aspectRatio_y_over_x = (1080.f / 1920.0f);
-  gameState->mouseLeftBtn = MOUSE_BUTTON_NONE;
+  gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] = MOUSE_BUTTON_NONE;
   gameState->shouldQuit = false;
   gameState->exePath = SDL_GetBasePath();
   gameState->quit = false;
@@ -206,6 +257,7 @@ int main(int argc, char **argv) {
     } 
 
   SDL_Window *window = SDL_CreateWindow(DEFINED_APP_NAME,  SDL_WINDOWPOS_CENTERED,  SDL_WINDOWPOS_CENTERED, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x, flags);
+  global_windowHandle = window;
 
   SDL_GLContext renderContext = SDL_GL_CreateContext(window);
 
@@ -226,7 +278,6 @@ int main(int argc, char **argv) {
   if (!gladLoadGL()) {
     assert(false);
   }
-
 
   ImGuiIO& imguiIo = initMyImGui(renderContext, window, gameState->exePath);
   
@@ -256,6 +307,15 @@ int main(int argc, char **argv) {
 
     gameState->scrollSpeed = 0;
 
+    if(gameState->windowResizeCommand.valid) {
+      gameState->screenWidth = gameState->windowResizeCommand.newSize.x;
+      gameState->aspectRatio_y_over_x = gameState->windowResizeCommand.newSize.y / gameState->windowResizeCommand.newSize.x;
+      SDL_SetWindowSize(window, gameState->windowResizeCommand.newSize.x, gameState->windowResizeCommand.newSize.y);
+      SDL_SetWindowPosition(window, gameState->windowResizeCommand.windowPos.x, gameState->windowResizeCommand.windowPos.y);
+
+      gameState->windowResizeCommand.valid = false;
+    }
+
     if(shouldKeepUpdateing(gameState) || framesAfterEventCount < MAX_FRAMES_AFTER_EVENT_TO_RUN) {
       // printf("UPDATEING %f\n", gameState->dt);
       while(SDL_PollEvent(&e)) {
@@ -277,75 +337,63 @@ int main(int argc, char **argv) {
     
     const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
     
-    updateKeyState(gameState, KEY_UP, currentKeyStates[SDL_SCANCODE_UP] == 1);
-    updateKeyState(gameState, KEY_E, currentKeyStates[SDL_SCANCODE_E] == 1);
-    updateKeyState(gameState, KEY_O, currentKeyStates[SDL_SCANCODE_O] == 1);
-    updateKeyState(gameState, KEY_N, currentKeyStates[SDL_SCANCODE_N] == 1);
-    updateKeyState(gameState, KEY_S, currentKeyStates[SDL_SCANCODE_S] == 1);
-    updateKeyState(gameState, KEY_Q, currentKeyStates[SDL_SCANCODE_Q] == 1);
-    updateKeyState(gameState, KEY_C, currentKeyStates[SDL_SCANCODE_C] == 1);
-    updateKeyState(gameState, KEY_V, currentKeyStates[SDL_SCANCODE_V] == 1);
-    updateKeyState(gameState, KEY_X, currentKeyStates[SDL_SCANCODE_X] == 1);
-    updateKeyState(gameState, KEY_A, currentKeyStates[SDL_SCANCODE_A] == 1);
+    updateKeyState(gameState, KEY_UP, currentKeyStates[SDL_GetScancodeFromKey(SDLK_UP)] == 1);
+    updateKeyState(gameState, KEY_E, currentKeyStates[SDL_GetScancodeFromKey(SDLK_e)] == 1);
+    updateKeyState(gameState, KEY_O, currentKeyStates[SDL_GetScancodeFromKey(SDLK_o)] == 1);
+    updateKeyState(gameState, KEY_N, currentKeyStates[SDL_GetScancodeFromKey(SDLK_n)] == 1);
+    updateKeyState(gameState, KEY_S, currentKeyStates[SDL_GetScancodeFromKey(SDLK_s)] == 1);
+    updateKeyState(gameState, KEY_Q, currentKeyStates[SDL_GetScancodeFromKey(SDLK_q)] == 1);
+    updateKeyState(gameState, KEY_C, currentKeyStates[SDL_GetScancodeFromKey(SDLK_c)] == 1);
+    updateKeyState(gameState, KEY_V, currentKeyStates[SDL_GetScancodeFromKey(SDLK_v)] == 1);
+    updateKeyState(gameState, KEY_X, currentKeyStates[SDL_GetScancodeFromKey(SDLK_x)] == 1);
+    updateKeyState(gameState, KEY_A, currentKeyStates[SDL_GetScancodeFromKey(SDLK_a)] == 1);
 #if defined(__APPLE__)
 //NOTE: Command for mac
-    updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_SCANCODE_LGUI] == 1);
+    updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_GetScancodeFromKey(SDLK_LGUI)] == 1);
 #else
-  updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_SCANCODE_LCTRL] == 1);
+  updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_GetScancodeFromKey(SDLK_LCTRL)] == 1);
 #endif
     
-    updateKeyState(gameState, KEY_DOWN, currentKeyStates[SDL_SCANCODE_DOWN] == 1);
-    updateKeyState(gameState, KEY_LEFT, currentKeyStates[SDL_SCANCODE_LEFT] == 1);
-    updateKeyState(gameState, KEY_RIGHT, currentKeyStates[SDL_SCANCODE_RIGHT] == 1);
-    updateKeyState(gameState, KEY_SPACE, currentKeyStates[SDL_SCANCODE_SPACE] == 1);
-    updateKeyState(gameState, KEY_SHIFT, currentKeyStates[SDL_SCANCODE_LSHIFT] == 1);
-    updateKeyState(gameState, KEY_ESCAPE, currentKeyStates[SDL_SCANCODE_ESCAPE] == 1);
-    updateKeyState(gameState, KEY_DELETE, currentKeyStates[SDL_SCANCODE_DELETE] == 1);
-    updateKeyState(gameState, KEY_BACKSPACE, currentKeyStates[SDL_SCANCODE_BACKSPACE] == 1);
-    updateKeyState(gameState, KEY_ENTER, currentKeyStates[SDL_SCANCODE_RETURN] == 1);
-    updateKeyState(gameState, KEY_1, currentKeyStates[SDL_SCANCODE_1] == 1);
-    updateKeyState(gameState, KEY_2, currentKeyStates[SDL_SCANCODE_2] == 1);
-    updateKeyState(gameState, KEY_3, currentKeyStates[SDL_SCANCODE_3] == 1);
-    updateKeyState(gameState, KEY_4, currentKeyStates[SDL_SCANCODE_4] == 1);
-    updateKeyState(gameState, KEY_5, currentKeyStates[SDL_SCANCODE_5] == 1);
-    updateKeyState(gameState, KEY_6, currentKeyStates[SDL_SCANCODE_6] == 1);
-    updateKeyState(gameState, KEY_7, currentKeyStates[SDL_SCANCODE_7] == 1);
-    updateKeyState(gameState, KEY_8, currentKeyStates[SDL_SCANCODE_8] == 1);
-    updateKeyState(gameState, KEY_9, currentKeyStates[SDL_SCANCODE_9] == 1);
-    updateKeyState(gameState, KEY_0, currentKeyStates[SDL_SCANCODE_0] == 1);
-    int w; 
-    int h;
-    SDL_GetWindowSize(window, &w, &h);
-    gameState->screenWidth = (float)w;
-    gameState->aspectRatio_y_over_x = (float)h / (float)w;
-    // printf("w: %d\n", w);
-    // printf("ap: %d\n", h);
-    glViewport(0, 0, w, h);
+  updateKeyState(gameState, KEY_DOWN, currentKeyStates[SDL_GetScancodeFromKey(SDLK_DOWN)] == 1);
+  updateKeyState(gameState, KEY_LEFT, currentKeyStates[SDL_GetScancodeFromKey(SDLK_LEFT)] == 1);
+  updateKeyState(gameState, KEY_RIGHT, currentKeyStates[SDL_GetScancodeFromKey(SDLK_RIGHT)] == 1);
+  updateKeyState(gameState, KEY_SPACE, currentKeyStates[SDL_GetScancodeFromKey(SDLK_SPACE)] == 1);
+  updateKeyState(gameState, KEY_SHIFT, currentKeyStates[SDL_GetScancodeFromKey(SDLK_LSHIFT)] == 1);
+  updateKeyState(gameState, KEY_ESCAPE, currentKeyStates[SDL_GetScancodeFromKey(SDLK_ESCAPE)] == 1);
+  updateKeyState(gameState, KEY_DELETE, currentKeyStates[SDL_GetScancodeFromKey(SDLK_DELETE)] == 1);
+  updateKeyState(gameState, KEY_BACKSPACE, currentKeyStates[SDL_GetScancodeFromKey(SDLK_BACKSPACE)] == 1);
+  updateKeyState(gameState, KEY_ENTER, currentKeyStates[SDL_GetScancodeFromKey(SDLK_RETURN)] == 1);
+  updateKeyState(gameState, KEY_1, currentKeyStates[SDL_GetScancodeFromKey(SDLK_1)] == 1);
+  updateKeyState(gameState, KEY_2, currentKeyStates[SDL_GetScancodeFromKey(SDLK_2)] == 1);
+  updateKeyState(gameState, KEY_3, currentKeyStates[SDL_GetScancodeFromKey(SDLK_3)] == 1);
+  updateKeyState(gameState, KEY_4, currentKeyStates[SDL_GetScancodeFromKey(SDLK_4)] == 1);
+  updateKeyState(gameState, KEY_5, currentKeyStates[SDL_GetScancodeFromKey(SDLK_5)] == 1);
+  updateKeyState(gameState, KEY_6, currentKeyStates[SDL_GetScancodeFromKey(SDLK_6)] == 1);
+  updateKeyState(gameState, KEY_7, currentKeyStates[SDL_GetScancodeFromKey(SDLK_7)] == 1);
+  updateKeyState(gameState, KEY_8, currentKeyStates[SDL_GetScancodeFromKey(SDLK_8)] == 1);
+  updateKeyState(gameState, KEY_9, currentKeyStates[SDL_GetScancodeFromKey(SDLK_9)] == 1);
+  updateKeyState(gameState, KEY_0, currentKeyStates[SDL_GetScancodeFromKey(SDLK_0)] == 1);
+  int w; 
+  int h;
+  SDL_GetWindowSize(window, &w, &h);
+  gameState->screenWidth = (float)w;
+  gameState->aspectRatio_y_over_x = (float)h / (float)w;
+  glViewport(0, 0, w, h);
 
-    int x; 
-    int y;
-    Uint32 mouseState = SDL_GetMouseState(&x, &y);
-    gameState->mouseP_screenSpace.x = (float)x;
-    gameState->mouseP_screenSpace.y = (float)(-y); //NOTE: Bottom corner is origin 
+  int x; 
+  int y;
+  Uint32 mouseState = SDL_GetMouseState(&x, &y);
+  gameState->mouseP_screenSpace.x = (float)x;
+  gameState->mouseP_screenSpace.y = (float)(-y); //NOTE: Bottom corner is origin 
 
-    gameState->mouseP_01.x = gameState->mouseP_screenSpace.x / w;
-    gameState->mouseP_01.y = (gameState->mouseP_screenSpace.y / h) + 1.0f;
+  gameState->mouseP_01.x = gameState->mouseP_screenSpace.x / w;
+  gameState->mouseP_01.y = (gameState->mouseP_screenSpace.y / h) + 1.0f;
 
-  if(mouseState && SDL_BUTTON(1)) {
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_NONE) {
-      gameState->mouseLeftBtn = MOUSE_BUTTON_PRESSED;
-    } else if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
-      gameState->mouseLeftBtn = MOUSE_BUTTON_DOWN;
-    }
-  } else {
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
-      gameState->mouseLeftBtn = MOUSE_BUTTON_RELEASED;
-    } else {
-      gameState->mouseLeftBtn = MOUSE_BUTTON_NONE;
-    }
-  }
+  updateMouseButton(mouseState, gameState, MOUSE_BUTTON_LEFT_CLICK, SDL_BUTTON_LEFT);
+  updateMouseButton(mouseState, gameState, MOUSE_BUTTON_MIDDLE_CLICK, SDL_BUTTON_MIDDLE);
+  updateMouseButton(mouseState, gameState, MOUSE_BUTTON_RIGHT_CLICK, SDL_BUTTON_RIGHT);
 
-  if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+  if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
     
     gameState->mouseCountAt++;
     if(gameState->mouseCountAt >= arrayCount(gameState->mouseP_01_array)) {
@@ -385,7 +433,7 @@ int main(int argc, char **argv) {
         gameState->lastInteractionMode = gameState->interactionModeStartOfFrame;
     }
 
-    gameState->lastMouseP = make_float2(0.5f*gameState->screenWidth, -0.5f*gameState->screenWidth);
+    // gameState->lastMouseP = make_float2(0.5f*gameState->screenWidth, -0.5f*gameState->screenWidth);
     gameState->lastMouseP = gameState->mouseP_screenSpace;
 
     //NOTE: Free the dropped filepaths if there were ones

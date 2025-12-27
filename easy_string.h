@@ -88,8 +88,13 @@ inline char *easy_createString_printf(Arena *arena, char *formatString, ...) {
 
     char bogus[4];
     int stringLengthToAlloc = vsnprintf(bogus, 1, formatString, args) + 1; //for null terminator, just to be sure
-    
-    char *strArray = pushArray(arena, stringLengthToAlloc, char);
+
+    char *strArray = 0;
+    if(!arena) {    
+        strArray = (char *)easyPlatform_allocateMemory(stringLengthToAlloc*sizeof(char));
+    } else {
+        strArray = pushArray(arena, stringLengthToAlloc, char);
+    }
 
     vsnprintf(strArray, stringLengthToAlloc, formatString, args); 
 

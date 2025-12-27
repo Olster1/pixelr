@@ -77,16 +77,25 @@ void addToolTip(char *tooltip) {
     }
 }
 
+#define IMGUI_STB_NAMESPACE
+#include "imgui_internal.h"
+
 void drawTabs(GameState *state) {
       // Push a style to keep the tab bar at the top of the screen
       ImGui::SetNextWindowPos(ImVec2(0, 15));
       ImGui::SetNextWindowSize(ImVec2(ImGui::GetIO().DisplaySize.x, 50));
+
+      //NOTE: For tab reorder action
+      int moveTo = -1;
+      int moveFrom = -1;
   
       // Begin a window without decorations, keeping it at the top
       if (ImGui::Begin("Top Tab Bar", NULL, ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground))
       {
           if (ImGui::BeginTabBar("TopTabs", ImGuiTabBarFlags_Reorderable))
           {
+
+             ImGuiTabBar* tab_bar = ImGui::GetCurrentTabBar();
 
             for(int i = 0; i < getArrayLength(state->canvasTabs); ++i) {
               CanvasTab *t = state->canvasTabs + i;
@@ -101,9 +110,17 @@ void drawTabs(GameState *state) {
               {
                 unsavedFlag = 0;
               }
-            
+              
               if (ImGui::BeginTabItem(t->fileName, &t->isOpen, t->uiTabSelectedFlag | unsavedFlag))
               {
+                int currentOrder = ImGui::TabBarGetTabOrder(tab_bar, ImGui::TabBarGetCurrentTab(tab_bar));
+
+                if(currentOrder != i) {
+                  //NOTE: Should move into different position in array
+                  moveTo = currentOrder;
+                  moveFrom = i;
+                }
+
                 if (state->activeCanvasTab != i)
                 {
                     state->activeCanvasTab = i;
@@ -113,6 +130,8 @@ void drawTabs(GameState *state) {
                       state->camera.T.pos.xy = tab->cameraP;
                       state->camera.fov = tab->zoomFactor;
                     }
+                    //NOTE: Update which tab is Selected
+                    saveGlobalProjectSettings_multiThreaded(state);
                     closeWindowsAssociatedWithThisTab(state);
                 }
               
@@ -123,24 +142,45 @@ void drawTabs(GameState *state) {
 
               ImGui::PopID();
             } 
-  
-              ImGui::EndTabBar();
+             // "+" button as trailing tab
+            if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing))
+            {
+                showNewCanvas(state);
+            }
 
-               // Align button next to the tab bar
-                ImGui::SameLine();
-                
-                if (ImGui::Button("+"))
-                {
-                    showNewCanvas(state);
-
-                }
+            ImGui::EndTabBar();
           }
       }
-      ImGui::End(); // End the top bar window
+
+      // NOTE: Handle reorder of tabs
+      int arrayLength = getArrayLength(state->canvasTabs);
+      if (moveFrom >= 0 && moveTo >= 0 && moveFrom != moveTo && moveFrom < arrayLength && moveTo < arrayLength) {
+          CanvasTab temp = state->canvasTabs[moveFrom];
+
+          if (moveFrom < moveTo)
+          {
+              // Shift left
+              for (int i = moveFrom; i < moveTo; ++i)
+              {
+                  state->canvasTabs[i] = state->canvasTabs[i + 1];
+              }
+          }
+          else
+          {
+              // Shift right
+              for (int i = moveFrom; i > moveTo; --i)
+              {
+                  state->canvasTabs[i] = state->canvasTabs[i - 1];
+              }
+          }
+          state->activeCanvasTab = moveTo;
+          state->canvasTabs[moveTo] = temp;
+      }
 
       for(int i = 0; i < getArrayLength(state->canvasTabs); ) {
         CanvasTab *t = state->canvasTabs + i;
 
+        //NOTE: Handle close tab
         if(!t->isOpen) {
           if(isCanvasTabSaved(t)) {
               closeCanvasTabUI(state, t, i);
@@ -157,6 +197,10 @@ void drawTabs(GameState *state) {
           ++i;
         }
       }
+
+      ImGui::End(); // End the top bar window
+
+     
 }
 
 int getActiveCanvasCount(Frame *frame) { 
@@ -199,6 +243,17 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
           ImGuiCond_FirstUseEver
       );
       ImGui::Begin("Animation Timeline");
+
+      //NOTE: Update Space play/pause
+      if(ImGui::IsWindowHovered()) {
+        if(state->keys.keys[KEY_SPACE] == MOUSE_BUTTON_PRESSED) {
+              CanvasTab *t = getActiveCanvasTab(state);
+              if(t) {
+                  PlayBackAnimation *anim = &t->playback;
+                  anim->playing = !anim->playing;
+              }
+          }
+        }
 
       // Play/Pause/Reset buttons
       if (ImGui::Button(anim->playing ? "\uf04c Pause" : "\uf04b Play")) {
@@ -989,6 +1044,9 @@ void updateCanvasSettingsWindow(GameState *gameState) {
     if(ImGui::SliderInt("Stroke Smoothing Percent", &gameState->runningAverageCount, 1, 30)) {
       saveGlobalProjectSettings(gameState);
     }
+    if(ImGui::Checkbox("Inverse Zoom Direction", &gameState->inverseZoom)) {
+      saveGlobalProjectSettings(gameState);
+    }
     if(ImGui::ColorEdit3("Background", (float*)&gameState->bgColor)) {
       saveGlobalProjectSettings(gameState);
     }
@@ -1063,6 +1121,7 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("Export Image", "Ctrl+E", &dummy, tab)) { saveFileToPNG(state->renderer, getActiveFrame(state), getActiveCanvasTab(state)); }
             if (ImGui::MenuItem("Export Sprite Sheet", "", &dummy, tab)) { state->showExportWindow = true; }
             if (ImGui::MenuItem("Export To Gif", "", &dummy, tab)) { exportFramesToGif(state->renderer, tab); }
+            if (ImGui::MenuItem("Crash App (DEBUG)", "", &dummy, tab)) { assert(false); }
             
             if (ImGui::MenuItem("Exit")) { state->shouldQuit = true;  }
             ImGui::EndMenu();
@@ -1073,7 +1132,7 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("Undo", "Ctrl+Z")) { updateUndoState(state, true, false); }
             if (ImGui::MenuItem("Redo", "Ctrl+SHIFT+Z")) { updateUndoState(state, false, true); }
             ImGui::Separator();
-            if (ImGui::MenuItem("Cut", "Ctrl+X")) { /* Handle Cut */ }
+            if (ImGui::MenuItem("Cut", "Ctrl+X")) {  }
             if (ImGui::MenuItem("Copy", "Ctrl+C")) { /* Handle Copy */ }
             if (ImGui::MenuItem("Paste", "Ctrl+V")) { /* Handle Paste */ }
             if (ImGui::MenuItem("Outline Image", "")) { outlineCanvas(state); }
@@ -1169,7 +1228,6 @@ void showUnSavedWindow(GameState *gameState) {
 
 void updateMyImgui(GameState *state, ImGuiIO& io) {
       CanvasInteractionMode startMode = state->interactionMode;
-      CanvasTab *tab = getActiveCanvasTab(state);
   
       // Start the Dear ImGui frame
       ImGui_ImplOpenGL3_NewFrame();
@@ -1177,19 +1235,12 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
       ImGui::NewFrame();
 
       if(state->shouldQuit) {
-        char **unsavedFileNames = pushArray(&globalPerFrameArena, getArrayLength(state->canvasTabs), char *);
+        waitForWorkToFinish(&state->threadsInfo);
 
-        //NOTE: Check if there are any unsaved canvases
-        for(int i = 0; i < getArrayLength(state->canvasTabs); ++i) {
-          CanvasTab *t = state->canvasTabs + i;
-          //NOTE: Check if the tab is at a saved state
-          {
-            unsavedFileNames[i] = getBackupFileNameForTab(&globalPerFrameArena, t, state->appDataFolderName);
-            saveProjectToFile(t, unsavedFileNames[i], 0, false);
-          }
-        }
-
-        saveGlobalProjectSettings(state, unsavedFileNames, getArrayLength(state->canvasTabs));
+        int length = 0;
+        char **fileNames = getCanvasTabsFileNameOpen(state, &length, true);
+        
+        saveGlobalProjectSettings_withFileNames(easy_createString_printf(&globalPerFrameArena, "%sfilesOpen", state->appDataFolderName), fileNames, length, state->appDataFolderName);
         
         state->quit = true;  
         state->shouldQuit = false;
@@ -1212,6 +1263,7 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
         showMainMenuBar(state);
         updateNewCanvasWindow(state);
         updateSpriteSheetWindow(state);
+        CanvasTab *tab = getActiveCanvasTab(state);
         if(tab) {
           {
               ImGuiIO& io = ImGui::GetIO();

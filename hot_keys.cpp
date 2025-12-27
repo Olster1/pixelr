@@ -1,3 +1,4 @@
+
 void updateHotKeys(GameState *gameState) {
     if(!isInteractingWithIMGUI()) {
         //NOTE: Update interaction mode
@@ -43,16 +44,6 @@ void updateHotKeys(GameState *gameState) {
             }
         }
 
-        if(gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_PRESSED) {
-            CanvasTab *t = getActiveCanvasTab(gameState);
-            if(t) {
-                PlayBackAnimation *anim = &t->playback;
-                anim->playing = !anim->playing;
-            }
-        }
-
-        
-
         if(gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
@@ -64,7 +55,7 @@ void updateHotKeys(GameState *gameState) {
 
 
 
-        if(gameState->keys.keys[KEY_C] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        if(gameState->keys.keys[KEY_C] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
                 gameState->clipboard.clear();
@@ -79,7 +70,7 @@ void updateHotKeys(GameState *gameState) {
             }
         }
 
-        if(gameState->keys.keys[KEY_X] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        if(gameState->keys.keys[KEY_X] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
                 gameState->clipboard.clear();
@@ -95,15 +86,18 @@ void updateHotKeys(GameState *gameState) {
             }
         }
 
-        if(gameState->keys.keys[KEY_S] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        if(gameState->keys.keys[KEY_S] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
-                saveProjectToFile(t);
-                addIMGUIToast("Project Saved", 2);
+                
+                if(saveProjectToFile(t)) {
+                    addIMGUIToast("Project Saved", 2);
+                }
+                
             }
         }
 
-        if(gameState->keys.keys[KEY_V] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        if(gameState->keys.keys[KEY_V] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             Canvas *c = getActiveCanvas(gameState);
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t && c && gameState->clipboard.hasCopy()) {
@@ -186,7 +180,7 @@ void updateHotKeys(GameState *gameState) {
             }
         }
 
-        if(gameState->keys.keys[KEY_A] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        if(gameState->keys.keys[KEY_A] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
                 Canvas *canvas = getActiveCanvas(gameState);
@@ -206,19 +200,19 @@ void updateHotKeys(GameState *gameState) {
     }
 
 
-        if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        if(gameState->keys.keys[KEY_N] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             showNewCanvas(gameState);
         }
 
 
-        if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        if(gameState->keys.keys[KEY_E] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
                 saveFileToPNG(gameState->renderer, getActiveFrame(gameState), t);
             }
         }
 
-        if(gameState->keys.keys[KEY_O] == MOUSE_BUTTON_PRESSED && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN) {
+        if(gameState->keys.keys[KEY_O] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             openPlainImage(gameState);
         }
 }

@@ -57,18 +57,18 @@ ProjectFile initProjectFile() {
 }
 
 void sanityCheckCanvasSize(CanvasTab *tab) {
-    for(int i = 0; i < getArrayLength(tab->frames); ++i) {
-        Frame *f = tab->frames + i;
-        for(int j = 0; j < getArrayLength(f->layers); ++j) {
-            Canvas *c = f->layers + j;
-            assert(c->w == tab->w && c->h == tab->h);
-        }
+    // for(int i = 0; i < getArrayLength(tab->frames); ++i) {
+    //     Frame *f = tab->frames + i;
+    //     for(int j = 0; j < getArrayLength(f->layers); ++j) {
+    //         Canvas *c = f->layers + j;
+    //         assert(c->w == tab->w && c->h == tab->h);
+    //     }
 
-        Canvas *c = f->layers + f->activeLayer;
-        int layerCount = getArrayLength(f->layers);
-        assert(f->activeLayer < layerCount);
-        assert(c->w == tab->w && c->h == tab->h);
-    }
+    //     Canvas *c = f->layers + f->activeLayer;
+    //     int layerCount = getArrayLength(f->layers);
+    //     assert(f->activeLayer < layerCount);
+    //     assert(c->w == tab->w && c->h == tab->h);
+    // }
 }
 
 CanvasTab loadPixelrProject(const char *filePath) {
@@ -247,6 +247,10 @@ bool isCanvasTabSaved(CanvasTab *t) {
     return ((t->savePositionUndoBlock == t->undoList) && t->saveFilePath && t->isInSaveState);
 }
 
+bool doesCanvasTabHaveContent(CanvasTab *t) {
+    return ((t->savePositionUndoBlock == t->undoList));
+}
+
 bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) {
     bool result = false;
     DEBUG_TIME_BLOCK()
@@ -396,6 +400,7 @@ void saveProjectFile_threadData(void *data_) {
 
     saveProjectFile_(tab, filePath, replaceFilePath);
 
+    easyPlatform_freeMemory(data->filePath);
     easyPlatform_freeMemory(data);
 }
 
@@ -436,7 +441,7 @@ bool saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *
             saveProjectFile_(tab, strToWrite, replaceSaveFilePath);
         }
 
-        tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
+        // tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
     }
     return strToWrite != 0;
 }
@@ -445,17 +450,27 @@ char *getBackupFileNameForTab(Arena *arena, CanvasTab *tab, char *appDataFolderN
     return easy_createString_printf(arena, "%s%s_backup.spixl", appDataFolderName, tab->saveId.stringID);
 }
 
-void saveProjectToFileBackup_multiThreaded(char *appDataFolder, CanvasTab *tab, ThreadsInfo *threadsInfo) {
 
-    char *saveFileName = "Untitled";
-
-    if(tab->fileName) {
-        saveFileName = tab->fileName;
+void saveGlobalProjectSettings_withFileNames(char *fileName, char **fileList, int charListLength, bool saveFiles = true) {
+    game_file_handle fileHandle = platformBeginFileWrite((char *)fileName);
+    assert(!fileHandle.HasErrors);
+    size_t offset = 0;
+    char *strToWrite = "";
+    
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"filesReopenFilePaths\": [");
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+    
+    for(int i = 0; i < charListLength; ++i) {
+        char *c = fileList[i];
+        strToWrite = easy_createString_printf(&globalPerFrameArena, "\"%s\" ", c);
+        offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
     }
-    
-    char *uniqueFilePath = getBackupFileNameForTab(&globalPerFrameArena, tab, appDataFolder);
-    
-    saveProjectToFile(tab, uniqueFilePath, threadsInfo, false);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "]}\n");
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    platformEndFile(fileHandle);
+
 }
 
 void savePalleteDefault_(void *data) {

@@ -299,9 +299,6 @@ struct CanvasTab {
     float zoomFactor = 5.0f;
     float2 cameraP = {};
 
-    //NOTE: For backing up the files - every BACKUP_FILE_TIME_SECONDS (in defines) it saves to the backup file
-    float secondsSinceLastBackup = 0;
-
     PlayBackAnimation playback;
     int w = 0;
     int h = 0;

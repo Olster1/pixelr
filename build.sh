@@ -20,12 +20,14 @@ clear
 #     -o ./bin/libimgui.dylib
 
 
-# -O2
-# -arch x86_64  -mcrc32 \
-#-g
-#-DNDEBUG 
-g++ -std=c++11 -g -o ./bin/Spixl \
-    -arch arm64 \
+ARM="-arch arm64"
+x86="-arch x86_64  -mcrc32"
+RELEASE="-DNDEBUG -O2"
+DEBUG="-g"
+
+g++ -std=c++11 -o ./bin/Spixl \
+    $DEBUG \
+    $ARM \
     -I ../imgui \
     -I ../imgui/backends \
     -I ./libs/GLAD/include \

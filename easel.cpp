@@ -1,6 +1,6 @@
 
 bool canvasTabSaveStateHasChanged(CanvasTab *t) {
-    return ((t->savePositionBackupUndoBlock != t->undoList) && !t->currentUndoBlock && t->undoList && !t->undoList->isSentintel);
+    return (((t->savePositionBackupUndoBlock != t->undoList) && !t->currentUndoBlock && t->undoList && !t->undoList->isSentintel));
 }
 
 UndoRedoBlock *CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {

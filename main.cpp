@@ -21,13 +21,9 @@ void updateGame(GameState *gameState) {
 
     checkFileDrop(gameState);
 
-    
-    
    CanvasTab *t = getActiveCanvasTab(gameState);
    if(t) {
-        sanityCheckCanvasSize(t);
-    
-        checkAndSaveBackupFile(gameState, t);
+        checkAndSaveBackupFile(gameState);
         
         drawCanvasGridBackground(gameState, getActiveCanvas(gameState), getActiveCanvasTab(gameState));
         sanityCheckCanvasSize(t);
@@ -61,25 +57,37 @@ void updateGame(GameState *gameState) {
 
         updateUndoState(gameState);
 
-        updateCanvasZoom(gameState, isInteractingWithIMGUI());
+        updateCanvasZoom(gameState, isInteractingWithIMGUI(), gameState->scrollSpeed*(gameState->inverseZoom ? -1 : 1));
         //NOTE: Update interaction with the canvas
         if(!isInteractingWithIMGUI()) {
-            if(gameState->interactionMode == CANVAS_DRAW_RECTANGLE_MODE || gameState->interactionMode == CANVAS_DRAW_CIRCLE_MODE || gameState->interactionMode == CANVAS_DRAW_LINE_MODE) {
-                updateDrawShape(gameState, getActiveCanvas(gameState));
-            } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
-                updateEraser(gameState, getActiveCanvas(gameState));
-            } else if(gameState->interactionMode == CANVAS_FILL_MODE) {
-                updateBucket(gameState, getActiveCanvas(gameState), gameState->selectMode);
-            } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
-                updateCanvasDraw(gameState, getActiveCanvas(gameState));
-            } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
-                updateCanvasMove(gameState);
-            } else if(gameState->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) {
-                updateCanvasSelect(gameState, getActiveCanvasTab(gameState));
-            } else if(gameState->interactionMode == CANVAS_SPRAY_CAN) {
-                updateSprayCan(gameState, getActiveCanvas(gameState));
-            } else if(gameState->interactionMode == CANVAS_COLOR_DROPPER) {
-                updateColorDropper(gameState, getActiveCanvas(gameState));
+            if(gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_DOWN) {
+                //NOTE: First check if it's a SPACE shortcut interaction - like space/drag
+                
+                if(gameState->mouseBtn[MOUSE_BUTTON_RIGHT_CLICK] != MOUSE_BUTTON_NONE) {
+                    float2 diff = minus_float2(gameState->mouseP_screenSpace, gameState->lastMouseP);
+                    float speedFactor = 0.3f;
+                    updateCanvasZoom(gameState, isInteractingWithIMGUI(), speedFactor*diff.y*(gameState->inverseZoom ? -1 : 1));
+                } else {
+                    updateCanvasMove(gameState);
+                }
+            } else {
+                if(gameState->interactionMode == CANVAS_DRAW_RECTANGLE_MODE || gameState->interactionMode == CANVAS_DRAW_CIRCLE_MODE || gameState->interactionMode == CANVAS_DRAW_LINE_MODE) {
+                    updateDrawShape(gameState, getActiveCanvas(gameState));
+                } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
+                    updateEraser(gameState, getActiveCanvas(gameState));
+                } else if(gameState->interactionMode == CANVAS_FILL_MODE) {
+                    updateBucket(gameState, getActiveCanvas(gameState), gameState->selectMode);
+                } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
+                    updateCanvasDraw(gameState, getActiveCanvas(gameState));
+                } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
+                    updateCanvasMove(gameState);
+                } else if(gameState->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) {
+                    updateCanvasSelect(gameState, getActiveCanvasTab(gameState));
+                } else if(gameState->interactionMode == CANVAS_SPRAY_CAN) {
+                    updateSprayCan(gameState, getActiveCanvas(gameState));
+                } else if(gameState->interactionMode == CANVAS_COLOR_DROPPER) {
+                    updateColorDropper(gameState, getActiveCanvas(gameState));
+                }
             }
 
         }
@@ -87,7 +95,7 @@ void updateGame(GameState *gameState) {
 
         updateSelectObject(gameState, getActiveCanvas(gameState));
 
-        if(gameState->mouseLeftBtn == MOUSE_BUTTON_NONE || gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED || gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED) {
+        if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_NONE || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_RELEASED || gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED) {
             gameState->paintActive = false;
             gameState->drawingShape = false;
             gameState->grabbedCornerIndex = -1;

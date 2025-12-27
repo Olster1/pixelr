@@ -1,4 +1,6 @@
-
+inline bool isKeyPressedOrDown(GameState *gameState, KeyTypes keyType) {
+    return (gameState->keys.keys[keyType] == MOUSE_BUTTON_DOWN);
+}
 
 CanvasTab *getActiveCanvasTab(GameState *gameState) {
     CanvasTab *t = 0; 
@@ -498,7 +500,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             float diameter = clamp(0.1f, 0.01f*tab->w, tab->zoomFactor*0.01f);
             if(isInsideCircle(handleP, 2*diameter, worldMouseP)) {
                 circleColor = make_float4(1, 1, 0, 1);
-                if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED && !isInteractingWithIMGUI()) {
+                if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED && !isInteractingWithIMGUI()) {
                     assert(!gameState->selectObject.dragging);
                     gameState->grabbedCornerIndex = i;
                 }
@@ -545,7 +547,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
 
         }
         
-        if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+        if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
             float2 mousePWorld = getWorldPFromMouse(gameState);
             //TODO: Fix this. Should be able to handle rotated rect in bounds
             if(in_rect2f_bounds(minBounds, mousePWorld)) 
@@ -556,7 +558,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
                 gameState->selectObject.dragOffset = minus_float2(canvasP, mouseP);
             }
         }
-        if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->selectObject.dragging && !isInteractingWithIMGUI() && gameState->grabbedCornerIndex < 0) {
+        if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN && gameState->selectObject.dragging && !isInteractingWithIMGUI() && gameState->grabbedCornerIndex < 0) {
             float2 mouseP = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
             gameState->selectObject.T.pos.xy = minus_float2(plus_float2(mouseP, gameState->selectObject.dragOffset), gameState->selectObject.startCanvasP);
         }
@@ -624,7 +626,7 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             }
         } 
 
-        if(gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED || gameState->mouseLeftBtn == MOUSE_BUTTON_NONE) {
+        if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_RELEASED || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_NONE) {
             gameState->selectObject.dragging = false;
         }
 
@@ -646,7 +648,7 @@ void updateColorDropper(GameState *gameState, Canvas *canvas) {
         if(isValidCanvasRange(canvas, round(canvasP.x), round(canvasP.y))) {
             float4 color = u32_to_float4_color(getCanvasColor(canvas, round(canvasP.x), round(canvasP.y)));
 
-            if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+            if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
                 tab->colorPicked = color;
                 tab->addColorToPalette(float4_to_u32_color(color));
 
@@ -666,11 +668,11 @@ void updateSprayCan(GameState *gameState, Canvas *canvas) {
     DEBUG_TIME_BLOCK()
     CanvasTab *tab = getActiveCanvasTab(gameState);
 
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
         gameState->sprayTimeAt = 0;
     }
 
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN) {
         gameState->sprayTimeAt += gameState->dt;
 
         float radius = 0.5f*tab->eraserSize;
@@ -724,12 +726,12 @@ void drawLinedGrid(GameState *gameState, Canvas *canvas) {
     }
 }
 
-void updateCanvasZoom(GameState *gameState, bool isInteractingImgui) {
+void updateCanvasZoom(GameState *gameState, bool isInteractingImgui, float scrollSpeed) {
     DEBUG_TIME_BLOCK()
     CanvasTab *tab  = getActiveCanvasTab(gameState);
     if(tab) {
         if(!isInteractingImgui) {
-            gameState->scrollDp += gameState->scrollSpeed*gameState->dt;
+            gameState->scrollDp += scrollSpeed*gameState->dt;
 
             //NOTE: Drag
             gameState->scrollDp *= 0.81f;
@@ -861,7 +863,7 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
 
     if(tab) {
         if(tab->undoList) {
-            if(undo || (gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] != MOUSE_BUTTON_DOWN)) {
+            if(undo || (gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && isKeyPressedOrDown(gameState, KEY_COMMAND) && !isKeyPressedOrDown(gameState, KEY_SHIFT))) {
                 UndoRedoBlock *block = tab->undoList;
                 if(block->next && !isUndoBlockSentinel(block)) {
 
@@ -904,7 +906,7 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                 }
             }
 
-            if(redo || (gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_COMMAND] == MOUSE_BUTTON_DOWN && gameState->keys.keys[KEY_SHIFT] == MOUSE_BUTTON_DOWN)) {
+            if(redo || (gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && isKeyPressedOrDown(gameState, KEY_COMMAND) && isKeyPressedOrDown(gameState, KEY_SHIFT))) {
                 UndoRedoBlock *block = tab->undoList;
                 if(block->prev) {
                     block = block->prev;
@@ -953,12 +955,12 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
 
 void updateCanvasMove(GameState *gameState) {
     DEBUG_TIME_BLOCK()
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
         //NOTE: Move the canvas
         gameState->draggingCanvas = true;
         gameState->startDragP = getMouseP01(gameState);
         gameState->canvasMoveDp = make_float2(0, 0);
-    } else if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN && gameState->draggingCanvas) {
+    } else if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN && gameState->draggingCanvas) {
         float panPower = 30*gameState->camera.fov; //NOTE: Scale with how far out we're looking
         
         float2 diff = scale_float2(panPower*gameState->dt, minus_float2(gameState->startDragP, getMouseP01(gameState)));
@@ -986,20 +988,20 @@ void updateCanvasMove(GameState *gameState) {
 
 void updateDrawShape(GameState *gameState, Canvas *canvas) {
     DEBUG_TIME_BLOCK()
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
         gameState->drawShapeStart = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
         gameState->drawingShape = true;
 
     }
 
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_RELEASED) {
         if(gameState->drawingShape) {
             drawDragShape(gameState, canvas, gameState->interactionMode);
             
         }
     } 
     
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_RELEASED) {
         if(gameState->drawingShape) {
             drawDragShape(gameState, canvas, gameState->interactionMode, true);
             gameState->drawingShape = false;
@@ -1009,25 +1011,25 @@ void updateDrawShape(GameState *gameState, Canvas *canvas) {
 
 void updateCanvasSelect(GameState *gameState, CanvasTab *canvas) {
     DEBUG_TIME_BLOCK()
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
         gameState->drawShapeStart = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
         gameState->drawingShape = true;
     }
 
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_RELEASED) {
         if(gameState->drawingShape) {
             drawSelectShape(gameState, canvas, gameState->interactionMode);
         }
     } 
     
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_RELEASED) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_RELEASED) {
         if(gameState->drawingShape) {
             gameState->drawingShape = false;
         }
     }
 }
 
-void setCanvasColorWithBrushSize(CanvasTab *tab, Canvas *canvas, u32 color, int centerX, int centerY, bool erase) {
+void setCanvasColorWithBrushSize(GameState *gameState, CanvasTab *tab, Canvas *canvas, u32 color, int centerX, int centerY, bool erase, bool painterIsActive = true) {
     DEBUG_TIME_BLOCK()
     int brushSize = tab->eraserSize; //NOTE: Uses the same slider as the eraser size slider
     int halfBrushSize = floor(0.5f*(brushSize == 1 ? 0 : brushSize));
@@ -1039,6 +1041,8 @@ void setCanvasColorWithBrushSize(CanvasTab *tab, Canvas *canvas, u32 color, int 
 
     int startBrushX = centerX - halfBrushSize;
     int startBrushY = centerY - halfBrushSize;
+
+    gameState->brushOutlineStencil = pushArray(&globalPerFrameArena, brushSize*brushSize, u8);
 
     {
         DEBUG_TIME_BLOCK_NAMED("CANVAS COLOR BRUSH SIZE")
@@ -1053,8 +1057,13 @@ void setCanvasColorWithBrushSize(CanvasTab *tab, Canvas *canvas, u32 color, int 
                     inBounds = lenSqr <= halfBrushSize*halfBrushSize;
                 } 
 
-                if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h && inBounds) {
-                    setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase);
+                if(painterIsActive) {
+                    if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h && inBounds) {
+                        setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase);
+                    }        
+                } else if(inBounds) {
+                    assert((brushY*brushSize + brushX) < (brushSize*brushSize));
+                    gameState->brushOutlineStencil[brushY*brushSize + brushX] = 1;
                 }
             }
         }
@@ -1064,8 +1073,8 @@ void setCanvasColorWithBrushSize(CanvasTab *tab, Canvas *canvas, u32 color, int 
 void updateCanvasDraw(GameState *gameState, Canvas *canvas, bool erase = false) {
     DEBUG_TIME_BLOCK()
     CanvasTab *tab = getActiveCanvasTab(gameState);
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_DOWN || gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
-               
+    bool painterIsActive = (gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED);
+    {
         float2 a = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
 
         const int coordX = a.x;
@@ -1082,21 +1091,23 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas, bool erase = false) 
             int brushSize = tab->eraserSize; //NOTE: Uses the same slider as the eraser size slider
             float2 addend = scale_float2(VOXEL_SIZE_IN_METERS*brushSize, normalize_float2(distance));
 
-            float2 startP = plus_float2(gameState->lastPaintP, addend);//NOTE: Move past the one we just did last turn
+            float2 startP = gameState->lastPaintP;
             
             int loopCount = 0; //NOTE: To avoid any chance of an infinite loop
             while(float2_dot(minus_float2(startP, endP), minus_float2(gameState->lastPaintP, endP)) >= 0 && (float2_magnitude(addend) > 0) && loopCount < 1000) {
                 DEBUG_TIME_BLOCK_NAMED("DRAW SET CANVAS COLOR")
+
                 //NOTE: Draw the brush size
-                setCanvasColorWithBrushSize(tab, canvas, color, startP.x, startP.y, erase);
+                setCanvasColorWithBrushSize(gameState, tab, canvas, color, startP.x, startP.y, erase, painterIsActive);
 
                 startP = plus_float2(startP, addend);
                 loopCount++;
             }
         } else {
             //NOTE: Not dragging the paint brush so don't need to lerp between end and start points
-            setCanvasColorWithBrushSize(tab, canvas, color, coordX, coordY, erase);
+            setCanvasColorWithBrushSize(gameState, tab, canvas, color, coordX, coordY, erase, painterIsActive);
         }
+
            
         gameState->paintActive = true;
         gameState->lastPaintP = make_float2(coordX, coordY);

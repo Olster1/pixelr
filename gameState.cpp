@@ -72,6 +72,12 @@ static EasyProfile_ProfilerDrawState *EasyProfiler_initProfilerDrawState() {
 	return result;
 }
 
+struct WindowResizeCommand {
+    float2 newSize;
+    float2 windowPos;
+    bool valid;
+};
+
 struct GameState {
     bool inited;
     float dt;
@@ -94,19 +100,22 @@ struct GameState {
     
     Font mainFont;
 
+    time_t timeOfLastBackup;
+
     CanvasInteractionMode interactionMode;
     CanvasInteractionMode lastInteractionMode;
     CanvasInteractionMode interactionModeStartOfFrame;
 
     EasyProfile_ProfilerDrawState *drawState;
 
-    MouseKeyState mouseLeftBtn;
+    MouseKeyState mouseBtn[MOUSE_BUTTON_TYPE_COUNT];
 
     float sprayTimeAt;
 
     float3 cameraOffset;
 
     float16 cameraRotation;
+    bool inverseZoom;
 
     float3 startP;
     int grabbedCornerIndex;
@@ -116,6 +125,9 @@ struct GameState {
     bool nearest;
 
     ThreadsInfo threadsInfo;
+
+    WindowResizeCommand windowResizeCommand;
+    u8 *brushOutlineStencil; //NOTE: Allocateed on the perframe arena to draw the shape of the brush each frame
 
     Renderer *renderer;
 
@@ -138,6 +150,8 @@ struct GameState {
     int layerOptionsIndex;
     char *versionString;
     char *exePath;
+
+    int canvasTabsOpened; //NOTE: To see if we need to save the files for reloading on startup
 
     float4 bgColor;
     char dimStr0[256];

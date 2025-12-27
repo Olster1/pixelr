@@ -106,7 +106,7 @@ void floodFillWithBucket(GameState *gameState, Canvas *canvas, int startX, int s
 
 void updateBucket(GameState *gameState, Canvas *canvas, bool isSelect = false) {
 	DEBUG_TIME_BLOCK()
-    if(gameState->mouseLeftBtn == MOUSE_BUTTON_PRESSED) {
+    if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
 		CanvasTab *tab = getActiveCanvasTab(gameState);
 
 		if(tab) {

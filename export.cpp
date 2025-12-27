@@ -332,26 +332,41 @@ void openPlainImage(GameState *gameState) {
     
 }
 
-void checkAndSaveBackupFile(GameState *gameState, CanvasTab *tab) {
-    DEBUG_TIME_BLOCK()
-    tab->secondsSinceLastBackup += gameState->dt; 
-    if(tab->secondsSinceLastBackup >= BACKUP_FILE_TIME_SECONDS && canvasTabSaveStateHasChanged(tab)) {
-        //NOTE: Update the save position for the backup
-        tab->savePositionBackupUndoBlock = tab->undoList;
-        saveProjectToFileBackup_multiThreaded(gameState->appDataFolderName, tab, &gameState->threadsInfo);    
-        tab->secondsSinceLastBackup = 0;
+char **getCanvasTabsFileNameOpen(GameState *state, int *len, bool saveFiles, ThreadsInfo *threadInfo = 0) {
+    char **fileNames = pushArray(&globalPerFrameArena, getArrayLength(state->canvasTabs), char *);
+    int length = 0;
+    for(int i = 0; i < getArrayLength(state->canvasTabs); ++i) {
+        CanvasTab *t = state->canvasTabs + i;
+        // if(!t->undoList->isSentintel && ) 
+        {
+            char *c = getBackupFileNameForTab((threadInfo) ? 0 : &globalPerFrameArena, t, state->appDataFolderName);
+            if(saveFiles) {
+                saveProjectToFile(t, c, threadInfo, false);   
+            }
+            fileNames[length++] = c; 
+        }
     }
+    *len = length;
+    return fileNames;
 }
 
+void saveGlobalProjectSettings(void *gameState_) {
+    GameState *gameState = (GameState *)gameState_;
 
-void saveGlobalProjectSettings(GameState *gameState, char **filePaths = 0, int filePathsCount = 0) {
-     char *fileName = easy_createString_printf(&globalPerFrameArena, "%sglobalProjectSettings", gameState->appDataFolderName);
+    char *fileName = easy_createString_printf(0, "%sglobalProjectSettings", gameState->appDataFolderName);
+
     game_file_handle fileHandle = platformBeginFileWrite((char *)fileName);
     assert(!fileHandle.HasErrors);
     size_t offset = 0;
     char *strToWrite = "";
     
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"drawGrid\": %d}\n", gameState->drawGrid);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"inverseZoom\": %d}\n", gameState->inverseZoom);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"activeCanvasTab\": %d}\n", gameState->activeCanvasTab);
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"nearest\": %d}\n", gameState->nearest);
@@ -363,20 +378,66 @@ void saveGlobalProjectSettings(GameState *gameState, char **filePaths = 0, int f
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"bgColor\": %f %f %f %f}\n", gameState->bgColor.x, gameState->bgColor.y, gameState->bgColor.z, gameState->bgColor.w);
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
+    float2 windowSize = platform_getWindowSize(); 
+    float2 windowPos = platform_getWindowPosition();
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"windowSize\": %d %d %d %d}\n", (int)windowSize.x, (int)windowSize.y, (int)windowPos.x, (int)windowPos.y);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"smoothStrokeCount\": %d}\n", gameState->runningAverageCount);
-    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
-
-    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"filesReopenFilePaths\": [", gameState->drawGrid);
-    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
-
-    for(int i = 0; i < filePathsCount; ++i) {
-        strToWrite = easy_createString_printf(&globalPerFrameArena, "\"%s\" ", filePaths[i]);
-        offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
-    }
-
-    strToWrite = easy_createString_printf(&globalPerFrameArena, "]}\n", gameState->drawGrid);
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
     platformEndFile(fileHandle);
 
+    easyPlatform_freeMemory(fileName);
+
 }
+
+void saveGlobalProjectSettings_multiThreaded(GameState *gameState) {
+    pushWorkOntoQueue(&gameState->threadsInfo, saveGlobalProjectSettings, gameState);
+}
+
+void checkAndSaveBackupFile(GameState *gameState) {
+    DEBUG_TIME_BLOCK()
+
+    time_t now = time(NULL);
+    time_t diff = now - gameState->timeOfLastBackup;
+    
+    if(diff >= BACKUP_FILE_TIME_SECONDS) {
+
+        waitForWorkToFinish(&gameState->threadsInfo);
+        char **fileNames = pushArray(&globalPerFrameArena, getArrayLength(gameState->canvasTabs), char *);
+        int filesCount = 0;
+    
+        for(int i = 0; i < getArrayLength(gameState->canvasTabs); ++i) {
+            CanvasTab *tab = gameState->canvasTabs + i;
+            if(canvasTabSaveStateHasChanged(tab)) {
+                //NOTE: Update the save position for the backup
+                tab->savePositionBackupUndoBlock = tab->undoList;
+                char *c = getBackupFileNameForTab(0, tab, gameState->appDataFolderName);
+                saveProjectToFile(tab, c, &gameState->threadsInfo, false);
+            }
+
+            char *c = getBackupFileNameForTab(&globalPerFrameArena, tab, gameState->appDataFolderName);
+            fileNames[filesCount++] = c; 
+        }
+
+        saveGlobalProjectSettings_withFileNames(easy_createString_printf(&globalPerFrameArena, "%sfilesOpen", gameState->appDataFolderName), fileNames, filesCount, gameState->appDataFolderName);
+        gameState->canvasTabsOpened = getArrayLength(gameState->canvasTabs);
+        gameState->timeOfLastBackup = time(NULL);
+    } 
+    // else if(gameState->canvasTabsOpened != getArrayLength(gameState->canvasTabs)) {
+    //     char **fileNames = pushArray(&globalPerFrameArena, getArrayLength(gameState->canvasTabs), char *);
+    //     int filesCount = 0;
+    
+    //     for(int i = 0; i < getArrayLength(gameState->canvasTabs); ++i) {
+    //         CanvasTab *tab = gameState->canvasTabs + i;
+    //         char *c = getBackupFileNameForTab(&globalPerFrameArena, tab, gameState->appDataFolderName);
+    //         fileNames[filesCount++] = c; 
+    //     }
+    //     saveGlobalProjectSettings_withFileNames(easy_createString_printf(&globalPerFrameArena, "%sfilesOpen", gameState->appDataFolderName), fileNames, filesCount, gameState->appDataFolderName);
+    //     gameState->canvasTabsOpened = getArrayLength(gameState->canvasTabs);
+    // }
+}
+
+
