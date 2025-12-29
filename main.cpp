@@ -7,12 +7,12 @@ void updateGame(GameState *gameState) {
 
     updateCamera(gameState);
     
-    float fauxWidth = 1920;
+    float fauxWidth = FAUX_WIDTH;
     float16 screenGuiT = make_ortho_matrix_bottom_left_corner(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
-    float16 textGuiT = screenGuiT;//make_ortho_matrix_top_left_corner_y_down(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
     gameState->renderer->textMatrixResolution = make_float2(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x);
 
     float16 screenT = make_ortho_matrix_origin_center(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
+    float16 textGuiT = make_ortho_matrix_origin_center(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);//make_ortho_matrix_top_left_corner_y_down(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
     float16 cameraT = transform_getInverseX(gameState->camera.T);
     float16 cameraTWithoutTranslation = getCameraX_withoutTranslation(gameState->camera.T);
 
@@ -75,10 +75,12 @@ void updateGame(GameState *gameState) {
                     updateDrawShape(gameState, getActiveCanvas(gameState));
                 } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
                     updateEraser(gameState, getActiveCanvas(gameState));
+                    drawPaintCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_FILL_MODE) {
                     updateBucket(gameState, getActiveCanvas(gameState), gameState->selectMode);
                 } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
                     updateCanvasDraw(gameState, getActiveCanvas(gameState));
+                    drawPaintCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
                     updateCanvasMove(gameState);
                 } else if(gameState->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) {

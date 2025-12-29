@@ -128,6 +128,7 @@ struct GameState {
 
     WindowResizeCommand windowResizeCommand;
     u8 *brushOutlineStencil; //NOTE: Allocateed on the perframe arena to draw the shape of the brush each frame
+    int brushOutlineSize;
 
     Renderer *renderer;
 

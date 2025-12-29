@@ -553,18 +553,20 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
         renderer->glyphCount = 0;
     }
 
-    if(renderer->lineCount > 0) {
-        updateInstanceData(renderer->lineModel.instanceBufferhandle, renderer->lineData, renderer->lineCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->lineModel, &renderer->lineShader, renderer->fontAtlasTexture, renderer->lineCount, projectionTransform, modelViewTransform, lookingAxis, GL_LINES);
-
-        renderer->lineCount = 0;
-    }
+    
 
     if(renderer->selectionCount > 0) {
         updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->selectionQuad, sizeof(InstanceDataWithRotation));
         drawModels(&renderer->quadModel, &renderer->pixelSelectionShader, renderer->selectionTextureHandle, 1, projectionTransform, modelViewTransform, lookingAxis, GL_TRIANGLES, renderer->timeAccum);
 
         renderer->selectionCount = 0;
+    }
+
+    if(renderer->lineCount > 0) {
+        updateInstanceData(renderer->lineModel.instanceBufferhandle, renderer->lineData, renderer->lineCount*sizeof(InstanceDataWithRotation));
+        drawModels(&renderer->lineModel, &renderer->lineShader, renderer->fontAtlasTexture, renderer->lineCount, projectionTransform, modelViewTransform, lookingAxis, GL_LINES);
+
+        renderer->lineCount = 0;
     }
 
     renderCheckError();

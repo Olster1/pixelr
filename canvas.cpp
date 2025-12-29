@@ -344,19 +344,39 @@ float2 canvasCoordToWorldSpace(Canvas *canvas, float x, float y, bool offsetP = 
     return p;
 }
 
-void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
+struct CanvasSelectionPosition {
+    float2 dim;
+    float2 min;
+    float2 max;
+};
+
+CanvasSelectionPosition updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
     DEBUG_TIME_BLOCK()
     renderer->selectionTextureHandle = t->selectionGpuHandle;
     backendRenderer_bindTexture2D(t->selectionGpuHandle);
     renderCheckError();
 
     u8 *pixels = (u8 *)pushArray(&globalPerFrameArena, t->w*t->h, u8);
+    float2 min = make_float2(FLT_MAX, FLT_MAX);
+    float2 max = make_float2(0, 0);
             
     for(int i = 0; i < getArrayLength(t->selected); ++i) {
         float2 p = t->selected[i];
         int y = (t->h - 1) - p.y;
         if(isValidCanvasTabRange(t, p.x, y)) 
         {
+            if(p.x < min.x) {
+                min.x = p.x;
+            }
+            if(p.x >= max.x) {
+                max.x = p.x + 1;
+            }
+            if(y < min.y) {
+                min.y = y;
+            }
+            if(y >= max.y) {
+                max.y = y + 1;
+            }
             pixels[(int)(y*t->w + p.x)] = 0xFF;
         }
     } 
@@ -374,6 +394,20 @@ void updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
     renderCheckError();
     backendRenderer_bindTexture2D(0);
     renderCheckError();
+
+    if(max.x == 0 || max.y == 0) {
+        //NOTE: Nothing selected
+        CanvasSelectionPosition result = {};
+        return result;
+    } else {
+        CanvasSelectionPosition result = {};
+        result.dim = make_float2(max.x - min.x, max.y - min.y);
+        result.min = min;
+        result.max = max;
+        return result;
+    }
+
+    
 }
 
 void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
@@ -389,10 +423,108 @@ void drawCanvas(GameState *gameState, Frame *frame, CanvasTab *canvasTab, float 
 
     //NOTE: Draw selected
     if(getArrayLength(canvasTab->selected) > 0) {
-        updateCanvasSelectionTexture(gameState->renderer, canvasTab);
+        CanvasSelectionPosition canvasPosition = updateCanvasSelectionTexture(gameState->renderer, canvasTab);
         pushSelectionQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 0.7f));
+        if(!(canvasPosition.dim.x == 0 && canvasPosition.dim.y == 0) && gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN) {
+            char *s = easy_createString_printf(&globalPerFrameArena, "%d, %d", (int)canvasPosition.dim.x, (int)canvasPosition.dim.y);
+
+            Canvas *canvas = getActiveCanvas(gameState);
+            if(canvas) {
+                float2 bottomCorner = canvasCoordToWorldSpace(canvas, canvasPosition.max.x, canvasTab->h - canvasPosition.max.y);
+                bottomCorner.x -= canvasTab->cameraP.x;
+                bottomCorner.y -= canvasTab->cameraP.y;
+                bottomCorner.y -= VOXEL_SIZE_IN_METERS;
+                float2 from = make_float2(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x);
+                float2 to = make_float2(FAUX_WIDTH, FAUX_WIDTH*gameState->aspectRatio_y_over_x);
+                bottomCorner.x = to.x*(bottomCorner.x / from.x);
+                bottomCorner.y = to.y*(bottomCorner.y / from.y);
+                
+                // pushRect(gameState->renderer, make_float3(bottomCorner.x + 0.5f*to.x, bottomCorner.y  + 0.5f*to.y, 1), make_float2(100, 40),make_float4(0, 0, 0, 0.4f));
+                renderText(gameState->renderer, &gameState->mainFont, s, bottomCorner, 1, make_float4(0, 0, 0, 1));
+            }
+        }
     }
 }
+
+
+
+void drawPaintCursor(GameState *gameState) {
+    CanvasTab *tab = getActiveCanvasTab(gameState);
+    if(tab && gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_NONE) {
+        float4 color = tab->colorPicked;
+        int width = gameState->brushOutlineSize;
+        int height = gameState->brushOutlineSize;
+        u8 *stencil = gameState->brushOutlineStencil;
+
+#define IDX(x,y) ((y)*width + (x))
+
+        Canvas *canvas = getActiveCanvas(gameState);
+        if(canvas) {
+         
+            float2 mouseP_canvasCoord = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
+
+            mouseP_canvasCoord.x -= 0.5f*width;
+            mouseP_canvasCoord.y -= 0.5f*height;
+
+            if((width % 2) == 0) {
+                mouseP_canvasCoord.x = (mouseP_canvasCoord.x + 0.5f);
+            }
+
+            if((height % 2) == 0) {
+                mouseP_canvasCoord.y = (mouseP_canvasCoord.y + 0.5f);
+            }
+
+            
+            
+
+           for (int y = 0; y < height; ++y) {
+                for (int x = 0; x < width; ++x) {
+
+                    if (!stencil[IDX(x, y)])
+                        continue;
+
+                    // World-space corners
+                    float2 p00 = canvasCoordToWorldSpace(canvas,
+                        x     + mouseP_canvasCoord.x,
+                                y     + mouseP_canvasCoord.y );
+
+                    float2 p10 = canvasCoordToWorldSpace(canvas,
+                         x + 1 + mouseP_canvasCoord.x,
+                                y     + mouseP_canvasCoord.y );
+
+                    float2 p11 = canvasCoordToWorldSpace(canvas,
+                        x + 1 + mouseP_canvasCoord.x,
+                                y + 1 + mouseP_canvasCoord.y );
+
+                    float2 p01 = canvasCoordToWorldSpace(canvas,
+                        x     + mouseP_canvasCoord.x,
+                                y + 1 + mouseP_canvasCoord.y );
+
+                    // Left edge
+                    if (x == 0 || !stencil[IDX(x - 1, y)]) {
+                        pushLineEndToEndWorldSpace(gameState->renderer, p00, p01, color);
+                    }
+
+                    // Right edge
+                    if (x == width - 1 || !stencil[IDX(x + 1, y)]) {
+                        pushLineEndToEndWorldSpace(gameState->renderer, p10, p11, color);
+                    }
+
+                    // Bottom edge
+                    if (y == 0 || !stencil[IDX(x, y - 1)]) {
+                        pushLineEndToEndWorldSpace(gameState->renderer, p00, p10, color);
+                    }
+
+                    // Top edge
+                    if (y == height - 1 || !stencil[IDX(x, y + 1)]) {
+                        pushLineEndToEndWorldSpace(gameState->renderer, p01, p11, color);
+                    }
+                }
+            }
+        }
+    }
+}
+                    
 
 struct RenderDrawBundle {
     float4 color;
@@ -1042,6 +1174,7 @@ void setCanvasColorWithBrushSize(GameState *gameState, CanvasTab *tab, Canvas *c
     int startBrushX = centerX - halfBrushSize;
     int startBrushY = centerY - halfBrushSize;
 
+    gameState->brushOutlineSize = brushSize;
     gameState->brushOutlineStencil = pushArray(&globalPerFrameArena, brushSize*brushSize, u8);
 
     {
@@ -1098,7 +1231,7 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas, bool erase = false) 
                 DEBUG_TIME_BLOCK_NAMED("DRAW SET CANVAS COLOR")
 
                 //NOTE: Draw the brush size
-                setCanvasColorWithBrushSize(gameState, tab, canvas, color, startP.x, startP.y, erase, painterIsActive);
+                setCanvasColorWithBrushSize(gameState, tab, canvas, color, round(startP.x), round(startP.y), erase, painterIsActive);
 
                 startP = plus_float2(startP, addend);
                 loopCount++;

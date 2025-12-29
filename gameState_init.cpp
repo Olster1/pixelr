@@ -204,10 +204,8 @@ void initGameState(GameState *gameState) {
 
     gameState->renderer = initRenderer(atlasTexture);
 
-#if DEBUG_BUILD
-    // gameState->mainFont = initFontAtlas("./fonts/Roboto-Regular.ttf");
-    // gameState->renderer->fontAtlasTexture = gameState->mainFont.textureHandle;
-#endif
+    gameState->mainFont = initFontAtlas("./fonts/Roboto-Regular.ttf");
+    gameState->renderer->fontAtlasTexture = gameState->mainFont.textureHandle;
 
     gameState->clipboard = Clipboard();
     gameState->selectMode = false;

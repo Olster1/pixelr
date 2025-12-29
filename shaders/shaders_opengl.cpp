@@ -104,7 +104,7 @@ static char *fontTextureFragShader =
 "out vec4 color;"
 "void main() {"
     "vec4 diffSample = texture(diffuse, uv_frag);"
-    "color = vec4(diffSample.r);"
+    "color = vec4(diffSample.r*color_frag);"
 "}";
 
 static char *quadFragShader = 

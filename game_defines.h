@@ -12,3 +12,4 @@
 #define MAX_FRAMES_AFTER_EVENT_TO_RUN 20
 #define DEFINED_APP_NAME "Spixl"
 #define DEFINED_FILE_NAME "spixl"
+#define FAUX_WIDTH 1920
