@@ -1055,11 +1055,6 @@ void updateCanvasSettingsWindow(GameState *gameState) {
       if(ImGui::Button("Reset Camera")) {
         tab->zoomFactor = 0.3f*MathMax(tab->w, tab->h);
         tab->cameraP = gameState->camera.T.pos.xy = make_float2(0, 0);
-
-         if(!gameState->draggingCanvas) {
-          gameState->canvasMoveDp.x *= 0.86f;
-          gameState->canvasMoveDp.y *= 0.86f;
-        }
       }
     }
     

@@ -84,13 +84,14 @@ void outlineCanvas(GameState *gameState) {
                     }
 
                     if(found) {
-                        //NOTE: Add black into the temp image
-                        tempImage[y*w + x] = 0xFF000000;
+                        u32 newColor = float4_to_u32_color(tab->colorPicked);
+                        //NOTE: Add the outline into the temp image
+                        tempImage[y*w + x] = newColor;
+                        tab->addUndoInfo(PixelInfo(x, y, color, newColor));
                     }
                 }
             }
         }
-
        
        // Copy back in one pass
        memcpy(canvas->pixels, tempImage, w * h * sizeof(u32));
@@ -1089,33 +1090,19 @@ void updateCanvasMove(GameState *gameState) {
     DEBUG_TIME_BLOCK()
     if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED) {
         //NOTE: Move the canvas
+        gameState->startDragP = getWorldPFromMouse(gameState);
         gameState->draggingCanvas = true;
-        gameState->startDragP = getMouseP01(gameState);
-        gameState->canvasMoveDp = make_float2(0, 0);
     } else if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN && gameState->draggingCanvas) {
-        float panPower = 30*gameState->camera.fov; //NOTE: Scale with how far out we're looking
-        
-        float2 diff = scale_float2(panPower*gameState->dt, minus_float2(gameState->startDragP, getMouseP01(gameState)));
-        gameState->canvasMoveDp = diff;
+        CanvasTab *tab = getActiveCanvasTab(gameState);
+        if(tab) {
+            float2 diff = minus_float2(gameState->startDragP, getWorldPFromMouse(gameState));
+            float2 newP = plus_float2(tab->cameraP, diff);
+            tab->cameraP = gameState->camera.T.pos.xy = newP;
+        }
     } else {
         gameState->draggingCanvas = false;
     }
-    
-    if(!gameState->draggingCanvas) {
-        gameState->canvasMoveDp.x *= 0.86f;
-        gameState->canvasMoveDp.y *= 0.86f;
-    }
-
-    float2 *cameraP = &gameState->camera.T.pos.xy;
-
-    CanvasTab *tab = getActiveCanvasTab(gameState);
-    if(tab) {
-        cameraP = &tab->cameraP;
-    }
-
-    *cameraP = plus_float2(*cameraP, gameState->canvasMoveDp);
-    gameState->camera.T.pos.xy = *cameraP;
-    gameState->startDragP = getMouseP01(gameState);
+    gameState->startDragP = getWorldPFromMouse(gameState);
 }
 
 void updateDrawShape(GameState *gameState, Canvas *canvas) {

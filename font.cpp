@@ -9,69 +9,45 @@ struct Font {
     float2 fontAtlasDim;
 };
 
-Font initFontAtlas(char *fontFile) {
+Font initFontAtlas(unsigned char *ttfBuffer) {
     Font result = {};
 
-    //NOTE: Open & get size of ttf file
-    FILE *ttfFile = fopen(fontFile, "rb");
+    int tempBitmapWidth = 512;
+    int tempBitmapHeight = 512;
 
-    if(ttfFile){
-        fseek(ttfFile, 0, SEEK_END);
-        size_t fileSize = ftell(ttfFile);
-        fseek(ttfFile, 0L, SEEK_SET);
+    result.fontAtlasDim.x = tempBitmapWidth;
+    result.fontAtlasDim.y = tempBitmapHeight;
 
-        //NOTE: Allocate the memory to store the file contents. Plus 1 for zero terminated contents.
-        unsigned char *ttfBuffer = (unsigned char *)malloc(fileSize + 1);
+    //NOTE: Allocate the CPU side image to render the glyphs to. We will then upload this to the GPU to use by our game renderer.
+    unsigned char *tempBitmap = (unsigned char *)calloc(tempBitmapWidth*tempBitmapHeight*sizeof(unsigned char), 1);
+    assert(tempBitmap);
 
-        size_t bytesRead = fread(ttfBuffer, 1, fileSize, ttfFile);
-        //NOTE: Read the ttf file contents
-        if(bytesRead == fileSize) {
+    result.fontHeight = 32.0;
+    result.startOffset = 32;
+    //NOTE:  32, 96 values denote the main ASCI alphabet - starting at [SPACE] and going to the end of the asci table. The space is important because it tells us the width of a space.
+    int r = stbtt_BakeFontBitmap(ttfBuffer, 0, result.fontHeight, tempBitmap, tempBitmapWidth, tempBitmapHeight, 32, 96, result.glyphData);
 
-            int tempBitmapWidth = 512;
-            int tempBitmapHeight = 512;
-
-            result.fontAtlasDim.x = tempBitmapWidth;
-            result.fontAtlasDim.y = tempBitmapHeight;
-
-            //NOTE: Allocate the CPU side image to render the glyphs to. We will then upload this to the GPU to use by our game renderer.
-            unsigned char *tempBitmap = (unsigned char *)calloc(tempBitmapWidth*tempBitmapHeight*sizeof(unsigned char), 1);
-            assert(tempBitmap);
-
-            result.fontHeight = 32.0;
-            result.startOffset = 32;
-            //NOTE:  32, 96 values denote the main ASCI alphabet - starting at [SPACE] and going to the end of the asci table. The space is important because it tells us the width of a space.
-            int r = stbtt_BakeFontBitmap(ttfBuffer, 0, result.fontHeight, tempBitmap, tempBitmapWidth, tempBitmapHeight, 32, 96, result.glyphData);
-
-            if(r == 0) {
-                printf("ERROR: Couldn't render font atlas\n");
-                assert(false);
-            } 
-
-            //NOTE: Upload to the GPU now. You can change this to however you upload textures in your game engine. 
-            glGenTextures(1, &result.textureHandle);
-            renderCheckError();
-            glBindTexture(GL_TEXTURE_2D, result.textureHandle);
-            renderCheckError();
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, tempBitmapWidth, tempBitmapHeight, 0, GL_RED, GL_UNSIGNED_BYTE, tempBitmap);
-            renderCheckError();
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            renderCheckError();
-            glBindTexture(GL_TEXTURE_2D, 0); //NOTE: Unbind the texture 
-            renderCheckError();
-
-            //NOTE: Free our CPU side image data now
-            free(tempBitmap);  
-            tempBitmap = 0;
-        } else {
-            printf("bytesRead: %ld\n", bytesRead);
-            assert(false);
-        }
-
-        free(ttfBuffer);
-        ttfBuffer = 0;
-    } else {
+    if(r == 0) {
+        printf("ERROR: Couldn't render font atlas\n");
         assert(false);
-    }
+    } 
+
+    //NOTE: Upload to the GPU now. You can change this to however you upload textures in your game engine. 
+    glGenTextures(1, &result.textureHandle);
+    renderCheckError();
+    glBindTexture(GL_TEXTURE_2D, result.textureHandle);
+    renderCheckError();
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, tempBitmapWidth, tempBitmapHeight, 0, GL_RED, GL_UNSIGNED_BYTE, tempBitmap);
+    renderCheckError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    renderCheckError();
+    glBindTexture(GL_TEXTURE_2D, 0); //NOTE: Unbind the texture 
+    renderCheckError();
+
+    //NOTE: Free our CPU side image data now
+    free(tempBitmap);  
+    tempBitmap = 0;
+      
 
    return result;
 

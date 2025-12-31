@@ -5,8 +5,6 @@ void updateGame(GameState *gameState) {
     DEBUG_TIME_BLOCK()
     checkInitGameState(gameState);
 
-    updateCamera(gameState);
-    
     float fauxWidth = FAUX_WIDTH;
     float16 screenGuiT = make_ortho_matrix_bottom_left_corner(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
     gameState->renderer->textMatrixResolution = make_float2(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x);
@@ -100,6 +98,7 @@ void updateGame(GameState *gameState) {
         if(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_NONE || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_RELEASED || gameState->keys.keys[KEY_ESCAPE] == MOUSE_BUTTON_PRESSED) {
             gameState->paintActive = false;
             gameState->drawingShape = false;
+            gameState->draggingCanvas = false;
             gameState->grabbedCornerIndex = -1;
 
             getActiveCanvasTab(gameState)->currentUndoBlock = 0;

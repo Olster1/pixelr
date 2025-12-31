@@ -45,10 +45,11 @@ struct ProjectFile {
     u32 idLengthInBytes;
     
     bool wasInSavedState;
+    int brushShape;
 };
 #pragma pack(pop) 
 
-#define PROJECT_FILE_LATEST_VERSION 1
+#define PROJECT_FILE_LATEST_VERSION 2
 ProjectFile initProjectFile() {
     ProjectFile result = {};
     result.version = PROJECT_FILE_LATEST_VERSION;
@@ -78,7 +79,7 @@ CanvasTab loadPixelrProject(const char *filePath) {
     if(file.valid && file.memory) {
         ProjectFile *data = (ProjectFile *)file.memory;
 
-        assert(data->version == PROJECT_FILE_LATEST_VERSION);
+        // assert(data->version == PROJECT_FILE_LATEST_VERSION);
 
         CanvasTab tab =  CanvasTab(data->canvasW, data->canvasH, (char *)filePath);
 
@@ -98,6 +99,10 @@ CanvasTab loadPixelrProject(const char *filePath) {
         tab.copyFrameOnAdd = data->copyOnFrame;
         tab.activeFrame = data->activeFrame;
         tab.isInSaveState = data->wasInSavedState;
+        if(data->version >= 2) {
+            tab.brushShape = (BrushShapeType)data->brushShape;
+        }
+        
 
         if(data->offsetToSavePath > 0) {
             DEBUG_TIME_BLOCK_NAMED("SAVE FILE PATH")
@@ -212,7 +217,7 @@ bool loadProjectFile_(CanvasTab *tab, char *filePath) {
         if(file.valid && file.memory) {
             ProjectFile *project = (ProjectFile *)file.memory;
 
-            assert(project->version == PROJECT_FILE_LATEST_VERSION);
+            // assert(project->version == PROJECT_FILE_LATEST_VERSION);
             tab->colorPicked = u32_to_float4_color(project->brushColor);
 
             tab->palletteCount = project->palletteCount;
@@ -306,6 +311,7 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
         data.canvasesFileOffset = sizeof(ProjectFile);
         
         data.wasInSavedState = isCanvasTabSaved(tab);
+        data.brushShape = (int)tab->brushShape;
         
         int aliveFrameCount = 0;
         int visibleIndex = 0;
