@@ -127,6 +127,7 @@ float2 platform_getWindowPosition() {
   return make_float2(x, y);
                            
 }
+
 float2 platform_getWindowSize() {
   int x = 0;
   int y = 0;
@@ -134,7 +135,13 @@ float2 platform_getWindowSize() {
   return make_float2(x, y);
                            
 }
+void platform_showMouseCursor() {
+  SDL_ShowCursor(SDL_ENABLE);
+}
 
+void platform_hideMouseCursor() {
+  SDL_ShowCursor(SDL_DISABLE);
+}
 
 #include "../main.cpp"
 
@@ -193,7 +200,7 @@ void processEvent(GameState *gameState, SDL_Event *e) {
   } else if(e->type == SDL_WINDOWEVENT) {
       u8 id = e->window.event;
       if(id == SDL_WINDOWEVENT_RESIZED || id == SDL_WINDOWEVENT_MOVED) {
-        saveGlobalProjectSettings_multiThreaded(gameState);
+        saveGlobalProjectSettings(gameState);
       }
     
     } else if (e->type == SDL_DROPFILE) {

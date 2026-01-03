@@ -136,6 +136,17 @@ float2 getWorldPFromMouse(GameState *gameState) {
     return worldP;
 }
 
+float2 getScreenPFromMouse(GameState *gameState) {
+    DEBUG_TIME_BLOCK()
+    
+    const float2 plane = scale_float2(0.5f, make_float2(FAUX_WIDTH, FAUX_WIDTH*gameState->aspectRatio_y_over_x));
+                
+    const float x = lerp(-plane.x, plane.x, make_lerpTValue(getMouseP01(gameState).x));
+    const float y = lerp(-plane.y, plane.y, make_lerpTValue(getMouseP01(gameState).y));
+
+    return make_float2(x, y);
+}
+
 float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h, bool real = false) {
     DEBUG_TIME_BLOCK()
      //NOTE: Try draw on the canvas
@@ -184,7 +195,7 @@ float4 getBlendedColor(float4 oldColorF, float4 newColorF) {
 }
 
 
-void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, const u32 color, float opacity, bool useOpacity = true) {
+void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, const u32 color, float opacity, bool useOpacity = true, u32 mirrorFlags = 0) {
     DEBUG_TIME_BLOCK()
     if(coordY >= 0 && coordX >= 0 && coordY < canvas->h && coordX < canvas->w) {
         
@@ -208,6 +219,15 @@ void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, cons
             tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, u32Color));
         }
         canvas->pixels[coordY*canvas->w + coordX] = u32Color;
+    }
+
+    if(mirrorFlags != 0) {
+        if(mirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) {
+            int x = canvas->w - coordX;
+            int y = coordY;
+            setCanvasColor(tab, canvas, x, y, color, opacity, useOpacity, 0);
+        }
+        
     }
 }
 
@@ -321,11 +341,18 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
                     if((startX + x) >= 0 && (startY + y) >= 0 && (startX + x) < canvas->w && (startY + y) < canvas->h) {
                         if(fill) {
                             float2 p = make_float2(startX + x,startY + y);
-                            setCanvasColor(tab, canvas, p.x, p.y, float4_to_u32_color(color), tab->opacity);
+                            setCanvasColor(tab, canvas, p.x, p.y, float4_to_u32_color(color), tab->opacity, true, gameState->canvasMirrorFlags);
                         } else {
                             float2 p = make_float2((startX + x)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (startY + y)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
                             color.w = tab->opacity;
                             pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+
+                            if(gameState->canvasMirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) {
+                                float mirrorX = canvas->w - (startX + x);
+                                float mirrorY = (startY + y);
+                                float2 p = make_float2((mirrorX)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (mirrorY)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
+                                pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+                            }
                         }
                     }
                 }
@@ -333,6 +360,7 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
         }
     }
 }
+
 
 float2 canvasCoordToWorldSpace(Canvas *canvas, float x, float y, bool offsetP = true) {
     DEBUG_TIME_BLOCK()
@@ -343,6 +371,15 @@ float2 canvasCoordToWorldSpace(Canvas *canvas, float x, float y, bool offsetP = 
         p.y += 0.5f*VOXEL_SIZE_IN_METERS;
     }
     return p;
+}
+
+
+void drawGuidlines(GameState *gameState, Canvas *canvas) {
+    if(canvas) {
+        float2 p00 = canvasCoordToWorldSpace(canvas, 0.5f*canvas->w, 0);
+        float2 p10 = canvasCoordToWorldSpace(canvas, 0.5f*canvas->w, canvas->h);
+        pushLineEndToEndWorldSpace(gameState->renderer, p00, p10, make_float4(1, 1, 1, 1));
+    }
 }
 
 struct CanvasSelectionPosition {
@@ -447,6 +484,16 @@ void drawCanvas(GameState *gameState, Frame *frame, CanvasTab *canvasTab, float 
     }
 }
 
+void drawCursor(GameState *gameState) {
+    float4 color = make_float4(0.8f, 0.8f, 0.8f, 1);
+    float offset = 5;
+    float offset1 = 15;
+    float2 mouseP = getScreenPFromMouse(gameState);
+    pushLineEndToEndScreenSpace(gameState->renderer, make_float2(mouseP.x, mouseP.y + offset), make_float2(mouseP.x, mouseP.y + offset1), color);
+    pushLineEndToEndScreenSpace(gameState->renderer, make_float2(mouseP.x, mouseP.y - offset), make_float2(mouseP.x, mouseP.y - offset1), color);
+    pushLineEndToEndScreenSpace(gameState->renderer, make_float2(mouseP.x + offset, mouseP.y), make_float2(mouseP.x + offset1, mouseP.y), color);
+    pushLineEndToEndScreenSpace(gameState->renderer, make_float2(mouseP.x - offset, mouseP.y), make_float2(mouseP.x - offset1, mouseP.y), color);
+}
 
 
 void drawPaintCursor(GameState *gameState) {
@@ -823,7 +870,7 @@ void updateSprayCan(GameState *gameState, Canvas *canvas) {
                     float perlin = mapSimplexNoiseTo01(SimplexNoise_fractal_2d(16, px + gameState->sprayTimeAt, py + gameState->sprayTimeAt, 0.8f));
                     if(perlin > 0.5f) {
                         u32 color = float4_to_u32_color(tab->colorPicked);
-                        setCanvasColor(tab, canvas, px, py, color, tab->opacity);
+                        setCanvasColor(tab, canvas, px, py, color, tab->opacity, gameState->canvasMirrorFlags);
                     }
                 }
             }
@@ -1179,7 +1226,7 @@ void setCanvasColorWithBrushSize(GameState *gameState, CanvasTab *tab, Canvas *c
 
                 if(painterIsActive) {
                     if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h && inBounds) {
-                        setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase);
+                        setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase, gameState->canvasMirrorFlags);
                     }        
                 } else if(inBounds) {
                     assert((brushY*brushSize + brushX) < (brushSize*brushSize));

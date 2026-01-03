@@ -22,6 +22,8 @@ void saveFileToPNG(Renderer *renderer, Frame *frame, CanvasTab *tab) {
 
         char *name = easy_createString_printf(&globalPerFrameArena, "%s%s", (char *)result, ending);
         int writeResult = stbi_write_png(name, tab->w, tab->h, 4, getPixelsForFrame_shortTerm(tab, frame), stride_in_bytes);
+
+        addIMGUIToast("Image Saved.", 2);
     }
 }
 
@@ -393,9 +395,10 @@ void saveGlobalProjectSettings(void *gameState_) {
 
 }
 
-void saveGlobalProjectSettings_multiThreaded(GameState *gameState) {
-    pushWorkOntoQueue(&gameState->threadsInfo, saveGlobalProjectSettings, gameState);
-}
+// void saveGlobalProjectSettings_multiThreaded(GameState *gameState) {
+//     //IMPORTANT: NOT SAFE -> it uses the per frame arena
+//     pushWorkOntoQueue(&gameState->threadsInfo, saveGlobalProjectSettings, gameState);
+// }
 
 void checkAndSaveBackupFile(GameState *gameState) {
     DEBUG_TIME_BLOCK()

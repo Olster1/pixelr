@@ -569,5 +569,12 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
         renderer->lineCount = 0;
     }
 
+    if(renderer->lineCountScreenSpace > 0) {
+        updateInstanceData(renderer->lineModel.instanceBufferhandle, renderer->lineDataScreenSpace, renderer->lineCountScreenSpace*sizeof(InstanceDataWithRotation));
+        drawModels(&renderer->lineModel, &renderer->lineShader, renderer->fontAtlasTexture, renderer->lineCountScreenSpace, textScreenTransform, modelViewTransform, lookingAxis, GL_LINES);
+
+        renderer->lineCountScreenSpace = 0;
+    }
+
     renderCheckError();
 }

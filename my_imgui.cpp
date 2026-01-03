@@ -131,7 +131,7 @@ void drawTabs(GameState *state) {
                       state->camera.fov = tab->zoomFactor;
                     }
                     //NOTE: Update which tab is Selected
-                    saveGlobalProjectSettings_multiThreaded(state);
+                    saveGlobalProjectSettings(state);
                     closeWindowsAssociatedWithThisTab(state);
                 }
               
@@ -1152,6 +1152,65 @@ void showMainMenuBar(GameState *state)
     }
 }
 
+void addToggleSelection(GameState *state, char *unicodeIcon, CanvasDrawFlag flag) {
+  bool pushStyle = false;
+  if (state->canvasMirrorFlags & flag) {
+    pushStyle = true;
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow color
+  }
+
+  if (ImGui::Button(unicodeIcon)) {
+    if (state->canvasMirrorFlags & flag) {
+      state->canvasMirrorFlags &= (~flag);
+    } else {
+      state->canvasMirrorFlags |= flag;
+    }
+  }
+
+  if (pushStyle) {
+      ImGui::PopStyleColor();
+  }
+}
+
+
+void dropdownButton(GameState *gameState) {
+  static int current = 0;
+  
+  char* items[] = { "\uf089", "\uf089", "\uf089" };
+  CanvasDrawFlag itemFlags[] = { CANVAS_MIRROR_HORIZONTAL_FLAG, CANVAS_MIRROR_VERTICAL_FLAG, CANVAS_MIRROR_FLAG };
+
+  float button_width = 200.0f;
+  float arrow_width = ImGui::GetFrameHeight(); // square arrow button
+
+  addToggleSelection(gameState, items[current], itemFlags[current]);
+  addToolTip("Toggle Mirror Mode");
+
+  // Arrow button
+  ImGui::SameLine(0, 0);
+  if (ImGui::ArrowButton("##dropdown", ImGuiDir_Down)) {
+      ImGui::OpenPopup("dropdown_popup");
+  }
+
+  // Popup (dropdown)
+  if (ImGui::BeginPopup("dropdown_popup")) {
+      ImGui::SetNextItemWidth(button_width);
+
+      for (int i = 0; i < IM_ARRAYSIZE(items); i++) {
+          ImGui::PushID(i);
+          if (ImGui::Selectable(items[i], i == current)) {
+              current = i;
+              if (gameState->canvasMirrorFlags & itemFlags[i]) {
+                gameState->canvasMirrorFlags &= (~itemFlags[i]);
+              } else {
+                gameState->canvasMirrorFlags |= itemFlags[i];
+              }
+          }
+          ImGui::PopID();  // Ensure unique ID for each color
+      }
+      ImGui::EndPopup();
+  }
+}
+
 void addModeSelection(GameState *state, char *unicodeIcon, CanvasInteractionMode mode) {
   bool pushStyle = false;
   if (state->interactionMode == mode) {
@@ -1189,6 +1248,7 @@ void Spinner(const char* label, float radius, int thickness, ImU32 color) {
                          col, thickness);
   }
 }
+
 
 void showUnSavedWindow(GameState *gameState) {
   if(gameState->closeCanvasTabInfo.UIshowUnsavedWindow) {
@@ -1337,6 +1397,9 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
               addToolTip("Pick a color from the canvas");
               addModeSelection(state, "\uf5bd", CANVAS_SPRAY_CAN);
               addToolTip("Draw Spray Can Pattern");
+              ImGui::SameLine();
+              
+              dropdownButton(state);
 
               ImGui::Text("Select a Color:");
               ImGui::SameLine();

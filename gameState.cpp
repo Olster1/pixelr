@@ -9,7 +9,14 @@ enum CanvasInteractionMode {
     CANVAS_SELECT_RECTANGLE_MODE,
     CANVAS_MOVE_SELECT_MODE,
     CANVAS_SPRAY_CAN,
-    CANVAS_COLOR_DROPPER
+    CANVAS_COLOR_DROPPER,
+};
+
+enum CanvasDrawFlag {
+    CANVAS_MIRROR_FLAG = 1 << 0,
+    CANVAS_MIRROR_HORIZONTAL_FLAG = 1 << 1,
+    CANVAS_MIRROR_VERTICAL_FLAG = 1 << 2,
+    
 };
 
 #define MAX_CANVAS_DIM 4000
@@ -72,6 +79,12 @@ static EasyProfile_ProfilerDrawState *EasyProfiler_initProfilerDrawState() {
 	return result;
 }
 
+enum InteractionAppState {
+    INTERACTION_NONE,
+    INTERACTION_IMGUI,
+    INTERACTION_DRAWING,
+};
+
 struct WindowResizeCommand {
     float2 newSize;
     float2 windowPos;
@@ -120,8 +133,11 @@ struct GameState {
     float3 startP;
     int grabbedCornerIndex;
 
+    InteractionAppState interactionAppState;
+
     float scrollDp; //NOTE: velcoity to intergrate for the scroll speed
     bool nearest;
+    u32 canvasMirrorFlags;
 
     ThreadsInfo threadsInfo;
 

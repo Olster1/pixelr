@@ -57,7 +57,19 @@ void updateGame(GameState *gameState) {
 
         updateCanvasZoom(gameState, isInteractingWithIMGUI(), gameState->scrollSpeed*(gameState->inverseZoom ? -1 : 1));
         //NOTE: Update interaction with the canvas
-        if(!isInteractingWithIMGUI()) {
+        if(isInteractingWithIMGUI()) {
+            if(gameState->interactionAppState != INTERACTION_IMGUI) {
+                // platform_showMouseCursor();
+                gameState->interactionAppState = INTERACTION_IMGUI;
+            }
+            
+        } else {
+            if(gameState->interactionAppState != INTERACTION_DRAWING) {
+                platform_hideMouseCursor();
+                SDL_ShowCursor(SDL_ENABLE);
+                gameState->interactionAppState = INTERACTION_DRAWING;
+            }
+            
             if(gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_DOWN) {
                 //NOTE: First check if it's a SPACE shortcut interaction - like space/drag
                 
@@ -71,26 +83,37 @@ void updateGame(GameState *gameState) {
             } else {
                 if(gameState->interactionMode == CANVAS_DRAW_RECTANGLE_MODE || gameState->interactionMode == CANVAS_DRAW_CIRCLE_MODE || gameState->interactionMode == CANVAS_DRAW_LINE_MODE) {
                     updateDrawShape(gameState, getActiveCanvas(gameState));
+                    drawCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
                     updateEraser(gameState, getActiveCanvas(gameState));
                     drawPaintCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_FILL_MODE) {
                     updateBucket(gameState, getActiveCanvas(gameState), gameState->selectMode);
+                    drawCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
                     updateCanvasDraw(gameState, getActiveCanvas(gameState));
                     drawPaintCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
                     updateCanvasMove(gameState);
+                    drawCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) {
                     updateCanvasSelect(gameState, getActiveCanvasTab(gameState));
+                    drawCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_SPRAY_CAN) {
                     updateSprayCan(gameState, getActiveCanvas(gameState));
+                    drawCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_COLOR_DROPPER) {
                     updateColorDropper(gameState, getActiveCanvas(gameState));
+                    // drawCursor(gameState);
                 }
             }
-
         }
+
+        // if(gameState->guidlines != 0) 
+        {
+            drawGuidlines(gameState, getActiveCanvas(gameState));
+        }
+
         updateGpuCanvasTextures(gameState);
 
         updateSelectObject(gameState, getActiveCanvas(gameState));
