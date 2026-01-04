@@ -3,6 +3,7 @@ static bool DEBUG_global_ProfilePaused = false;
 #include "./easy_profiler.hpp"
 #include "./easy_memory.h"
 #include "./fa1_font.h"
+#include "./icomoon_ttf.h"
 #include "./Roboto_Regular_ttf.h"
 #include "./atlas_png.h"
 #include "./resize_array.cpp"

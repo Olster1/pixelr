@@ -138,6 +138,7 @@ struct GameState {
     float scrollDp; //NOTE: velcoity to intergrate for the scroll speed
     bool nearest;
     u32 canvasMirrorFlags;
+    u32 currentSelectedMirrorIndexUi;
 
     ThreadsInfo threadsInfo;
 

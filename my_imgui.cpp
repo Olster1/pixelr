@@ -20,19 +20,29 @@ ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window, char *exePath
     ImFontConfig config;
     config.MergeMode = true;
 
-    char *fontFile = (char *)easyPlatform_allocateMemory(arrayCount(fa1_otf), EASY_PLATFORM_MEMORY_NONE);
-    easyPlatform_copyMemory(fontFile, fa1_otf, arrayCount(fa1_otf));
-    
-    ImFont* iconFont = io.Fonts->AddFontFromMemoryTTF(fontFile, arrayCount(fa1_otf), 16.0f, &config, icon_ranges);
-    if (!iconFont) {
-        assert(false);
+    {
+      char *fontFile = (char *)easyPlatform_allocateMemory(arrayCount(fa1_otf), EASY_PLATFORM_MEMORY_NONE);
+      easyPlatform_copyMemory(fontFile, fa1_otf, arrayCount(fa1_otf));
+      
+      ImFont* iconFont = io.Fonts->AddFontFromMemoryTTF(fontFile, arrayCount(fa1_otf), 16.0f, &config, icon_ranges);
+      if (!iconFont) {
+          assert(false);
+      }
     }
 
-  io.Fonts->Build();
+    {
+      char *fontFile = (char *)easyPlatform_allocateMemory(arrayCount(icomoon_ttf), EASY_PLATFORM_MEMORY_NONE);
+      easyPlatform_copyMemory(fontFile, icomoon_ttf, arrayCount(icomoon_ttf));
+      
+      ImFont* iconFont = io.Fonts->AddFontFromMemoryTTF(fontFile, arrayCount(icomoon_ttf), 20.0f, &config, icon_ranges);
+      if (!iconFont) {
+          assert(false);
+      }
+    }
 
+    io.Fonts->Build();
 
     return io;
-
 }
 
 #include "imgui.h"
@@ -1174,15 +1184,15 @@ void addToggleSelection(GameState *state, char *unicodeIcon, CanvasDrawFlag flag
 
 
 void dropdownButton(GameState *gameState) {
-  static int current = 0;
   
-  char* items[] = { "\uf089", "\uf089", "\uf089" };
+  char* items[] = { "\ue900", "\ue901", "\uf2dc" };
   CanvasDrawFlag itemFlags[] = { CANVAS_MIRROR_HORIZONTAL_FLAG, CANVAS_MIRROR_VERTICAL_FLAG, CANVAS_MIRROR_FLAG };
+  char* tooltips[] = { "Horizontal Mirror", "Vertical Mirror", "Horizontal & Vertical Mirror" };
 
   float button_width = 200.0f;
   float arrow_width = ImGui::GetFrameHeight(); // square arrow button
 
-  addToggleSelection(gameState, items[current], itemFlags[current]);
+  addToggleSelection(gameState, items[gameState->currentSelectedMirrorIndexUi], itemFlags[gameState->currentSelectedMirrorIndexUi]);
   addToolTip("Toggle Mirror Mode");
 
   // Arrow button
@@ -1197,14 +1207,11 @@ void dropdownButton(GameState *gameState) {
 
       for (int i = 0; i < IM_ARRAYSIZE(items); i++) {
           ImGui::PushID(i);
-          if (ImGui::Selectable(items[i], i == current)) {
-              current = i;
-              if (gameState->canvasMirrorFlags & itemFlags[i]) {
-                gameState->canvasMirrorFlags &= (~itemFlags[i]);
-              } else {
-                gameState->canvasMirrorFlags |= itemFlags[i];
-              }
+          if (ImGui::Selectable(items[i], i == gameState->currentSelectedMirrorIndexUi)) {
+              gameState->currentSelectedMirrorIndexUi = i;
+              gameState->canvasMirrorFlags = (itemFlags[i]);
           }
+          addToolTip(tooltips[i]);
           ImGui::PopID();  // Ensure unique ID for each color
       }
       ImGui::EndPopup();

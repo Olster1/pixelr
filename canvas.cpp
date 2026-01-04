@@ -194,6 +194,10 @@ float4 getBlendedColor(float4 oldColorF, float4 newColorF) {
     return c;
 }
 
+inline int getMirrorCoord(int fullSize, int coord) {
+    return fullSize - (coord + 1);
+}
+
 
 void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, const u32 color, float opacity, bool useOpacity = true, u32 mirrorFlags = 0) {
     DEBUG_TIME_BLOCK()
@@ -223,8 +227,16 @@ void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, cons
 
     if(mirrorFlags != 0) {
         if(mirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) {
-            int x = canvas->w - coordX;
+            int x = getMirrorCoord(canvas->w, coordX);
             int y = coordY;
+            setCanvasColor(tab, canvas, x, y, color, opacity, useOpacity, 0);
+        } else if(mirrorFlags & CANVAS_MIRROR_VERTICAL_FLAG) {
+            int x = coordX;
+            int y = getMirrorCoord(canvas->h, coordY);
+            setCanvasColor(tab, canvas, x, y, color, opacity, useOpacity, 0);
+        } else if(mirrorFlags & CANVAS_MIRROR_FLAG) {
+            int x = getMirrorCoord(canvas->w, coordX);
+            int y = getMirrorCoord(canvas->h, coordY);
             setCanvasColor(tab, canvas, x, y, color, opacity, useOpacity, 0);
         }
         
@@ -313,6 +325,19 @@ void drawSelectShape(GameState *gameState, CanvasTab *canvas, CanvasInteractionM
     
 }
 
+
+float2 canvasCoordToWorldSpace(Canvas *canvas, float x, float y, bool offsetP = true) {
+    DEBUG_TIME_BLOCK()
+    float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS);
+
+    if(offsetP) {
+        p.x += 0.5f*VOXEL_SIZE_IN_METERS;
+        p.y += 0.5f*VOXEL_SIZE_IN_METERS;
+    }
+    return p;
+}
+
+
 void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode mode, bool fill = false) {
     DEBUG_TIME_BLOCK()
     CanvasTab *tab = getActiveCanvasTab(gameState);
@@ -346,11 +371,23 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
                             float2 p = make_float2((startX + x)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (startY + y)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
                             color.w = tab->opacity;
                             pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+                            
+                            if(gameState->canvasMirrorFlags != 0) {
+                                float2 p = {};
+                                if(gameState->canvasMirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) {
+                                    float mirrorX = getMirrorCoord(canvas->w, (startX + x));
+                                    float mirrorY = (startY + y);
+                                    float2 p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
+                                } else if(gameState->canvasMirrorFlags & CANVAS_MIRROR_VERTICAL_FLAG) {
+                                    float mirrorX = (startX + x);
+                                    float mirrorY = getMirrorCoord(canvas->h, (startY + y));
+                                    float2 p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
+                                } else if(gameState->canvasMirrorFlags & CANVAS_MIRROR_FLAG) {
+                                    float mirrorX = getMirrorCoord(canvas->w, (startX + x));
+                                    float mirrorY = getMirrorCoord(canvas->h, (startY + y));
+                                    float2 p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
+                                }
 
-                            if(gameState->canvasMirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) {
-                                float mirrorX = canvas->w - (startX + x);
-                                float mirrorY = (startY + y);
-                                float2 p = make_float2((mirrorX)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (mirrorY)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
                                 pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
                             }
                         }
@@ -361,24 +398,19 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
     }
 }
 
-
-float2 canvasCoordToWorldSpace(Canvas *canvas, float x, float y, bool offsetP = true) {
-    DEBUG_TIME_BLOCK()
-    float2 p = make_float2(x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS, y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS);
-
-    if(offsetP) {
-        p.x += 0.5f*VOXEL_SIZE_IN_METERS;
-        p.y += 0.5f*VOXEL_SIZE_IN_METERS;
-    }
-    return p;
-}
-
-
 void drawGuidlines(GameState *gameState, Canvas *canvas) {
     if(canvas) {
-        float2 p00 = canvasCoordToWorldSpace(canvas, 0.5f*canvas->w, 0);
-        float2 p10 = canvasCoordToWorldSpace(canvas, 0.5f*canvas->w, canvas->h);
-        pushLineEndToEndWorldSpace(gameState->renderer, p00, p10, make_float4(1, 1, 1, 1));
+        if((gameState->canvasMirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) || (gameState->canvasMirrorFlags & CANVAS_MIRROR_FLAG)) {
+            float2 p00 = canvasCoordToWorldSpace(canvas, 0.5f*canvas->w, 0, false);
+            float2 p10 = canvasCoordToWorldSpace(canvas, 0.5f*canvas->w, canvas->h, false);
+            pushLineEndToEndWorldSpace(gameState->renderer, p00, p10, make_float4(1, 1, 1, 1));
+        } 
+        
+        if((gameState->canvasMirrorFlags & CANVAS_MIRROR_VERTICAL_FLAG) || (gameState->canvasMirrorFlags & CANVAS_MIRROR_FLAG)) {
+            float2 p00 = canvasCoordToWorldSpace(canvas, 0, 0.5f*canvas->h, false);
+            float2 p10 = canvasCoordToWorldSpace(canvas, canvas->w, 0.5f*canvas->h, false);
+            pushLineEndToEndWorldSpace(gameState->renderer, p00, p10, make_float4(1, 1, 1, 1));
+        } 
     }
 }
 
@@ -522,9 +554,6 @@ void drawPaintCursor(GameState *gameState) {
                 mouseP_canvasCoord.y = (mouseP_canvasCoord.y + 0.5f);
             }
 
-            
-            
-
            for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
 
@@ -572,7 +601,13 @@ void drawPaintCursor(GameState *gameState) {
         }
     }
 }
-                    
+     
+void drawSinglePixelCursor(GameState *gameState) {
+    gameState->brushOutlineSize = 1;
+    gameState->brushOutlineStencil = pushArray(&globalPerFrameArena, 1, u8);
+    gameState->brushOutlineStencil[0] = 1;
+    drawPaintCursor(gameState);
+}
 
 struct RenderDrawBundle {
     float4 color;

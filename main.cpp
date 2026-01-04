@@ -60,14 +60,15 @@ void updateGame(GameState *gameState) {
         if(isInteractingWithIMGUI()) {
             if(gameState->interactionAppState != INTERACTION_IMGUI) {
                 // platform_showMouseCursor();
-                gameState->interactionAppState = INTERACTION_IMGUI;
+                // printf("SHOW CURSOR\n");
+                // gameState->interactionAppState = INTERACTION_IMGUI;
             }
             
         } else {
             if(gameState->interactionAppState != INTERACTION_DRAWING) {
-                platform_hideMouseCursor();
-                SDL_ShowCursor(SDL_ENABLE);
-                gameState->interactionAppState = INTERACTION_DRAWING;
+                // platform_hideMouseCursor();
+                // printf("HIDE CURSOR\n");
+                // gameState->interactionAppState = INTERACTION_DRAWING;
             }
             
             if(gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_DOWN) {
@@ -83,7 +84,8 @@ void updateGame(GameState *gameState) {
             } else {
                 if(gameState->interactionMode == CANVAS_DRAW_RECTANGLE_MODE || gameState->interactionMode == CANVAS_DRAW_CIRCLE_MODE || gameState->interactionMode == CANVAS_DRAW_LINE_MODE) {
                     updateDrawShape(gameState, getActiveCanvas(gameState));
-                    drawCursor(gameState);
+
+                    drawSinglePixelCursor(gameState);
                 } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
                     updateEraser(gameState, getActiveCanvas(gameState));
                     drawPaintCursor(gameState);
@@ -109,7 +111,7 @@ void updateGame(GameState *gameState) {
             }
         }
 
-        // if(gameState->guidlines != 0) 
+        if(gameState->canvasMirrorFlags != 0) 
         {
             drawGuidlines(gameState, getActiveCanvas(gameState));
         }
