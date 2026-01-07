@@ -245,6 +245,7 @@ void checkInitGameState(GameState *gameState) {
         initGameState(gameState);
     } else { 
         releaseMemoryMark(&perFrameArenaMark);
+        assert((getCurrentMemoryPiece(&globalPerFrameArena))->currentSize == 0);
         perFrameArenaMark = takeMemoryMark(&globalPerFrameArena);
     }
 }

@@ -176,7 +176,7 @@ static inline void addInstanceAttribForMatrix(int index, GLuint attribLoc, int n
     glEnableVertexAttribArray(attribLoc + index);  
     renderCheckError();
     
-    glVertexAttribPointer(attribLoc + index, numOfFloats, GL_FLOAT, GL_FALSE, offsetForStruct, ((char *)0) + offsetInStruct + (4*sizeof(float)*index));
+    glVertexAttribPointer(attribLoc + index, numOfFloats, GL_FLOAT, GL_FALSE, offsetForStruct, (void*)(uintptr_t)(offsetInStruct + (4 * sizeof(float) * index)));
     renderCheckError();
     glVertexAttribDivisor(attribLoc + index, 1);
     renderCheckError();

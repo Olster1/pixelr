@@ -33,13 +33,39 @@ typedef struct {
 
 } Arena;
 
+MemoryPiece *getCurrentMemoryPiece(Arena *arena) {
+    MemoryPiece *piece = arena->pieces;
+    assert(piece);
+    return piece;
+}
+
+void memoryArena_sameSpot(Arena *arena, MemoryPiece *p) {
+    MemoryPiece *p1 = getCurrentMemoryPiece(arena);
+    assert(p1 == p && p1->currentSize == p->currentSize);
+}   
+
 #define pushStruct(arena, type) (type *)pushSize(arena, sizeof(type))
 
 #define pushArray(arena, size, type) (type *)pushSize(arena, sizeof(type)*size)
 
-void *pushSize(Arena *arena, size_t size) {
-    DEBUG_TIME_BLOCK()
-    if(!arena->pieces || ((arena->pieces->currentSize + size) > arena->pieces->totalSize)){ //doesn't fit in arena
+
+static Arena globalLongTermArena;
+static Arena globalPerFrameArena;
+
+
+void *pushSize(Arena *arena, size_t size, int alignment = 8) {
+    platformThread_assertMainThread();
+    uintptr_t safePadding = 0;
+    if(alignment > 0 && arena->pieces) {
+        MemoryPiece *piece = arena->pieces;
+        u8 *ptr = (u8 *)piece->memory + piece->currentSize;
+        uintptr_t misalignment = (uintptr_t)ptr % alignment;
+        safePadding = (misalignment == 0) ? 0 : (alignment - misalignment);
+    }
+
+    size_t safeSize = size + safePadding;
+
+    if(!arena->pieces || ((arena->pieces->currentSize + safeSize) > arena->pieces->totalSize)){ //doesn't fit in arena
         MemoryPiece *piece = arena->piecesFreeList; //get one of the free list
 
         size_t minSizeOfPiece = Kilobytes(1028);
@@ -80,13 +106,20 @@ void *pushSize(Arena *arena, size_t size) {
 
     MemoryPiece *piece = arena->pieces;
 
+    uintptr_t padding = 0;
+    if(alignment > 0) {
+        u8 *ptr = (u8 *)piece->memory + piece->currentSize;
+        uintptr_t misalignment = (uintptr_t)ptr % alignment;
+        padding = (misalignment == 0) ? 0 : (alignment - misalignment);
+    }
+
     assert(piece);
     assert((piece->currentSize + size) <= piece->totalSize); 
     
-    void *result = ((u8 *)piece->memory) + piece->currentSize;
-    piece->currentSize += size;
+    void *result = ((u8 *)piece->memory) + piece->currentSize + padding;
+    piece->currentSize += (size + padding);
     
-    easyMemory_zeroSize(result, size);
+    easyMemory_zeroSize(result, (size + padding));
     return result;
 }
 
@@ -109,6 +142,7 @@ typedef struct {
     size_t memAt; //the actuall value we roll back, don't need to do anything else
     MemoryPiece *piece;
 } MemoryArenaMark;
+static MemoryArenaMark perFrameArenaMark;
 
 MemoryArenaMark takeMemoryMark(Arena *arena) {
     MemoryArenaMark result = {};
@@ -154,10 +188,6 @@ void releaseMemoryMark(MemoryArenaMark *mark) {
     piece->currentSize = mark->memAt;
     assert(piece->currentSize <= piece->totalSize);
 }
-
-static Arena globalLongTermArena;
-static Arena globalPerFrameArena;
-static MemoryArenaMark perFrameArenaMark;
 
 char *nullTerminateBuffer(char *result, char *string, int length) {
     for(int i = 0; i < length; ++i) {

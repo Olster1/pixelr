@@ -25,6 +25,7 @@ ARM="-arch arm64"
 x86="-arch x86_64  -mcrc32"
 RELEASE="-DNDEBUG -O2"
 DEBUG="-g"
+ADDRESS_SANTIZER="-fsanitize=address -fsanitize=undefined -fno-omit-frame-pointer"
 
 g++ -std=c++11 -o ./bin/Spixl \
     $DEBUG \

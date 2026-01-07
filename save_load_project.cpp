@@ -304,7 +304,7 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
         data.eraserSize = tab->eraserSize;
         data.onionSkinning = tab->onionSkinningFrames;
         data.timerPerFrame = anim->frameTime;
-        data.copyOnFrame = tab->copyFrameOnAdd;
+        data.copyOnFrame = (bool)tab->copyFrameOnAdd;
         data.canvasW = tab->w;
         data.canvasH = tab->h;
         data.activeFrame = tab->activeFrame;
@@ -476,7 +476,6 @@ void saveGlobalProjectSettings_withFileNames(char *fileName, char **fileList, in
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
     platformEndFile(fileHandle);
-
 }
 
 void savePalleteDefault_(void *data) {
@@ -484,11 +483,12 @@ void savePalleteDefault_(void *data) {
     char *filePath = getPlatformSaveFilePath();
 
     if(filePath) {
-        char *strToWrite = easy_createString_printf(&globalPerFrameArena, "%sdefault.project", (char *)filePath);
+        char *strToWrite = easy_createString_printf(0, "%sdefault.project", (char *)filePath);
 
         saveProjectFile_(tab, strToWrite, false);
 
         easyPlatform_freeMemory(filePath);
+        easyPlatform_freeMemory(strToWrite);
     }
 }
 
@@ -505,11 +505,12 @@ void loadPalleteDefault_(void *data) {
     char *filePath = getPlatformSaveFilePath();
 
     if(filePath) {
-        char *strToLoad = easy_createString_printf(&globalPerFrameArena, "%sdefault.project", (char *)filePath);
+        char *strToLoad = easy_createString_printf(0, "%sdefault.project", (char *)filePath);
         if(platformDoesFileExist(strToLoad)) {
             loadProjectFile_(tab, strToLoad);
         }
         easyPlatform_freeMemory(filePath);
+        easyPlatform_freeMemory(strToLoad);
     }
 }
 

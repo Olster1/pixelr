@@ -4,6 +4,16 @@
 
 typedef void ThreadWorkFuncType(void *Data);
 
+static SDL_threadID g_mainThreadId;
+
+SDL_threadID platform_getThreadId() {
+    return SDL_ThreadID();
+}
+
+inline void platformThread_assertMainThread() {
+    assert(SDL_ThreadID() == g_mainThreadId && "This function must be called from the main thread");
+}
+
 struct ThreadWork
 {
     ThreadWorkFuncType *FunctionPtr;

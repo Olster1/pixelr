@@ -158,7 +158,7 @@ game_file_handle platformBeginFileRead(char *FileName)
     return Result;
 }
 
-game_file_handle platformBeginFileWrite(char *FileName)
+game_file_handle platformBeginFileWrite(const char *FileName)
 {
     game_file_handle Result = {};
     

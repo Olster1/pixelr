@@ -402,11 +402,15 @@ void saveGlobalProjectSettings(void *gameState_) {
 
 void checkAndSaveBackupFile(GameState *gameState) {
     DEBUG_TIME_BLOCK()
+    platformThread_assertMainThread();
 
     time_t now = time(NULL);
     time_t diff = now - gameState->timeOfLastBackup;
     
-    if(diff >= BACKUP_FILE_TIME_SECONDS) {
+    if(diff >= BACKUP_FILE_TIME_SECONDS) 
+    {
+        MemoryPiece *piece = getCurrentMemoryPiece(&globalPerFrameArena);
+        MemoryArenaMark mark = takeMemoryMark(&globalPerFrameArena);
 
         waitForWorkToFinish(&gameState->threadsInfo);
         char **fileNames = pushArray(&globalPerFrameArena, getArrayLength(gameState->canvasTabs), char *);
@@ -417,30 +421,23 @@ void checkAndSaveBackupFile(GameState *gameState) {
             if(canvasTabSaveStateHasChanged(tab)) {
                 //NOTE: Update the save position for the backup
                 tab->savePositionBackupUndoBlock = tab->undoList;
-                char *c = getBackupFileNameForTab(0, tab, gameState->appDataFolderName);
-                saveProjectToFile(tab, c, &gameState->threadsInfo, false);
+                char *mallocedFileName = getBackupFileNameForTab(0, tab, gameState->appDataFolderName);
+                saveProjectToFile(tab, mallocedFileName, &gameState->threadsInfo, false);
             }
 
             char *c = getBackupFileNameForTab(&globalPerFrameArena, tab, gameState->appDataFolderName);
             fileNames[filesCount++] = c; 
         }
 
-        saveGlobalProjectSettings_withFileNames(easy_createString_printf(&globalPerFrameArena, "%sfilesOpen", gameState->appDataFolderName), fileNames, filesCount, gameState->appDataFolderName);
+        
+        char *stringAllocated = easy_createString_printf(&globalPerFrameArena, "%sfilesOpen", gameState->appDataFolderName);
+        saveGlobalProjectSettings_withFileNames(stringAllocated, fileNames, filesCount, gameState->appDataFolderName);
+        
         gameState->canvasTabsOpened = getArrayLength(gameState->canvasTabs);
         gameState->timeOfLastBackup = time(NULL);
+        releaseMemoryMark(&mark);
+        memoryArena_sameSpot(&globalPerFrameArena, piece);
     } 
-    // else if(gameState->canvasTabsOpened != getArrayLength(gameState->canvasTabs)) {
-    //     char **fileNames = pushArray(&globalPerFrameArena, getArrayLength(gameState->canvasTabs), char *);
-    //     int filesCount = 0;
-    
-    //     for(int i = 0; i < getArrayLength(gameState->canvasTabs); ++i) {
-    //         CanvasTab *tab = gameState->canvasTabs + i;
-    //         char *c = getBackupFileNameForTab(&globalPerFrameArena, tab, gameState->appDataFolderName);
-    //         fileNames[filesCount++] = c; 
-    //     }
-    //     saveGlobalProjectSettings_withFileNames(easy_createString_printf(&globalPerFrameArena, "%sfilesOpen", gameState->appDataFolderName), fileNames, filesCount, gameState->appDataFolderName);
-    //     gameState->canvasTabsOpened = getArrayLength(gameState->canvasTabs);
-    // }
 }
 
 

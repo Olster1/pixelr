@@ -66,6 +66,8 @@ enum KeyTypes {
   KEY_C,
   KEY_V,
   KEY_A,
+  KEY_F,
+  KEY_R,
   KEY_LEFT,
   KEY_RIGHT,
   KEY_SPACE,
@@ -202,7 +204,6 @@ void processEvent(GameState *gameState, SDL_Event *e) {
       if(id == SDL_WINDOWEVENT_RESIZED || id == SDL_WINDOWEVENT_MOVED) {
         saveGlobalProjectSettings(gameState);
       }
-    
     } else if (e->type == SDL_DROPFILE) {
       if(gameState->droppedFileCount < arrayCount(gameState->droppedFilePaths)) {
         gameState->droppedFilePaths[gameState->droppedFileCount++] = e->drop.file;
@@ -231,6 +232,8 @@ int main(int argc, char **argv) {
   if (SDL_Init(SDL_INIT_EVERYTHING)) {
     return 0;
   }
+
+  g_mainThreadId = SDL_ThreadID();
   GlobalTimeFrequencyDatum = SDL_GetPerformanceFrequency();
   DEBUG_TIME_BLOCK_FOR_FRAME_BEGIN(beginFrameProfiler, "Main: Intial setup");\
 
@@ -337,10 +340,11 @@ int main(int argc, char **argv) {
         } while(SDL_PollEvent(&e));
     }
 
+    
+
     //NOTE: This is to get the last interaction mode
     gameState->interactionModeStartOfFrame = gameState->interactionMode;
     
-    updateMyImgui(gameState, imguiIo);
     
     const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
     
@@ -354,6 +358,8 @@ int main(int argc, char **argv) {
     updateKeyState(gameState, KEY_V, currentKeyStates[SDL_GetScancodeFromKey(SDLK_v)] == 1);
     updateKeyState(gameState, KEY_X, currentKeyStates[SDL_GetScancodeFromKey(SDLK_x)] == 1);
     updateKeyState(gameState, KEY_A, currentKeyStates[SDL_GetScancodeFromKey(SDLK_a)] == 1);
+    updateKeyState(gameState, KEY_R, currentKeyStates[SDL_GetScancodeFromKey(SDLK_r)] == 1);
+    updateKeyState(gameState, KEY_F, currentKeyStates[SDL_GetScancodeFromKey(SDLK_f)] == 1);
 #if defined(__APPLE__)
 //NOTE: Command for mac
     updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_GetScancodeFromKey(SDLK_LGUI)] == 1);

@@ -170,6 +170,17 @@ float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h, bool real = f
      return result;
 }
 
+bool hideOrShowArrowIfOnCanvas(GameState *gameState, CanvasTab *tab) {
+    float2 coord = getCanvasCoordFromMouse(gameState, tab->w, tab->h);
+    if(coord.y >= 0 && coord.x >= 0 && coord.y < tab->h && coord.x < tab->w) {
+        platform_hideMouseCursor();
+        return false;
+    } else {
+        platform_showMouseCursor();
+        return true;
+    }
+}
+
 float4 getBlendedColor(float4 oldColorF, float4 newColorF) {
     DEBUG_TIME_BLOCK()
     // Convert colors to premultiplied alpha
@@ -530,7 +541,7 @@ void drawCursor(GameState *gameState) {
 
 void drawPaintCursor(GameState *gameState) {
     CanvasTab *tab = getActiveCanvasTab(gameState);
-    if(tab && gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_NONE) {
+    if(tab && gameState->brushOutlineStencil) {
         float4 color = tab->colorPicked;
         int width = gameState->brushOutlineSize;
         int height = gameState->brushOutlineSize;
@@ -557,8 +568,14 @@ void drawPaintCursor(GameState *gameState) {
            for (int y = 0; y < height; ++y) {
                 for (int x = 0; x < width; ++x) {
 
-                    if (!stencil[IDX(x, y)])
+                    if (!stencil[IDX(x, y)]) {
                         continue;
+                    }
+                    // if(stencil[IDX(x, y)] > 1) {
+                    //     color = make_float4(1, 1, 0, 1);
+                    // } else {
+                    //     color = tab->colorPicked;
+                    // }
 
                     // World-space corners
                     float2 p00 = canvasCoordToWorldSpace(canvas,
@@ -583,7 +600,7 @@ void drawPaintCursor(GameState *gameState) {
                     }
 
                     // Right edge
-                    if (x == width - 1 || !stencil[IDX(x + 1, y)]) {
+                    if (x == (width - 1) || !stencil[IDX(x + 1, y)]) {
                         pushLineEndToEndWorldSpace(gameState->renderer, p10, p11, color);
                     }
 
@@ -593,7 +610,7 @@ void drawPaintCursor(GameState *gameState) {
                     }
 
                     // Top edge
-                    if (y == height - 1 || !stencil[IDX(x, y + 1)]) {
+                    if (y == (height - 1) || !stencil[IDX(x, y + 1)]) {
                         pushLineEndToEndWorldSpace(gameState->renderer, p01, p11, color);
                     }
                 }
@@ -1263,7 +1280,9 @@ void setCanvasColorWithBrushSize(GameState *gameState, CanvasTab *tab, Canvas *c
                     if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h && inBounds) {
                         setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase, gameState->canvasMirrorFlags);
                     }        
-                } else if(inBounds) {
+                } 
+                
+                if(inBounds) {
                     assert((brushY*brushSize + brushX) < (brushSize*brushSize));
                     gameState->brushOutlineStencil[brushY*brushSize + brushX] = 1;
                 }
@@ -1296,7 +1315,8 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas, bool erase = false) 
             float2 startP = gameState->lastPaintP;
             
             int loopCount = 0; //NOTE: To avoid any chance of an infinite loop
-            while(float2_dot(minus_float2(startP, endP), minus_float2(gameState->lastPaintP, endP)) >= 0 && (float2_magnitude(addend) > 0) && loopCount < 1000) {
+            int maxLoopCount = 1000;
+            while(loopCount == 0 || (float2_dot(minus_float2(startP, endP), minus_float2(gameState->lastPaintP, endP)) >= 0 && (float2_magnitude(addend) > 0) && loopCount < maxLoopCount)) {
                 DEBUG_TIME_BLOCK_NAMED("DRAW SET CANVAS COLOR")
 
                 //NOTE: Draw the brush size

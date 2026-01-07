@@ -1,9 +1,12 @@
 #include "includes.h"
 
-
 void updateGame(GameState *gameState) {
     DEBUG_TIME_BLOCK()
     checkInitGameState(gameState);
+    {
+        ImGuiIO* io = &ImGui::GetIO();
+        updateMyImgui(gameState, *io);
+    }
 
     float fauxWidth = FAUX_WIDTH;
     float16 screenGuiT = make_ortho_matrix_bottom_left_corner(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
@@ -22,7 +25,6 @@ void updateGame(GameState *gameState) {
    CanvasTab *t = getActiveCanvasTab(gameState);
    if(t) {
         checkAndSaveBackupFile(gameState);
-        
         drawCanvasGridBackground(gameState, getActiveCanvas(gameState), getActiveCanvasTab(gameState));
         sanityCheckCanvasSize(t);
         Frame *f = getActiveFrame(gameState);
@@ -55,25 +57,11 @@ void updateGame(GameState *gameState) {
 
         updateUndoState(gameState);
 
-        updateCanvasZoom(gameState, isInteractingWithIMGUI(), gameState->scrollSpeed*(gameState->inverseZoom ? -1 : 1));
+        updateCanvasZoom(gameState, isInteractingWithIMGUI(), 0.8f*gameState->scrollSpeed*(gameState->inverseZoom ? -1 : 1));
         //NOTE: Update interaction with the canvas
-        if(isInteractingWithIMGUI()) {
-            if(gameState->interactionAppState != INTERACTION_IMGUI) {
-                // platform_showMouseCursor();
-                // printf("SHOW CURSOR\n");
-                // gameState->interactionAppState = INTERACTION_IMGUI;
-            }
-            
-        } else {
-            if(gameState->interactionAppState != INTERACTION_DRAWING) {
-                // platform_hideMouseCursor();
-                // printf("HIDE CURSOR\n");
-                // gameState->interactionAppState = INTERACTION_DRAWING;
-            }
-            
+        if(!isInteractingWithIMGUI()) {
             if(gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_DOWN) {
                 //NOTE: First check if it's a SPACE shortcut interaction - like space/drag
-                
                 if(gameState->mouseBtn[MOUSE_BUTTON_RIGHT_CLICK] != MOUSE_BUTTON_NONE) {
                     float2 diff = minus_float2(gameState->mouseP_screenSpace, gameState->lastMouseP);
                     float speedFactor = 0.3f;
@@ -81,32 +69,63 @@ void updateGame(GameState *gameState) {
                 } else {
                     updateCanvasMove(gameState);
                 }
+            } else if(gameState->keys.keys[KEY_F] == MOUSE_BUTTON_DOWN) {
+                if(!(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED))
+                 {
+                    float2 diff = minus_float2(gameState->mouseP_screenSpace, gameState->lastMouseP);
+                    float speedFactor = 1;
+                    t->eraserSize += speedFactor*diff.x;
+                    t->eraserSize = clamp(1, 100, t->eraserSize);
+                    updateCanvasDraw(gameState, getActiveCanvas(gameState));
+                    drawPaintCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
+                }
+            } else if(gameState->keys.keys[KEY_R] == MOUSE_BUTTON_DOWN) {
+                if(!(gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED))
+                 {
+                    float2 diff = minus_float2(gameState->mouseP_screenSpace, gameState->lastMouseP);
+                    float opacity = t->opacity*100.0f;
+                    opacity += diff.x;
+                    opacity = clamp(0.0f, 100.0f, opacity);
+                    t->opacity = 0.01f*opacity;
+                    updateCanvasDraw(gameState, getActiveCanvas(gameState));
+                    drawPaintCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
+                } 
             } else {
                 if(gameState->interactionMode == CANVAS_DRAW_RECTANGLE_MODE || gameState->interactionMode == CANVAS_DRAW_CIRCLE_MODE || gameState->interactionMode == CANVAS_DRAW_LINE_MODE) {
                     updateDrawShape(gameState, getActiveCanvas(gameState));
-
                     drawSinglePixelCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_ERASE_MODE) {
                     updateEraser(gameState, getActiveCanvas(gameState));
                     drawPaintCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_FILL_MODE) {
                     updateBucket(gameState, getActiveCanvas(gameState), gameState->selectMode);
-                    drawCursor(gameState);
+                    drawSinglePixelCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_DRAW_MODE) {
                     updateCanvasDraw(gameState, getActiveCanvas(gameState));
                     drawPaintCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
+                    // char *stringAllocated = easy_createString_printf(&globalPerFrameArena, "HEY");
+                    // printf("allocat\n");
                 } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
                     updateCanvasMove(gameState);
                     drawCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) {
                     updateCanvasSelect(gameState, getActiveCanvasTab(gameState));
                     drawCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_SPRAY_CAN) {
                     updateSprayCan(gameState, getActiveCanvas(gameState));
                     drawCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_COLOR_DROPPER) {
                     updateColorDropper(gameState, getActiveCanvas(gameState));
-                    // drawCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
                 }
             }
         }
@@ -127,9 +146,11 @@ void updateGame(GameState *gameState) {
             gameState->grabbedCornerIndex = -1;
 
             getActiveCanvasTab(gameState)->currentUndoBlock = 0;
-        }
-
+        }   
+        
     }
+    //NOTE: Invalidate the this array brushOutlineStencil because it was pushed on the perFrameArena
+    gameState->brushOutlineStencil = 0;
     
     updateHotKeys(gameState);
 

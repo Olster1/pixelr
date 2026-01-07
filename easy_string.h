@@ -80,23 +80,27 @@ char *easyString_copyToArena_(char *a, Arena *arena, int newStrLen_) {
     return newString;
 }
 
-
-inline char *easy_createString_printf(Arena *arena, char *formatString, ...) {
-
+inline char *easy_createString_printf(Arena *arena, char *formatString, ...)
+{
     va_list args;
     va_start(args, formatString);
 
-    char bogus[4];
-    int stringLengthToAlloc = vsnprintf(bogus, 1, formatString, args) + 1; //for null terminator, just to be sure
+    va_list argsCopy;
+    va_copy(argsCopy, args);
+
+    int stringLengthToAlloc =
+        vsnprintf(NULL, 0, formatString, argsCopy) + 1;
+
+    va_end(argsCopy);
 
     char *strArray = 0;
-    if(!arena) {    
-        strArray = (char *)easyPlatform_allocateMemory(stringLengthToAlloc*sizeof(char));
+    if(!arena) {
+        strArray = (char *)easyPlatform_allocateMemory(stringLengthToAlloc);
     } else {
         strArray = pushArray(arena, stringLengthToAlloc, char);
     }
 
-    vsnprintf(strArray, stringLengthToAlloc, formatString, args); 
+    vsnprintf(strArray, stringLengthToAlloc, formatString, args);
 
     va_end(args);
 
