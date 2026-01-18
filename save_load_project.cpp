@@ -72,8 +72,33 @@ void sanityCheckCanvasSize(CanvasTab *tab) {
     // }
 }
 
-CanvasTab loadPixelrProject(const char *filePath) {
+CanvasTab loadPixelrProject(const char *filePath, bool isFromBackup, CanvasTab *tabsOpen = 0, int filePathsOpenCount = 0) {
     DEBUG_TIME_BLOCK()
+
+    int openIndex = -1;
+    if(filePathsOpenCount > 0) {
+        //NOTE: First check if this file is alreday open so there aren't multiple versions of the same file open at once
+        for(int i = 0; i < filePathsOpenCount && (openIndex < 0); i++) {
+            char *saveName = (char *)tabsOpen[i].saveFilePath;
+            if(saveName && easyString_stringsMatch_nullTerminated((char *)filePath, saveName)) {
+                //NOTE: Already open so don't open it
+                openIndex = i;
+                break;
+                
+            }
+        }
+
+         if(openIndex >= 0) {
+            addIMGUIToast("File Already Open", 2);
+            tabsOpen[openIndex].uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
+            
+
+            //NOTE: Return an empty one
+            CanvasTab tab = CanvasTab(16, 16, 0);
+            tab.valid = false; //NOTE: No Longer valid
+            return tab;
+        }
+    }
     
     FileContents file = platformReadEntireFile((char *)filePath, false);
     if(file.valid && file.memory) {
@@ -108,6 +133,18 @@ CanvasTab loadPixelrProject(const char *filePath) {
             DEBUG_TIME_BLOCK_NAMED("SAVE FILE PATH")
             char *saveFilePath = ((char *)file.memory) + data->offsetToSavePath;
             tab.saveFilePath = easyString_copyToHeap(saveFilePath, data->lengthOfSaveFilePath);
+
+            if(!isFromBackup) 
+            {
+                tab.saveFilePath = easyString_copyToHeap((char *)filePath, easyString_getSizeInBytes_utf8((char *)filePath));
+            }
+
+            //NOTE: Check if it exists or not 
+            //TOIDO: Make multi-threaded
+            if(!platformDoesFileExist(tab.saveFilePath)) {
+                tab.fileIsMissing = true;
+            }
+
         } else {
             //NOTE: Didn't have a save file path when the project was saved
             tab.saveFilePath = 0;
@@ -122,13 +159,16 @@ CanvasTab loadPixelrProject(const char *filePath) {
             tab.fileName = "Untitled";
         }
 
-         if(data->offsetToId > 0) {
+        if(data->offsetToId > 0) {
             char *id = ((char *)file.memory) + data->offsetToId;
             tab.saveId.stringID = easyString_copyToHeap(id, data->idLengthInBytes);
             tab.saveId.crc32Hash = data->crc32HashForId;
         } 
 
-        assert(tab.activeFrame < data->frameCount);
+        if(tab.activeFrame >= data->frameCount) {
+            assert(false);
+            tab.activeFrame = 0;
+        }
 
         int visibleIndex = 0;
 
@@ -168,7 +208,7 @@ CanvasTab loadPixelrProject(const char *filePath) {
                 easyPlatform_copyMemory(c->pixels, pixelData, dataSize);
                 totalCavases++;
             }
-            assert(data->framesActiveLayer[i] < getArrayLength(f->layers));
+            // assert(data->framesActiveLayer[i] < getArrayLength(f->layers));
             f->activeLayer = MathMin(data->framesActiveLayer[i], getArrayLength(f->layers) - 1);
         }
 
@@ -187,7 +227,12 @@ CanvasTab loadPixelrProject(const char *filePath) {
     }
 }
 
-CanvasTab loadProjectFromFile(bool *valid) {
+struct OpenFilesPaths {
+    int count;
+    CanvasTab *canvasTabs;
+};
+
+CanvasTab loadProjectFromFile(bool *valid, OpenFilesPaths openFilePaths) {
     const char *filterPatterns[] = { "*.spixl",};
     const char *filePath = tinyfd_openFileDialog(
         "Open Project",         // Dialog title
@@ -199,7 +244,7 @@ CanvasTab loadProjectFromFile(bool *valid) {
     );    
 
     if(filePath) {
-        CanvasTab tab = loadPixelrProject(filePath);
+        CanvasTab tab = loadPixelrProject(filePath, false, openFilePaths.canvasTabs, openFilePaths.count);
         return tab;
     } else {
         *valid = false;
@@ -256,6 +301,36 @@ bool doesCanvasTabHaveContent(CanvasTab *t) {
     return ((t->savePositionUndoBlock == t->undoList));
 }
 
+int getCorrectActiveLayerBasedOnDeletedLayers(Frame *frame) {
+    int result = 0;
+    bool found = false;
+    for(int i = 0; i < getArrayLength(frame->layers) && !found; ++i) {
+        Canvas *c = frame->layers + i;
+        if(frame->activeLayer == i) {
+            found = true;
+            break;
+        } else if(!c->deleted) {
+            result++;
+        }
+    }
+    return result;
+}
+
+int getCorrectActiveFrameBasedOnDeletedFrames(CanvasTab *tab) {
+    int result = 0;
+    bool found = false;
+    for(int i = 0; i < getArrayLength(tab->frames) && !found; ++i) {
+        Frame *f = tab->frames + i;
+        if(tab->activeFrame == i) {
+            found = true;
+            break;
+        } else if(!f->deleted) {
+            result++;
+        }
+    }
+    return result;
+}
+
 bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) {
     bool result = false;
     DEBUG_TIME_BLOCK()
@@ -266,6 +341,7 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
             //NOTE: Update the save state to say the project is now saved
             tab->savePositionUndoBlock = tab->undoList;
             tab->isInSaveState = true;
+            tab->fileIsMissing = false;
 
             //NOTE: If there is no save file path, now add it to save in the future
             if(!tab->saveFilePath) {
@@ -307,7 +383,7 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
         data.copyOnFrame = (bool)tab->copyFrameOnAdd;
         data.canvasW = tab->w;
         data.canvasH = tab->h;
-        data.activeFrame = tab->activeFrame;
+        data.activeFrame = getCorrectActiveFrameBasedOnDeletedFrames(tab);
         data.canvasesFileOffset = sizeof(ProjectFile);
         
         data.wasInSavedState = isCanvasTabSaved(tab);
@@ -320,7 +396,7 @@ bool saveProjectFile_(CanvasTab *tab, char *filePath, bool replaceSaveFilePath) 
             Frame *f = tab->frames + i;
             if(f && !f->deleted) {
                 assert(i < MAX_FRAME_COUNT);
-                data.framesActiveLayer[aliveFrameCount] = f->activeLayer;
+                data.framesActiveLayer[aliveFrameCount] = getCorrectActiveLayerBasedOnDeletedLayers(f);
                 assert(f->activeLayer < getArrayLength(f->layers));
 
                 int aliveLayerCount = 0;
@@ -414,11 +490,13 @@ void saveProjectFile_threadData(void *data_) {
 bool saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *threadsInfo = 0, bool replaceSaveFilePath = true) {
     char *strToWrite = 0;
 
+    bool wasFileDialog = false;
     if(optionalFilePath) {
         strToWrite = optionalFilePath;
     } else if(tab->saveFilePath) {
         strToWrite = tab->saveFilePath;
     } else {
+        wasFileDialog = true;
         char const *fileName = tinyfd_saveFileDialog (
         "Save File",
         "",
@@ -447,7 +525,10 @@ bool saveProjectToFile(CanvasTab *tab, char *optionalFilePath = 0, ThreadsInfo *
             saveProjectFile_(tab, strToWrite, replaceSaveFilePath);
         }
 
-        // tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
+        if(wasFileDialog) {
+            tab->uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
+        }
+        
     }
     return strToWrite != 0;
 }

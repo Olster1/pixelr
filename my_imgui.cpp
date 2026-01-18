@@ -120,8 +120,14 @@ void drawTabs(GameState *state) {
               {
                 unsavedFlag = 0;
               }
-              
-              if (ImGui::BeginTabItem(t->fileName, &t->isOpen, t->uiTabSelectedFlag | unsavedFlag))
+
+              bool fileIsMissing = t->fileIsMissing;
+              if (fileIsMissing) {
+                ImGui::PushStyleColor(ImGuiCol_Text, IM_COL32(255, 120, 120, 255));
+              }
+                
+              char *tempFileName = (!fileIsMissing) ? t->fileName : easy_createString_printf(&globalPerFrameArena, "%s (missing)", t->fileName);
+              if (ImGui::BeginTabItem(tempFileName, &t->isOpen, t->uiTabSelectedFlag | unsavedFlag))
               {
                 int currentOrder = ImGui::TabBarGetTabOrder(tab_bar, ImGui::TabBarGetCurrentTab(tab_bar));
 
@@ -147,6 +153,11 @@ void drawTabs(GameState *state) {
               
                   ImGui::EndTabItem();
               }
+
+              if(fileIsMissing) {
+                ImGui::PopStyleColor();
+              }
+              
               //NOTE: Clear the ui selected flags now
               t->uiTabSelectedFlag = 0;
 
@@ -308,8 +319,17 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
           Frame *frame = canvasTab->frames + i;
           if(!frame->deleted) {
             if (addedIndex > 0) ImGui::SameLine(); // Keep frames on the same line
+
+            float2 imageRatioXY = make_float2((float)canvasTab->w / (float)canvasTab->h, (float)canvasTab->h / (float)canvasTab->w);
+            float2 imageSizeXY = make_float2(64, 64);
+            if(imageRatioXY.x > 1.0f) {
+              imageSizeXY.y = imageRatioXY.y*imageSizeXY.x;
+            } else {
+              imageSizeXY.x = imageRatioXY.x*imageSizeXY.y;
+            }
+   
     
-            ImVec2 imageSize(64, 64); // Adjust as needed
+            ImVec2 imageSize(imageSizeXY.x, imageSizeXY.y); // Adjust as needed
             ImVec2 cursorPos = ImGui::GetCursorScreenPos();
             ImVec4 borderColor = (i == canvasTab->activeFrame) ? ImVec4(1, 1, 0, 1) : ImVec4(0, 0, 0, 0); // Yellow for current frame
     
@@ -328,7 +348,13 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
             ImDrawList* drawList = ImGui::GetWindowDrawList();
 
             // Draw a white background rectangle
-            drawList->AddRectFilled(imagePos, ImVec2(imagePos.x + imageSize.x, imagePos.y + imageSize.y), IM_COL32(255, 255, 255, 255));
+            drawList->AddImage(
+            (ImTextureID)(intptr_t)canvasTab->checkBackgroundFrameBuffer.textureHandle,
+            cursorPos,
+            ImVec2(imagePos.x + imageSize.x, imagePos.y + imageSize.y),
+            ImVec2(0, 1),
+            ImVec2(1, 0)
+        );
 
             // Draw the image on top
             ImGui::SetCursorScreenPos(imagePos); // Reset position to draw the image
@@ -393,7 +419,11 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
           anim->elapsedTime += deltaTime;
           if (anim->elapsedTime >= anim->frameTime) {
               anim->elapsedTime = 0.0f;
-              canvasTab->activeFrame = (canvasTab->activeFrame + 1) % getArrayLength(canvasTab->frames);
+              Frame *f = 0;
+              do {
+                canvasTab->activeFrame = (canvasTab->activeFrame + 1) % getArrayLength(canvasTab->frames);
+                f = canvasTab->frames + canvasTab->activeFrame;
+              } while(f && f->deleted);
           }
       }
 
@@ -403,16 +433,35 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
 
 void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame) {
   if (ImGui::BeginTable("Layers Table", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-    for (int i = 0; i < getArrayLength(activeFrame->layers); i++)
+    float2 imageRatioXY = make_float2((float)canvasTab->w / (float)canvasTab->h, (float)canvasTab->h / (float)canvasTab->w);
+    float2 imageSizeXY = make_float2(64, 64);
+    if(imageRatioXY.x > 1.0f) {
+      imageSizeXY.y = imageRatioXY.y*imageSizeXY.x;
+    } else {
+      imageSizeXY.x = imageRatioXY.x*imageSizeXY.y;
+    }
+
+    for (int i = (getArrayLength(activeFrame->layers) - 1); i >=0 ; i--)
     {
         if (activeFrame->layers[i].deleted) continue;
 
+        
         ImGui::TableNextRow();
 
         // --- Column 1: Thumbnail ---
         ImGui::TableNextColumn();
 
-        ImVec2 imageSize(64, 64);
+        
+        ImGui::PushID(i);
+        // float start_y = ImGui::GetCursorPosY();
+        // ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 32.0f);
+        ImGui::Checkbox("##selected", &activeFrame->layers[i].isSelected);
+        // ImGui::SetCursorPosY(start_y);
+        ImGui::PopID();
+        
+        ImGui::SameLine();
+      
+        ImVec2 imageSize(imageSizeXY.x, imageSizeXY.y);
         ImVec2 cursorPos = ImGui::GetCursorScreenPos();
 
         ImGui::PushID(i);
@@ -422,11 +471,16 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
         }
         ImGui::PopID();
 
-        // Draw white background
+        // Draw checker background
         ImDrawList* drawList = ImGui::GetWindowDrawList();
-        drawList->AddRectFilled(cursorPos,
+
+       drawList->AddImage(
+            (ImTextureID)(intptr_t)canvasTab->checkBackgroundFrameBuffer.textureHandle,
+            cursorPos,
             ImVec2(cursorPos.x + imageSize.x, cursorPos.y + imageSize.y),
-            IM_COL32(255, 255, 255, 255));
+            ImVec2(0, 1),
+            ImVec2(1, 0)
+        );
 
         ImGuiDragDropFlags src_flags = 0;
         src_flags |= ImGuiDragDropFlags_SourceNoDisableHover;     // Keep the source displayed as hovered
@@ -448,26 +502,38 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
                 int srcIndex = *(const int*)payload->Data;
                 if (srcIndex != i)
                 {
-                    // swap layers
-                    Canvas temp = activeFrame->layers[i];
-                    activeFrame->layers[i] = activeFrame->layers[srcIndex];
-                    activeFrame->layers[srcIndex] = temp;
 
-                    //NOTE: Add Undo redo action
-                    FrameInfo frameUndoInfo = {};
-                    frameUndoInfo.canvasType = UNDO_REDO_CANVAS_SWAP;
-                    frameUndoInfo.frameIndex = canvasTab->activeFrame;
-                    frameUndoInfo.canvasIndex = i;
-                    frameUndoInfo.canvasIndexB = srcIndex;
+                  Canvas moved = activeFrame->layers[srcIndex];
 
-                    frameUndoInfo.beforeActiveLayer = activeFrame->activeLayer;
+                  if (srcIndex < i) {
+                      // moving forward: shift left
+                      for (int j = srcIndex; j < i; ++j) {
+                          activeFrame->layers[j] = activeFrame->layers[j + 1];
+                      }
+                  } else if (srcIndex > i) {
+                      // moving backward: shift right
+                      for (int j = srcIndex; j > i; --j) {
+                          activeFrame->layers[j] = activeFrame->layers[j - 1];
+                      }
+                  }
 
-                    if (activeFrame->activeLayer == srcIndex) {
-                      activeFrame->activeLayer = i;
-                    }
+                  activeFrame->layers[i] = moved;
 
-                    frameUndoInfo.afterActiveLayer = activeFrame->activeLayer;
-                    canvasTab->addUndoInfo(frameUndoInfo);
+                  //NOTE: Add Undo redo action
+                  FrameInfo frameUndoInfo = {};
+                  frameUndoInfo.canvasType = UNDO_REDO_CANVAS_SWAP;
+                  frameUndoInfo.frameIndex = canvasTab->activeFrame;
+                  frameUndoInfo.canvasIndex = i;
+                  frameUndoInfo.canvasIndexB = srcIndex;
+
+                  frameUndoInfo.beforeActiveLayer = activeFrame->activeLayer;
+
+                  if (activeFrame->activeLayer == srcIndex) {
+                    activeFrame->activeLayer = i;
+                  }
+
+                  frameUndoInfo.afterActiveLayer = activeFrame->activeLayer;
+                  canvasTab->addUndoInfo(frameUndoInfo);
                         
                 }
             }
@@ -601,7 +667,7 @@ void drawLayersWindow(GameState *state, float deltaTime) {
 
     if(canvasTab) {
       ImGuiIO& io = ImGui::GetIO();
-      ImVec2 window_pos = ImVec2(io.DisplaySize.x, 20);
+      ImVec2 window_pos = ImVec2(io.DisplaySize.x, 50);
       ImVec2 window_pivot = ImVec2(1.0f, 0.0f);
 
       ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
@@ -632,6 +698,32 @@ void drawLayersWindow(GameState *state, float deltaTime) {
           activeFrame->activeLayer = getArrayLength(activeFrame->layers) - 1;
           frameUndoInfo.afterActiveLayer = activeFrame->activeLayer;
           canvasTab->addUndoInfo(frameUndoInfo);
+      }
+      ImGui::SameLine();
+      
+      int selectedCount = 0;
+      int *canvasIndexes = pushArray(&globalPerFrameArena, getArrayLength(activeFrame->layers), int);
+      if(activeFrame) {
+        for(int i = 0; i < getArrayLength(activeFrame->layers); ++i) {
+          Canvas *c = activeFrame->layers + i;
+          if(c && c->isSelected) {
+            canvasIndexes[selectedCount++] = i;
+          }
+          
+        }
+      }
+      if(selectedCount <= 1) {
+        ImGui::BeginDisabled();
+      }
+      if (ImGui::Button("Merge Layers")) {
+          //TODO: Add undo redo
+          for(int i = 0; i < selectedCount; ++i) {
+            // int index = canvasIndexes[i];
+
+          }
+      }
+      if(selectedCount <= 1) {
+        ImGui::EndDisabled();
       }
 
       ImGui::End();
@@ -1030,14 +1122,173 @@ void updateAboutWindow(GameState *gameState) {
   }
 }
 
+
+void outputColorPallette(GameState *state, float4 *colorPicked, char *id = "") {
+    float size = 30.0f;  // Square size
+    float spacing = 5.0f; // Spacing between squares
+
+    CanvasTab *tab = getActiveCanvasTab(state);
+
+    if(tab) {
+      ImVec2 child_size = ImVec2(0, 200); // width 0 = fill, height = 200px
+      ImGui::BeginChild(easy_createString_printf(&globalPerFrameArena, "%s%s", "ScrollingRegion", id), child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
+
+      for (int i = 0; i < tab->palletteCount; ++i) {
+          ImGui::PushID(easy_createString_printf(&globalPerFrameArena, "%d%s", i, id));  // Ensure unique ID for each color
+  
+          // Get cursor position for drawing the square
+          ImVec2 pos = ImGui::GetCursorScreenPos();
+          ImDrawList* drawList = ImGui::GetWindowDrawList();
+  
+          // Create an invisible button for the selectable color square
+          if (ImGui::InvisibleButton(easy_createString_printf(&globalPerFrameArena, "%s%s", "color_btn", id), ImVec2(size, size))) {
+            *colorPicked = u32_to_float4_color(tab->colorsPallete[i]);
+          }
+          u32 a = tab->colorsPallete[i];
+
+          //NOTE: Should always have a alpha color of full, since they don't store the alpha value.
+          a |= 0xFF << 24;
+
+          // Draw color square
+          drawList->AddRectFilled(pos, ImVec2(pos.x + size, pos.y + size), (a));
+  
+          // Draw border if selected
+          if (float4_to_u32_color(*colorPicked) == a) {
+              drawList->AddRect(pos, ImVec2(pos.x + size, pos.y + size), IM_COL32(255, 255, 255, 255), 0.0f, 0, 3.0f);
+          }
+  
+          ImGui::PopID();
+  
+          // Layout: Move to next row if needed
+          if ((i + 1) % 5 != 0) {
+              ImGui::SameLine(0, spacing);
+          }
+    }
+    ImGui::EndChild(); // End of scroll area
+  }
+}
+
+void addModeSelection(GameState *state, char *unicodeIcon, CanvasInteractionMode mode) {
+  bool pushStyle = false;
+
+  if (state->overideDrawModeState != CANVAS_INTERACTION_MODE_NONE) {
+    //NOTE: Can override the current state temporarily useing hotkeys
+    if(state->overideDrawModeState == mode) {
+      pushStyle = true;
+    }
+  } else if(state->interactionMode == mode)  {
+    pushStyle = true;
+  }
+  
+  if(pushStyle) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow color
+  }
+
+  if (ImGui::Button(unicodeIcon)) {
+      state->interactionMode = mode;
+  }
+
+  if (pushStyle) {
+      ImGui::PopStyleColor();
+  }
+}
+
+void updateReplaceColorsWindow(GameState *gameState) {
+  if(gameState->replaceColorsWindowShown) {
+     ImGuiIO& io = ImGui::GetIO();
+    ImVec2 window_pos = ImVec2(0.5f*io.DisplaySize.x, 0.5f*io.DisplaySize.y);
+        ImVec2 window_pivot = ImVec2(0.5f, 0.5f);
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_FirstUseEver, window_pivot);
+      ImGui::SetNextWindowSize(
+        ImVec2(0, 0),
+        ImGuiCond_FirstUseEver
+    );
+    ImGui::Begin("Replace Colors in Canvas", &gameState->replaceColorsWindowShown, ImGuiWindowFlags_NoCollapse); 
+    // Frame *activeFrame = getActiveFrame(gameState);
+    // if(activeFrame) {
+    if(gameState->color_replaceAllFrames) {
+      ImGui::BeginDisabled();
+    }
+
+    if(ImGui::Checkbox("Replace All Layers", (gameState->color_replaceAllFrames) ? &gameState->color_replaceAllFrames : &gameState->color_replaceAllLayers)) {
+    
+    }
+
+    if(gameState->color_replaceAllFrames) {
+      ImGui::EndDisabled();
+    }
+      if(ImGui::Checkbox("Replace All Frames", &gameState->color_replaceAllFrames)) {
+        
+      }
+
+      if(ImGui::ColorEdit3("Old Color", (float*)&gameState->color_replaceSrc)) {
+      } 
+      ImGui::SameLine();
+      ImGui::PushID("Cavnas_picker_src");
+      addModeSelection(gameState, "\uf1fb", CANVAS_COLOR_DROPPER_REPLACE_SRC);
+      ImGui::PopID();
+      ImGui::SameLine();
+      addToolTip("Pick a color from the canvas");
+      ImGui::PushID(easy_createString_printf(&globalPerFrameArena, "%s%s", "expand", "_srcColor"));
+      if (ImGui::Button((!gameState->showSrcColorPallette) ? "\uf107":  "\uf106")) {
+        gameState->showSrcColorPallette = !gameState->showSrcColorPallette;
+      }
+      // ImGui::SameLine();
+      addToolTip("Toggle Color Pallette");
+      ImGui::PopID();
+      if(gameState->showSrcColorPallette) {
+        outputColorPallette(gameState, &gameState->color_replaceSrc, "old_color");
+      }
+
+      if(ImGui::ColorEdit3("New Color", (float*)&gameState->color_replaceDest)) {
+      
+      } 
+      ImGui::SameLine();
+      ImGui::PushID("Cavnas_picker_dest");
+      addModeSelection(gameState, "\uf1fb", CANVAS_COLOR_DROPPER_REPLACE_DEST);
+      ImGui::PopID();
+      ImGui::SameLine();
+      addToolTip("Pick a color from the canvas");
+      
+      ImGui::PushID(easy_createString_printf(&globalPerFrameArena, "%s%s", "expand", "_destColor"));
+      if (ImGui::Button((!gameState->showDestColorPallette) ? "\uf107" : "\uf106")) {
+        gameState->showDestColorPallette = !gameState->showDestColorPallette;
+      }
+      ImGui::PopID();
+
+      if(gameState->showDestColorPallette) {
+        outputColorPallette(gameState, &gameState->color_replaceDest, "new_color");
+      }
+
+      if (ImGui::Button("Replace")) {
+        //NOTE: Should always have a alpha color of full, since they don't store the alpha value.
+        gameState->color_replaceSrc.w = 1.0f;
+        gameState->color_replaceDest.w = 1.0f;
+        int replaceCount = replaceCanvasColors(gameState, float4_to_u32_color(gameState->color_replaceSrc), float4_to_u32_color(gameState->color_replaceDest));
+        addIMGUIToast("Colors Replaced", 2);
+      }
+
+    ImGui::End();
+  }
+}
+
 void updateLayerSettingsWindow(GameState *gameState) {
   if(gameState->showLayerOptionsWindow) {
+     ImGuiIO& io = ImGui::GetIO();
+    ImVec2 window_pos = ImVec2(0.5f*io.DisplaySize.x, 0.5f*io.DisplaySize.y);
+        ImVec2 window_pivot = ImVec2(0.5f, 0.5f);
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_FirstUseEver, window_pivot);
+      ImGui::SetNextWindowSize(
+        ImVec2(0, 0),
+        ImGuiCond_FirstUseEver
+    );
     ImGui::Begin("Layer Settings", &gameState->showLayerOptionsWindow, ImGuiWindowFlags_NoCollapse); 
     Frame *activeFrame = getActiveFrame(gameState);
     if(activeFrame) {
       if(gameState->layerOptionsIndex >= 0 && gameState->layerOptionsIndex < getArrayLength(activeFrame->layers)) {
         Canvas *c = activeFrame->layers + gameState->layerOptionsIndex;
         if(c) {
+           ImGui::Text("Layer: %d", gameState->layerOptionsIndex); 
           if(ImGui::SliderFloat("Layer Opacity", &c->opacity, 0, 1)) {
           }
         }
@@ -1087,7 +1338,7 @@ void updateCanvasSettingsWindow(GameState *gameState) {
 
 void loadProjectAndStoreTab(GameState *gameState) {
   bool valid = true;
-  CanvasTab tab = loadProjectFromFile(&valid);
+  CanvasTab tab = loadProjectFromFile(&valid, getOpenFilePaths(gameState, &globalPerFrameArena));
   if(valid) {
     tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
     pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
@@ -1141,6 +1392,7 @@ void showMainMenuBar(GameState *state)
             if (ImGui::MenuItem("Copy", "Ctrl+C")) { /* Handle Copy */ }
             if (ImGui::MenuItem("Paste", "Ctrl+V")) { /* Handle Paste */ }
             if (ImGui::MenuItem("Outline Image", "")) { outlineCanvas(state); }
+            if (ImGui::MenuItem("Replace Colors", "Ctrl+R")) { state->replaceColorsWindowShown = true; }
             if (ImGui::MenuItem("Add Color Pallete", "")) { 
               state->colorsPalleteBuffer[0] = '\0';
               state->showColorPalleteEnter = true; 
@@ -1149,9 +1401,10 @@ void showMainMenuBar(GameState *state)
             ImGui::EndMenu();
         }
 
-         if (ImGui::BeginMenu("Canvas"))
+         if (ImGui::BeginMenu("Settings"))
         {
-            if (ImGui::MenuItem("Settings")) { state->canvasSettingsWindow = true; }
+            if (ImGui::MenuItem("Canvas Settings")) { state->canvasSettingsWindow = true; }
+            if (ImGui::MenuItem("Key Bindings")) { state->showKeyBindingsWindow = true; }
             
             ImGui::EndMenu();
         }
@@ -1218,21 +1471,6 @@ void dropdownButton(GameState *gameState) {
   }
 }
 
-void addModeSelection(GameState *state, char *unicodeIcon, CanvasInteractionMode mode) {
-  bool pushStyle = false;
-  if (state->interactionMode == mode) {
-    pushStyle = true;
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 0.0f, 1.0f)); // Yellow color
-  }
-
-  if (ImGui::Button(unicodeIcon)) {
-      state->interactionMode = mode;
-  }
-
-  if (pushStyle) {
-      ImGui::PopStyleColor();
-  }
-}
 void Spinner(const char* label, float radius, int thickness, ImU32 color) {
   ImGuiIO& io = ImGui::GetIO();
   ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -1256,6 +1494,106 @@ void Spinner(const char* label, float radius, int thickness, ImU32 color) {
   }
 }
 
+bool IsKeyAlreadyAssigned(KeyTypes key, int exceptIndex, KeyTypes* bindings)
+{
+    for (int i = 0; i < HOTKEY_TOTAL_COUNT; i++)
+    {
+        if (i == exceptIndex)
+            continue;
+
+        if (bindings[i] == key)
+            return true;
+    }
+    return false;
+}
+
+int getKeyIndexInHotKeyArray(KeyTypes type) {
+  int result = -1;
+  for(int i = 0; i < arrayCount(global_HotkeySelectableKeys); i++) {
+    if(type == global_HotkeySelectableKeys[i]) {
+      result = i;
+      break;
+    }
+  }
+  return result;
+
+}
+
+void updateKeyBindingsWindow(GameState *gameState) {
+  if(gameState->showKeyBindingsWindow) {
+  
+    ImGuiIO& io = ImGui::GetIO();
+    ImVec2 window_pos = ImVec2(0.5f*io.DisplaySize.x, 0.5f*io.DisplaySize.y);
+        ImVec2 window_pivot = ImVec2(0.5f, 0.5f);
+    ImGui::SetNextWindowSizeConstraints(ImVec2(500, 250), ImVec2(FLT_MAX, FLT_MAX));
+    ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
+      ImGui::SetNextWindowSize(
+        ImVec2(0, 0),
+        ImGuiCond_FirstUseEver
+    );
+
+    ImGui::Begin("Hotkeys", &gameState->showKeyBindingsWindow); 
+
+    ImGui::Text("Key Bindings");
+    ImGui::Separator();
+
+    for (int action = 0; action < HOTKEY_TOTAL_COUNT; action++)
+    {
+        ImGui::PushID(action);
+
+        // Label
+        ImGui::AlignTextToFramePadding();
+        ImGui::Text("%s", global_hotkeyActionsTitle[action]);
+        ImGui::SameLine(200);
+
+        KeyTypes currentKey = gameState->hotkeyActionKeys[action];
+        int nameIndex = getKeyIndexInHotKeyArray(currentKey);
+        assert(nameIndex >= 0);
+        if(nameIndex >= 0) {
+          const char* preview = global_KeyTypeNames[nameIndex];
+
+          if (ImGui::BeginCombo("##KeyCombo", preview))
+          {
+              for (int key = 0; key < arrayCount(global_HotkeySelectableKeys); key++)
+              {
+                  KeyTypes keyType = (KeyTypes)global_HotkeySelectableKeys[key];
+
+                  bool isSelected = (currentKey == keyType);
+                  bool isUsedElsewhere = IsKeyAlreadyAssigned(
+                      keyType, action, gameState->hotkeyActionKeys
+                  );
+
+                  if (isUsedElsewhere && !isSelected)
+                  {
+                      ImGui::BeginDisabled();
+                  }
+
+                  if (ImGui::Selectable(global_KeyTypeNames[key], isSelected))
+                  {
+                      gameState->hotkeyActionKeys[action] = keyType;
+                      saveGlobalProjectSettings(gameState);
+                  }
+
+                  if (isUsedElsewhere && !isSelected)
+                  {
+                      ImGui::EndDisabled();
+                  }
+
+                  if (isSelected)
+                      ImGui::SetItemDefaultFocus();
+              }
+
+              ImGui::EndCombo();
+          }
+
+          ImGui::PopID();
+      }
+    }
+
+    ImGui::End();
+
+  }
+}
 
 void showUnSavedWindow(GameState *gameState) {
   if(gameState->closeCanvasTabInfo.UIshowUnsavedWindow) {
@@ -1317,7 +1655,6 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
 
         ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
         showUnSavedWindow(state);
-        ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pivot);
         ImGui::SetNextWindowBgAlpha(1);
 
         // ImGui::ShowDemoWindow(&show_demo_window);
@@ -1414,50 +1751,8 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
                 state->showEditPalette = true;
                 
               }
-              float size = 30.0f;  // Square size
-              float spacing = 5.0f; // Spacing between squares
-
-              CanvasTab *tab = getActiveCanvasTab(state);
-          
-              if(tab) {
-                ImVec2 child_size = ImVec2(0, 200); // width 0 = fill, height = 200px
-                ImGui::BeginChild("ScrollingRegion", child_size, true, ImGuiWindowFlags_HorizontalScrollbar);
-
-                for (int i = 0; i < tab->palletteCount; ++i) {
-                    ImGui::PushID(i);  // Ensure unique ID for each color
-            
-                    // Get cursor position for drawing the square
-                    ImVec2 pos = ImGui::GetCursorScreenPos();
-                    ImDrawList* drawList = ImGui::GetWindowDrawList();
-            
-                    // Create an invisible button for the selectable color square
-                    if (ImGui::InvisibleButton("color_btn", ImVec2(size, size))) {
-                      tab->colorPicked = u32_to_float4_color(tab->colorsPallete[i]);
-                    }
-                    u32 a = tab->colorsPallete[i];
-
-                    //NOTE: Should always have a alpha color of full, since they don't store the alpha value.
-                    a |= 0xFF << 24;
-
-                    // Draw color square
-                    drawList->AddRectFilled(pos, ImVec2(pos.x + size, pos.y + size), (a));
-            
-                    // Draw border if selected
-                    if (float4_to_u32_color(tab->colorPicked) == a) {
-                        drawList->AddRect(pos, ImVec2(pos.x + size, pos.y + size), IM_COL32(255, 255, 255, 255), 0.0f, 0, 3.0f);
-                    }
-            
-                    ImGui::PopID();
-            
-                    // Layout: Move to next row if needed
-                    if ((i + 1) % 5 != 0) {
-                        ImGui::SameLine(0, spacing);
-                    }
-              }
-              ImGui::EndChild(); // End of scroll area
-            }
-
               
+              outputColorPallette(state, &tab->colorPicked);
 
               ImGui::End();
           }
@@ -1475,6 +1770,8 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
           }
         }
       }
+      updateKeyBindingsWindow(state);
+      updateReplaceColorsWindow(state); 
       updateCanvasSettingsWindow(state);
       updateAboutWindow(state);
       renderIMGUIToasts(state->dt);

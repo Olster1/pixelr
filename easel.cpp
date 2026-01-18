@@ -30,7 +30,11 @@ UndoRedoBlock *CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
 
     Canvas *activeCanvas = this->getActiveCanvas();
 
-    *block = UndoRedoBlock(activeCanvas->id);
+    if(activeCanvas) {
+        *block = UndoRedoBlock(activeCanvas->id);
+    } else {
+        // *block = UndoRedoBlock(");
+    }
 
     block->isSentintel = isSentintel;
 
@@ -88,6 +92,16 @@ CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
     {
         DEBUG_TIME_BLOCK_NAMED("CREATE GPU TEXTURES")
         this->selectionGpuHandle = createGPUTextureRed(w, h).handle;
+
+        // u32 *pixels = pushArray(&globalPerFrameArena, w*h, u32);
+
+        // for(int i = 0 ; i < w*h; i++) {
+        //     pixels[i] = 0xFF00FF00;
+        // }
+
+        this->checkBackgroundFrameBuffer = createFrameBuffer(w, h, 0);
+        this->checkerBufferbuilt = false;
+
     }
     this->selected = initResizeArray(float2);
 

@@ -203,6 +203,7 @@ struct Canvas {
     EntityID id;
 
     bool deleted = false; //NOTE: For the undo system we keep all the canvases active, we just say it's deleted
+    bool isSelected = false; //NOTE: Used by the merge layers system in the ui. If you have more then one canvas selected in a Frame, you can merge the layers together
 
     u32 gpuHandle = 0;
     u32 *pixels = 0;
@@ -305,10 +306,13 @@ struct CanvasTab {
 
     float2 *selected = 0;//NOTE: Resize array 
     u32 selectionGpuHandle = 0;
+    FrameBuffer checkBackgroundFrameBuffer = {};
+    bool checkerBufferbuilt = false; //NOTE: We dont have the renderer when we create a canvastab, so it renders the check buffer later, before it's used.
 
     char *saveFilePath = 0; //NOTE: Allocated on heap - need to free on dispose
     char *fileName = 0; //NOTE: Allocated on heap - need to free on dispose
 
+    bool fileIsMissing = false;
     UndoRedoBlock *savePositionUndoBlock = 0;
     UndoRedoBlock *savePositionBackupUndoBlock = 0;
     UndoRedoBlock *undoList = 0;

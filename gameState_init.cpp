@@ -30,7 +30,7 @@ bool loadOpenFilesFromProjectSettings(GameState *gameState) {
                     while(t.type == TOKEN_STRING) {
                         loadedFilesAsUnsaved = true;
                         char *fileNameToLoad = nullTerminateArena(t.at, t.size, &globalPerFrameArena);
-                        CanvasTab tab = loadPixelrProject(fileNameToLoad);
+                        CanvasTab tab = loadPixelrProject(fileNameToLoad, true);
                         if(tab.valid) {
                             //NOTE: Don't have to do -1 because we haven't add it to the array yet
                             if(gameState->activeCanvasTab == getArrayLength(gameState->canvasTabs)) {
@@ -144,6 +144,38 @@ void loadDefaultProjectSettings(GameState *gameState) {
                     gameState->activeCanvasTab = t.intVal;
                 }
 
+                if(easyString_stringsMatch_null_and_count("hotKeyDropper", t.at, t.size)) {
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_COLON);
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_INTEGER);
+                    gameState->hotkeyActionKeys[HOTKEY_COLOR_DROPPER] = (KeyTypes)t.intVal;
+                }
+
+                if(easyString_stringsMatch_null_and_count("hotKeyEraser", t.at, t.size)) {
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_COLON);
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_INTEGER);
+                    gameState->hotkeyActionKeys[HOTKEY_ERASER] = (KeyTypes)t.intVal;
+                }
+
+                if(easyString_stringsMatch_null_and_count("hotKeyBrushSize", t.at, t.size)) {
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_COLON);
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_INTEGER);
+                    gameState->hotkeyActionKeys[HOTKEY_BRUSH_SIZE] = (KeyTypes)t.intVal;
+                }
+
+                if(easyString_stringsMatch_null_and_count("hotkeyOpacity", t.at, t.size)) {
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_COLON);
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_INTEGER);
+                    gameState->hotkeyActionKeys[HOTKEY_OPACITY] = (KeyTypes)t.intVal;
+                }
+
                 if(easyString_stringsMatch_null_and_count("bgColor", t.at, t.size)) {
                     t = lexGetNextToken(&tokenizer);
                     assert(t.type == TOKEN_COLON);
@@ -169,6 +201,13 @@ void loadDefaultProjectSettings(GameState *gameState) {
     }
 }
 
+void setDefaultHotKeys(GameState *gameState) {
+    gameState->hotkeyActionKeys[HOTKEY_BRUSH_SIZE] = KEY_F;
+    gameState->hotkeyActionKeys[HOTKEY_OPACITY] = KEY_R;
+    gameState->hotkeyActionKeys[HOTKEY_COLOR_DROPPER] = KEY_COMMAND;
+    gameState->hotkeyActionKeys[HOTKEY_ERASER] = KEY_X;
+}
+
 void initGameState(GameState *gameState) {
     srand(time(NULL));
     gameState->randomStartUpID = rand();
@@ -188,10 +227,12 @@ void initGameState(GameState *gameState) {
 
     stbi_flip_vertically_on_write(1);
 
-    gameState->lastInteractionMode = gameState->interactionMode = CANVAS_DRAW_MODE;
+    gameState->interactionModeStartOfFrame = gameState->lastInteractionMode = gameState->interactionMode = CANVAS_DRAW_MODE;
     
     gameState->grabbedCornerIndex = -1;
     gameState->nearest = true; 
+
+    setDefaultHotKeys(gameState);
 
     gameState->lastMouseP = gameState->mouseP_screenSpace;
     gameState->runningAverageCount = 1;

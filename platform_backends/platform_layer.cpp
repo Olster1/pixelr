@@ -45,7 +45,6 @@ enum MouseButtonType {
 };
 
 
-
 enum MouseKeyState {
   MOUSE_BUTTON_NONE,
   MOUSE_BUTTON_PRESSED,
@@ -68,6 +67,20 @@ enum KeyTypes {
   KEY_A,
   KEY_F,
   KEY_R,
+  KEY_B,
+  KEY_D,
+  KEY_G,
+  KEY_H,
+  KEY_I,
+  KEY_J,
+  KEY_K,
+  KEY_L,
+  KEY_M,
+  KEY_P,
+  KEY_T,
+  KEY_U,
+  KEY_W,
+  KEY_Y,
   KEY_LEFT,
   KEY_RIGHT,
   KEY_SPACE,
@@ -90,6 +103,48 @@ enum KeyTypes {
 
   ///////////
   KEY_COUNTS
+};
+
+static const char* global_KeyTypeNames[] = {
+   "A","B","C","D","E","F","G","H","I","J","K","L",
+    "M","N","O","P","Q","R","S","T","U","V","W","X",
+    "Y","Z",
+    #if _WIN32
+    "Ctrl"
+    #else 
+    "Command"
+    #endif
+};
+
+static const KeyTypes global_HotkeySelectableKeys[] = {
+    KEY_A,
+    KEY_B,
+    KEY_C,
+    KEY_D,
+    KEY_E,
+    KEY_F,
+    KEY_G,
+    KEY_H,
+    KEY_I,
+    KEY_J,
+    KEY_K,
+    KEY_L,
+    KEY_M,
+    KEY_N,
+    KEY_O,
+    KEY_P,
+    KEY_Q,
+    KEY_R,
+    KEY_S,
+    KEY_T,
+    KEY_U,
+    KEY_V,
+    KEY_W,
+    KEY_X,
+    KEY_Y,
+    KEY_Z,
+
+    KEY_COMMAND
 };
 
 struct KeyStates {
@@ -349,17 +404,31 @@ int main(int argc, char **argv) {
     const Uint8* currentKeyStates = SDL_GetKeyboardState( NULL );
     
     updateKeyState(gameState, KEY_UP, currentKeyStates[SDL_GetScancodeFromKey(SDLK_UP)] == 1);
-    updateKeyState(gameState, KEY_E, currentKeyStates[SDL_GetScancodeFromKey(SDLK_e)] == 1);
-    updateKeyState(gameState, KEY_O, currentKeyStates[SDL_GetScancodeFromKey(SDLK_o)] == 1);
-    updateKeyState(gameState, KEY_N, currentKeyStates[SDL_GetScancodeFromKey(SDLK_n)] == 1);
-    updateKeyState(gameState, KEY_S, currentKeyStates[SDL_GetScancodeFromKey(SDLK_s)] == 1);
-    updateKeyState(gameState, KEY_Q, currentKeyStates[SDL_GetScancodeFromKey(SDLK_q)] == 1);
-    updateKeyState(gameState, KEY_C, currentKeyStates[SDL_GetScancodeFromKey(SDLK_c)] == 1);
-    updateKeyState(gameState, KEY_V, currentKeyStates[SDL_GetScancodeFromKey(SDLK_v)] == 1);
-    updateKeyState(gameState, KEY_X, currentKeyStates[SDL_GetScancodeFromKey(SDLK_x)] == 1);
     updateKeyState(gameState, KEY_A, currentKeyStates[SDL_GetScancodeFromKey(SDLK_a)] == 1);
-    updateKeyState(gameState, KEY_R, currentKeyStates[SDL_GetScancodeFromKey(SDLK_r)] == 1);
-    updateKeyState(gameState, KEY_F, currentKeyStates[SDL_GetScancodeFromKey(SDLK_f)] == 1);
+  updateKeyState(gameState, KEY_B, currentKeyStates[SDL_GetScancodeFromKey(SDLK_b)] == 1);
+  updateKeyState(gameState, KEY_C, currentKeyStates[SDL_GetScancodeFromKey(SDLK_c)] == 1);
+  updateKeyState(gameState, KEY_D, currentKeyStates[SDL_GetScancodeFromKey(SDLK_d)] == 1);
+  updateKeyState(gameState, KEY_E, currentKeyStates[SDL_GetScancodeFromKey(SDLK_e)] == 1);
+  updateKeyState(gameState, KEY_F, currentKeyStates[SDL_GetScancodeFromKey(SDLK_f)] == 1);
+  updateKeyState(gameState, KEY_G, currentKeyStates[SDL_GetScancodeFromKey(SDLK_g)] == 1);
+  updateKeyState(gameState, KEY_H, currentKeyStates[SDL_GetScancodeFromKey(SDLK_h)] == 1);
+  updateKeyState(gameState, KEY_I, currentKeyStates[SDL_GetScancodeFromKey(SDLK_i)] == 1);
+  updateKeyState(gameState, KEY_J, currentKeyStates[SDL_GetScancodeFromKey(SDLK_j)] == 1);
+  updateKeyState(gameState, KEY_K, currentKeyStates[SDL_GetScancodeFromKey(SDLK_k)] == 1);
+  updateKeyState(gameState, KEY_L, currentKeyStates[SDL_GetScancodeFromKey(SDLK_l)] == 1);
+  updateKeyState(gameState, KEY_M, currentKeyStates[SDL_GetScancodeFromKey(SDLK_m)] == 1);
+  updateKeyState(gameState, KEY_N, currentKeyStates[SDL_GetScancodeFromKey(SDLK_n)] == 1);
+  updateKeyState(gameState, KEY_O, currentKeyStates[SDL_GetScancodeFromKey(SDLK_o)] == 1);
+  updateKeyState(gameState, KEY_P, currentKeyStates[SDL_GetScancodeFromKey(SDLK_p)] == 1);
+  updateKeyState(gameState, KEY_Q, currentKeyStates[SDL_GetScancodeFromKey(SDLK_q)] == 1);
+  updateKeyState(gameState, KEY_R, currentKeyStates[SDL_GetScancodeFromKey(SDLK_r)] == 1);
+  updateKeyState(gameState, KEY_S, currentKeyStates[SDL_GetScancodeFromKey(SDLK_s)] == 1);
+  updateKeyState(gameState, KEY_T, currentKeyStates[SDL_GetScancodeFromKey(SDLK_t)] == 1);
+  updateKeyState(gameState, KEY_U, currentKeyStates[SDL_GetScancodeFromKey(SDLK_u)] == 1);
+  updateKeyState(gameState, KEY_V, currentKeyStates[SDL_GetScancodeFromKey(SDLK_v)] == 1);
+  updateKeyState(gameState, KEY_W, currentKeyStates[SDL_GetScancodeFromKey(SDLK_w)] == 1);
+  updateKeyState(gameState, KEY_X, currentKeyStates[SDL_GetScancodeFromKey(SDLK_x)] == 1);
+  updateKeyState(gameState, KEY_Y, currentKeyStates[SDL_GetScancodeFromKey(SDLK_y)] == 1);
 #if defined(__APPLE__)
 //NOTE: Command for mac
     updateKeyState(gameState, KEY_COMMAND, currentKeyStates[SDL_GetScancodeFromKey(SDLK_LGUI)] == 1);
@@ -443,7 +512,8 @@ int main(int argc, char **argv) {
     }
 
     if(gameState->interactionModeStartOfFrame != gameState->interactionMode) {
-        gameState->lastInteractionMode = gameState->interactionModeStartOfFrame;
+      assert(gameState->interactionModeStartOfFrame != CANVAS_INTERACTION_MODE_NONE);
+      gameState->lastInteractionMode = gameState->interactionModeStartOfFrame;
     }
 
     // gameState->lastMouseP = make_float2(0.5f*gameState->screenWidth, -0.5f*gameState->screenWidth);

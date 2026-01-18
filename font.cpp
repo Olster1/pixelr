@@ -53,10 +53,12 @@ Font initFontAtlas(unsigned char *ttfBuffer) {
 
 }
 
-void renderText(Renderer *renderer, Font *font, char *nullTerminatedString, float2 start, float scale, float4 color = make_float4(1, 1, 1, 1)) {
+Rect2f renderText(Renderer *renderer, Font *font, char *nullTerminatedString, float2 start, float scale, float4 color = make_float4(1, 1, 1, 1), bool render = true) {
     DEBUG_TIME_BLOCK()
     float x = start.x;
-    float y = start.y;
+    float y = 0;
+
+    Rect2f bounds = make_rect2f(FLT_MAX, FLT_MAX, -FLT_MAX, -FLT_MAX);
 
     while (*nullTerminatedString) {
         if(*nullTerminatedString != '\n') {
@@ -73,14 +75,22 @@ void renderText(Renderer *renderer, Font *font, char *nullTerminatedString, floa
                 float height = q.y1 - q.y0;
 
                 float x1 = 0.5f*width + q.x0;
-                float y1 = 0.5f*height + (font->fontHeight - (q.y0 - beginY)) + q.y0;
+                float y1 = 0.5f*height + q.y0;
+                y1 = -y1;
 
                 x1 = (scale*(x1 - start.x)) + start.x;
-                y1 = ((scale*(y1 - start.y))) + start.y;
+                y1 = (scale*(y1 - start.y)) + start.y;
+
+                y1 += start.y;
 
                 float4 uvCoords = make_float4(q.s0, q.s1, q.t0, q.t1);
 
-                pushGlyph(renderer, make_float3(x1, y1, 1), make_float3(scale*width, scale*height, 1), uvCoords, color);
+                float3 glyphScale = make_float3(scale*width, scale*height, 1);
+                bounds = rect2f_union(bounds, make_rect2f_center_dim(make_float2(x1, y1), glyphScale.xy));
+
+                if(render) {
+                    pushGlyph(renderer, make_float3(x1, y1, 1), glyphScale, uvCoords, color);
+                }
             }
         } else {
             //NOTE: Move down a line
@@ -89,4 +99,6 @@ void renderText(Renderer *renderer, Font *font, char *nullTerminatedString, floa
         }
         nullTerminatedString++;
     }
+
+    return bounds;
 }

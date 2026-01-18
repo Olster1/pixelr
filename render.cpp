@@ -98,11 +98,10 @@ struct Renderer {
     ModelBuffer lineModel;
 
     float timeAccum;
-    float2 textMatrixResolution;
-    bool underWater;
+    u32 checkedQuadBackgroundHandle;
 };
 
-InstanceDataWithRotation *pushCheckerQuad(Renderer *renderer, float3 worldP, float3 scale) {
+InstanceDataWithRotation *pushCheckerQuad(Renderer *renderer, float3 worldP, float3 scale, u32 textureHandle) {
     InstanceDataWithRotation *c = 0;
     if(renderer->checkerQuadCount < arrayCount(renderer->checkerQuads)) {
         c = &renderer->checkerQuads[renderer->checkerQuadCount++];
@@ -115,6 +114,7 @@ InstanceDataWithRotation *pushCheckerQuad(Renderer *renderer, float3 worldP, flo
         c->M = float16_set_pos(float16_scale(T, scale), worldP);
         c->color = make_float4(1, 1, 1, 1);
         c->uv = make_float4(0, 1, 0, 1);
+        renderer->checkedQuadBackgroundHandle = textureHandle;
     }
 
     return c;
@@ -280,6 +280,9 @@ void pushCircleOutline(Renderer *renderer, float3 worldP, float radius, float4 c
     pushAtlasQuad_(renderer, worldP, make_float3(radius, radius, 1), make_float3(0, 0, 0), make_float4(0.5f, 1.0f, 0, 0.5f), color, false);
 }
 
+void pushBackingImage(Renderer *renderer, float3 worldP, float2 scale, float4 color) {
+    pushAtlasQuad_(renderer, worldP, make_float3(scale.x, scale.y, 1), make_float3(0, 0, 0), make_float4(0, 0.5f, 0, 0.5f), color, true);
+}
 
 void pushRotationCircle(Renderer *renderer, float3 worldP, float radius, float4 color) {
     pushAtlasQuad_(renderer, worldP, make_float3(radius, radius, 1), make_float3(0, 0, 0), make_float4(0.75, 1.0f, 0.5f, 0.75f), color, false);

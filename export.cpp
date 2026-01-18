@@ -120,6 +120,7 @@ void loadPngColorPalette(CanvasTab *tab, bool clearPalette) {
 
 void openSpriteSheet(GameState *gameState, int w, int h) {
     DEBUG_TIME_BLOCK()
+    
     const char *filePath = tinyfd_openFileDialog(
         "Open an image",         // Dialog title
         "",                    // Default path
@@ -281,13 +282,23 @@ void exportImport_loadImageFile(GameState *gameState, const char *filePath) {
     }
 }
 
+OpenFilesPaths getOpenFilePaths(GameState *gameState, Arena *arena) {
+    OpenFilesPaths result = {};
+
+    result.count = getArrayLength(gameState->canvasTabs);
+    result.canvasTabs = gameState->canvasTabs;
+
+    return result;
+}
+
 void checkFileDrop(GameState *gameState) {
     DEBUG_TIME_BLOCK()
     for(int i = 0; i < gameState->droppedFileCount; ++i) {
         char *filePath = gameState->droppedFilePaths[i];
         char *extension = getFileExtension(filePath);
         if(extension && easyString_stringsMatch_nullTerminated(extension, DEFINED_FILE_NAME)) {
-            CanvasTab tab = loadPixelrProject(filePath);
+            OpenFilesPaths o = getOpenFilePaths(gameState, &globalPerFrameArena);
+            CanvasTab tab = loadPixelrProject(filePath, false, o.canvasTabs, o.count);
             if(tab.valid) {
                 tab.uiTabSelectedFlag = ImGuiTabItemFlags_SetSelected;
                 pushArrayItem(&gameState->canvasTabs, tab, CanvasTab);
@@ -387,6 +398,21 @@ void saveGlobalProjectSettings(void *gameState_) {
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"smoothStrokeCount\": %d}\n", gameState->runningAverageCount);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"drawGrid\": %d}\n", gameState->drawGrid);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"hotkeyOpacity\": %d}\n", gameState->hotkeyActionKeys[HOTKEY_OPACITY]);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"hotKeyBrushSize\": %d}\n", gameState->hotkeyActionKeys[HOTKEY_BRUSH_SIZE]);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"hotKeyEraser\": %d}\n", gameState->hotkeyActionKeys[HOTKEY_ERASER]);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"hotKeyDropper\": %d}\n", gameState->hotkeyActionKeys[HOTKEY_COLOR_DROPPER]);
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
     platformEndFile(fileHandle);

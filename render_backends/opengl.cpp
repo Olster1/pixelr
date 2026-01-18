@@ -47,6 +47,10 @@ void backendRenderer_clearDefaultFrameBuffer(float4 clearColor) {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
 }
 
+void backendRenderer_setViewport(float x0, float y0, float x1, float y1) {
+    glViewport(x0, y0, x1, y1);
+}
+
 void backendRenderer_BindFrameBuffer(uint32_t handle) {
     glBindFramebuffer(GL_FRAMEBUFFER, handle);  
 }
@@ -511,14 +515,15 @@ void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int inst
 void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 modelViewTransform, float16 projectionScreenTransform, float16 textScreenTransform, float3 lookingAxis, float16 cameraTransformWithoutTranslation) {
    
     if(renderer->checkerQuadCount > 0) {
-        u32 canvasTextureHandle = renderer->canvasHandles[0];
-        if(canvasTextureHandle > 0) {
+        
+        if(renderer->checkedQuadBackgroundHandle > 0) {
             updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->checkerQuads, renderer->checkerQuadCount*sizeof(InstanceDataWithRotation));
-            drawModels(&renderer->quadModel, &renderer->checkQuadShader, canvasTextureHandle, renderer->checkerQuadCount, projectionTransform, modelViewTransform, lookingAxis);
+            drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->checkedQuadBackgroundHandle, renderer->checkerQuadCount, projectionTransform, modelViewTransform, lookingAxis);
         }
 
         renderer->checkerQuadCount = 0;
     }
+    
     renderCheckError();
     for(int i = 0; i < renderer->canvasCount; ++i) {
         u32 handle = renderer->canvasHandles[i];
@@ -544,6 +549,7 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
         renderer->atlasQuadHUDCount = 0;
     }
+    
 
 
     if(renderer->glyphCount > 0) {
@@ -552,8 +558,6 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
         renderer->glyphCount = 0;
     }
-
-    
 
     if(renderer->selectionCount > 0) {
         updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->selectionQuad, sizeof(InstanceDataWithRotation));
@@ -568,6 +572,7 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
         renderer->lineCount = 0;
     }
+    
 
     if(renderer->lineCountScreenSpace > 0) {
         updateInstanceData(renderer->lineModel.instanceBufferhandle, renderer->lineDataScreenSpace, renderer->lineCountScreenSpace*sizeof(InstanceDataWithRotation));

@@ -1,4 +1,5 @@
 enum CanvasInteractionMode {
+    CANVAS_INTERACTION_MODE_NONE,
     CANVAS_DRAW_MODE,
     CANVAS_MOVE_MODE,
     CANVAS_FILL_MODE,
@@ -10,6 +11,8 @@ enum CanvasInteractionMode {
     CANVAS_MOVE_SELECT_MODE,
     CANVAS_SPRAY_CAN,
     CANVAS_COLOR_DROPPER,
+    CANVAS_COLOR_DROPPER_REPLACE_DEST,
+    CANVAS_COLOR_DROPPER_REPLACE_SRC
 };
 
 enum CanvasDrawFlag {
@@ -91,6 +94,18 @@ struct WindowResizeCommand {
     bool valid;
 };
 
+static char *global_hotkeyActionsTitle[] = {"Brush Size", "Opacity", "Color Dropper", "Eraser"};
+
+enum HotKeyActions {
+    HOTKEY_BRUSH_SIZE,
+    HOTKEY_OPACITY,
+    HOTKEY_COLOR_DROPPER,
+    HOTKEY_ERASER,
+
+    ///////////////////
+    HOTKEY_TOTAL_COUNT,
+};
+
 struct GameState {
     bool inited;
     float dt;
@@ -118,6 +133,14 @@ struct GameState {
     CanvasInteractionMode interactionMode;
     CanvasInteractionMode lastInteractionMode;
     CanvasInteractionMode interactionModeStartOfFrame;
+    CanvasInteractionMode overideDrawModeState;
+    bool replaceColorsWindowShown;
+    bool color_replaceAllLayers;
+    bool color_replaceAllFrames;
+    bool showSrcColorPallette;
+    bool showDestColorPallette;
+    float4 color_replaceSrc;
+    float4 color_replaceDest;
 
     EasyProfile_ProfilerDrawState *drawState;
 
@@ -141,6 +164,9 @@ struct GameState {
     u32 currentSelectedMirrorIndexUi;
 
     ThreadsInfo threadsInfo;
+
+    KeyTypes hotkeyActionKeys[HOTKEY_TOTAL_COUNT];
+    bool showKeyBindingsWindow;
 
     WindowResizeCommand windowResizeCommand;
     u8 *brushOutlineStencil; //NOTE: Allocateed on the perframe arena to draw the shape of the brush each frame

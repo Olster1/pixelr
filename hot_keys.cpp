@@ -1,4 +1,3 @@
-
 void updateHotKeys(GameState *gameState) {
     if(!isInteractingWithIMGUI()) {
         //NOTE: Update interaction mode
@@ -89,13 +88,17 @@ void updateHotKeys(GameState *gameState) {
         if(gameState->keys.keys[KEY_S] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
-                
                 if(saveProjectToFile(t)) {
                     addIMGUIToast("Project Saved", 2);
                 }
                 
             }
         }
+
+        if(gameState->keys.keys[KEY_R] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
+            gameState->replaceColorsWindowShown = true;
+        }
+        
 
         if(gameState->keys.keys[KEY_V] == MOUSE_BUTTON_PRESSED && isKeyPressedOrDown(gameState, KEY_COMMAND)) {
             Canvas *c = getActiveCanvas(gameState);
