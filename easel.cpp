@@ -3,14 +3,57 @@ bool canvasTabSaveStateHasChanged(CanvasTab *t) {
     return (((t->savePositionBackupUndoBlock != t->undoList) && !t->currentUndoBlock && t->undoList && !t->undoList->isSentintel));
 }
 
-UndoRedoBlock *CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
+//NOTE: This is for adding blocks to parent blocks if there are multiple undo-redo actions at once of different type
+UndoRedoBlock *CanvasTab::addUndoRedoChildBlock(CanvasTab *c, Canvas *canvas, UndoRedoBlock *parentBlock, UndoRedoBlockType type) {
+    DEBUG_TIME_BLOCK()
+    assert(parentBlock);
+    assert(parentBlock->type == UNDO_REDO_CANVAS_PARENT);
+
+    UndoRedoBlock *block = 0;
+    if(c->undoBlockFreeList) {
+        block = c->undoBlockFreeList;
+        c->undoBlockFreeList = block->next;
+    } else {
+        block = pushStruct(&globalLongTermArena, UndoRedoBlock);
+    }
+    assert(block);
+
+    //NOTE: Init the undo redo block
+    Canvas *activeCanvas = canvas;  
+    if(!activeCanvas) {
+        activeCanvas = this->getActiveCanvas();
+    }
+
+    if(activeCanvas) {
+        *block = UndoRedoBlock(activeCanvas->id);
+    } 
+    block->isSentintel = false;
+    block->type = type;
+    //////
+
+    if(parentBlock->childUndoRedoBlocks) {
+        parentBlock->childUndoRedoBlocks->prev = block;
+    }
+
+    //NOTE: Add it as a child block to the parent
+    block->next = parentBlock->childUndoRedoBlocks;
+    block->prev = 0;
+    parentBlock->childUndoRedoBlocks = block;
+
+    //NOTE: add it as the current block
+    c->currentUndoBlock = block;
+
+    return block;
+}
+
+UndoRedoBlock *CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel, Canvas *canvas) {
     DEBUG_TIME_BLOCK()
     UndoRedoBlock *block = 0;
     if(c->undoList) {
         //NOTE: Remove all of them off to start at a new undo redo point
         UndoRedoBlock *b = c->undoList->prev;
         while(b) {
-            b->dispose();
+            b->dispose(&c->undoBlockFreeList);
             b->next = c->undoBlockFreeList;
             c->undoBlockFreeList = b;
 
@@ -28,13 +71,14 @@ UndoRedoBlock *CanvasTab::addUndoRedoBlock(CanvasTab *c, bool isSentintel) {
 
     assert(block);
 
-    Canvas *activeCanvas = this->getActiveCanvas();
+    Canvas *activeCanvas = canvas;  
+    if(!activeCanvas) {
+        activeCanvas = this->getActiveCanvas();
+    }
 
     if(activeCanvas) {
         *block = UndoRedoBlock(activeCanvas->id);
-    } else {
-        // *block = UndoRedoBlock(");
-    }
+    } 
 
     block->isSentintel = isSentintel;
 
@@ -159,11 +203,11 @@ void CanvasTab::addColorToPalette(u32 color) {
     }
 }
 
-void CanvasTab::addUndoInfo(PixelInfo info) {
+void CanvasTab::addUndoInfo(PixelInfo info, Canvas *canvas) {
     DEBUG_TIME_BLOCK()
     if(!currentUndoBlock) {
         DEBUG_TIME_BLOCK_NAMED("CREATE NEW UNDO BLOCK")
-        addUndoRedoBlock(this);
+        addUndoRedoBlock(this, false, canvas);
         addColorToPalette(float4_to_u32_color(colorPicked));
     }
     {
@@ -188,7 +232,9 @@ void CanvasTab::addUndoInfo(FrameInfo info) {
 
 void CanvasTab::dispose() {
     DEBUG_TIME_BLOCK()
-    //TODO: Clear the undo list 
+
+    clearUndoRedoList(this);
+    
     if(frames) {
         for(int i = 0; i < getArrayLength(frames); ++i) {
             Frame *f = frames + i;

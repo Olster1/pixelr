@@ -10,9 +10,15 @@ enum CanvasInteractionMode {
     CANVAS_SELECT_RECTANGLE_MODE,
     CANVAS_MOVE_SELECT_MODE,
     CANVAS_SPRAY_CAN,
+    CANVAS_DITHER_STAMP,
     CANVAS_COLOR_DROPPER,
     CANVAS_COLOR_DROPPER_REPLACE_DEST,
     CANVAS_COLOR_DROPPER_REPLACE_SRC
+};
+
+enum DitherType {
+    DITHER_STAMP_NONE,
+    DITHER_STAMP_REGULAR,
 };
 
 enum CanvasDrawFlag {
@@ -160,6 +166,7 @@ struct GameState {
 
     float scrollDp; //NOTE: velcoity to intergrate for the scroll speed
     bool nearest;
+    u32 selectGuidelineFlags; //NOTE: Used for the middle snap of the select shape guidelines
     u32 canvasMirrorFlags;
     u32 currentSelectedMirrorIndexUi;
 

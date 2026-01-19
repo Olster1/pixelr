@@ -13,13 +13,20 @@ float4 u32_to_float4_color(u32 c) {
     return make_float4(r, g, b, a);
 }
 
+float get_alpha_from_u32_color(u32 c) {
+    DEBUG_TIME_BLOCK()
+    float a = ((float)((c >> 24) & 0xFF))/255.0f;
+    return a;
+}
+
 enum UndoRedoBlockType {
     UNDO_REDO_PIXELS,
     UNDO_REDO_CANVAS_DELETE,
     UNDO_REDO_FRAME_DELETE,
     UNDO_REDO_CANVAS_CREATE,
     UNDO_REDO_FRAME_CREATE,
-    UNDO_REDO_CANVAS_SWAP
+    UNDO_REDO_CANVAS_SWAP,
+    UNDO_REDO_CANVAS_PARENT, //NOTE: Has children undo, redo actions
 };
 
 struct FrameInfo {
@@ -154,6 +161,7 @@ struct UndoRedoBlock {
     UndoRedoBlockType type = UNDO_REDO_PIXELS;
 
     PixelInfo *pixelInfos = 0; //NOTE: Resize array 
+    UndoRedoBlock *childUndoRedoBlocks = 0; //NOTE: Nodes that allocated on global arena and put on a free list.
     FrameInfo frameInfo; //NOTE: If the undo type is a frame or canvas - determined if the pixelInfos == 0
 
     bool isSentintel = false;
@@ -181,10 +189,19 @@ struct UndoRedoBlock {
         pushArrayItem(&pixelInfos, info, PixelInfo);
     }
 
-    void dispose() {
+    void dispose(UndoRedoBlock **freeList) {
         if(pixelInfos) {
             freeResizeArray(pixelInfos);
             pixelInfos = 0;
+        }
+
+        UndoRedoBlock *block = childUndoRedoBlocks;
+        while(block) {
+            UndoRedoBlock *temp = block->next;
+            block->next = *freeList;
+            *freeList = block;
+
+            block = temp;
         }
     }
 };
@@ -317,7 +334,7 @@ struct CanvasTab {
     UndoRedoBlock *savePositionBackupUndoBlock = 0;
     UndoRedoBlock *undoList = 0;
     UndoRedoBlock *undoBlockFreeList = 0;
-    UndoRedoBlock *currentUndoBlock = 0;
+    UndoRedoBlock *currentUndoBlock = 0; //NOTE: This is the active block where you can put more undo stuff on throughout a frame. It gets cleared at the end of every frame
     int palletteCount = 0;
     u32 colorsPallete[MAX_PALETTE_COUNT];
     float4 colorPicked = make_float4(1, 1, 1, 1);
@@ -341,12 +358,13 @@ struct CanvasTab {
 
     void addColorToPalette(u32 color);
 
-    void addUndoInfo(PixelInfo info);
+    void addUndoInfo(PixelInfo info, Canvas *canvas);
     void addUndoInfo(FrameInfo info);
 
 
+    UndoRedoBlock *addUndoRedoChildBlock(CanvasTab *c, Canvas *canvas, UndoRedoBlock *parentBlock, UndoRedoBlockType type);
 
-UndoRedoBlock *addUndoRedoBlock(CanvasTab *c, bool isSentintel = false);
+    UndoRedoBlock *addUndoRedoBlock(CanvasTab *c, bool isSentintel = false, Canvas *canvas = 0);
  
     void dispose();
 };

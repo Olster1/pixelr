@@ -130,6 +130,10 @@ void updateGame(GameState *gameState) {
                     updateSprayCan(gameState, getActiveCanvas(gameState));
                     drawCursor(gameState);
                     hideOrShowArrowIfOnCanvas(gameState, t);
+                } else if(gameState->interactionMode == CANVAS_DITHER_STAMP) {
+                    updateCanvasDraw(gameState, getActiveCanvas(gameState), false, DITHER_STAMP_REGULAR);
+                    drawPaintCursor(gameState);
+                    hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_COLOR_DROPPER || gameState->interactionMode == CANVAS_COLOR_DROPPER_REPLACE_DEST || gameState->interactionMode == CANVAS_COLOR_DROPPER_REPLACE_SRC) {
                     updateColorDropper(gameState, getActiveCanvas(gameState));
                     hideOrShowArrowIfOnCanvas(gameState, t);
@@ -137,7 +141,7 @@ void updateGame(GameState *gameState) {
             }
         }
 
-        if(gameState->canvasMirrorFlags != 0) 
+        if(gameState->canvasMirrorFlags != 0 || gameState->selectGuidelineFlags != 0) 
         {
             drawGuidlines(gameState, getActiveCanvas(gameState));
         }

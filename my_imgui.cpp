@@ -431,6 +431,31 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
     }
 }
 
+void ui_deleteCanvas(GameState *state, CanvasTab *canvasTab, Frame *activeFrame, int i) {
+   // Delete canvas logic
+  if (getActiveCanvasCount(activeFrame) > 1)
+  {
+      state->showLayerOptionsWindow = false;
+      FrameInfo frameUndoInfo = {};
+      activeFrame->layers[i].deleted = true;
+      frameUndoInfo.canvasType = UNDO_REDO_CANVAS_DELETE;
+      frameUndoInfo.frameIndex = canvasTab->activeFrame;
+      frameUndoInfo.canvasIndex = i;
+
+      frameUndoInfo.beforeActiveLayer = activeFrame->activeLayer;
+
+      if (i >= activeFrame->activeLayer)
+          activeFrame->activeLayer--;
+      if (activeFrame->activeLayer < 0)
+          activeFrame->activeLayer = 0;
+
+      frameUndoInfo.afterActiveLayer = activeFrame->activeLayer;
+      canvasTab->addUndoInfo(frameUndoInfo);
+  } else {
+    addIMGUIToast("Can't delete all canvases.", 2);
+  }
+}
+
 void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame) {
   if (ImGui::BeginTable("Layers Table", 2, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
     float2 imageRatioXY = make_float2((float)canvasTab->w / (float)canvasTab->h, (float)canvasTab->h / (float)canvasTab->w);
@@ -600,28 +625,7 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
          ImGui::PushID(i);
         if (ImGui::Button("\uf1f8"))
         {
-            // Delete canvas logic
-            if (getActiveCanvasCount(activeFrame) > 1)
-            {
-                state->showLayerOptionsWindow = false;
-                FrameInfo frameUndoInfo = {};
-                activeFrame->layers[i].deleted = true;
-                frameUndoInfo.canvasType = UNDO_REDO_CANVAS_DELETE;
-                frameUndoInfo.frameIndex = canvasTab->activeFrame;
-                frameUndoInfo.canvasIndex = i;
-
-                frameUndoInfo.beforeActiveLayer = activeFrame->activeLayer;
-
-                if (i >= activeFrame->activeLayer)
-                    activeFrame->activeLayer--;
-                if (activeFrame->activeLayer < 0)
-                    activeFrame->activeLayer = 0;
-
-                frameUndoInfo.afterActiveLayer = activeFrame->activeLayer;
-                canvasTab->addUndoInfo(frameUndoInfo);
-            } else {
-              addIMGUIToast("Can't delete all canvases.", 2);
-            }
+          ui_deleteCanvas(state, canvasTab, activeFrame, i);
         }
         addToolTip("Delete this layer.");
         ImGui::PopID();
@@ -716,12 +720,42 @@ void drawLayersWindow(GameState *state, float deltaTime) {
         ImGui::BeginDisabled();
       }
       if (ImGui::Button("Merge Layers")) {
-          //TODO: Add undo redo
-          for(int i = 0; i < selectedCount; ++i) {
-            // int index = canvasIndexes[i];
 
+        undoRedo_beginUndoParentBlock(canvasTab);
+
+        //NOTE: The one we keep is the last one
+          Canvas *targetCanvas = activeFrame->layers + canvasIndexes[0];
+          for(int i = 0; i < selectedCount; ++i) {
+            UndoRedoBlock *parentBlock = canvasTab->currentUndoBlock;
+            assert(parentBlock->type == UNDO_REDO_CANVAS_PARENT);
+            int index = canvasIndexes[i];
+
+            if(i > 0) {
+               Canvas *c = activeFrame->layers + index;
+              //NOTE: add the pixels to copy over
+              canvasTab->addUndoRedoChildBlock(canvasTab, targetCanvas, parentBlock, UNDO_REDO_PIXELS);
+              for(int y = 0; y < c->h; ++y) {
+                for(int x = 0; x < c->w; ++x) {
+                  u32 color = getCanvasColor(c, x, y);
+                  setCanvasColor(canvasTab, targetCanvas, x, y, color, c->opacity*get_alpha_from_u32_color(color));
+                }
+              }
+
+              undoRedo_reinstateParentBlockAsCurrent(canvasTab, parentBlock);
+
+              ///////////////
+
+              //NOTE: Don't delete the Last frame
+              canvasTab->addUndoRedoChildBlock(canvasTab, c, parentBlock, UNDO_REDO_FRAME_DELETE);
+              ui_deleteCanvas(state, canvasTab, activeFrame, index);
+              undoRedo_reinstateParentBlockAsCurrent(canvasTab, parentBlock);
+            } else {
+              activeFrame->activeLayer = index;
+            }
           }
+          undoRedo_endUndoParentBlock(canvasTab);
       }
+
       if(selectedCount <= 1) {
         ImGui::EndDisabled();
       }
@@ -1741,6 +1775,9 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
               addToolTip("Pick a color from the canvas");
               addModeSelection(state, "\uf5bd", CANVAS_SPRAY_CAN);
               addToolTip("Draw Spray Can Pattern");
+              ImGui::SameLine();
+              addModeSelection(state, "\uf5bf", CANVAS_DITHER_STAMP);
+              addToolTip("Apply a dithering pattern");
               ImGui::SameLine();
               
               dropdownButton(state);

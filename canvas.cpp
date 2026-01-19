@@ -60,6 +60,11 @@ int replaceColorInCanvas(CanvasTab *tab, Canvas *canvas, u32 srcColor, u32 destC
     u32 gmask = 0x0000FF00;
     u32 bmask = 0x000000FF;
 
+    UndoRedoBlock *parentBlock = tab->currentUndoBlock;
+    assert(parentBlock->type == UNDO_REDO_CANVAS_PARENT);
+
+    tab->addUndoRedoChildBlock(tab, canvas, parentBlock, UNDO_REDO_PIXELS);
+
     for(int y = 0; y < h; ++y) {
         for(int x = 0; x < w; ++x) {
             u32 color = getCanvasColor(canvas, x, y);
@@ -67,10 +72,12 @@ int replaceColorInCanvas(CanvasTab *tab, Canvas *canvas, u32 srcColor, u32 destC
             if((mask & color) != 0 && ((color & rmask) == (srcColor & rmask)) && ((color & gmask) == (srcColor & gmask)) && ((color & bmask) == (srcColor & bmask))) { //NOTE: Check if it has alpha
                 replaceCount++;
                 canvas->pixels[y*canvas->w + x] = destColor;
-                tab->addUndoInfo(PixelInfo(x, y, color, destColor));
+                tab->addUndoInfo(PixelInfo(x, y, color, destColor), canvas);
             }
         }
     }
+
+    undoRedo_reinstateParentBlockAsCurrent(tab, parentBlock);
     
     return replaceCount;
 }
@@ -79,6 +86,10 @@ int replaceCanvasColors(GameState *gameState, u32 srcColor, u32 destColor) {
     int replaceCount = 0;
     DEBUG_TIME_BLOCK()
     CanvasTab *tab = getActiveCanvasTab(gameState);
+
+    undoRedo_beginUndoParentBlock(tab);
+    //NOTE: Make sure we add the new color to the color pallette
+    tab->addColorToPalette(destColor);
     
     if(tab) {
         if(gameState->color_replaceAllFrames) {
@@ -108,6 +119,9 @@ int replaceCanvasColors(GameState *gameState, u32 srcColor, u32 destColor) {
 
         
     }
+
+    undoRedo_endUndoParentBlock(tab);
+
     return replaceCount;
 }
 
@@ -148,7 +162,7 @@ void outlineCanvas(GameState *gameState) {
                         u32 newColor = float4_to_u32_color(tab->colorPicked);
                         //NOTE: Add the outline into the temp image
                         tempImage[y*w + x] = newColor;
-                        tab->addUndoInfo(PixelInfo(x, y, color, newColor));
+                        tab->addUndoInfo(PixelInfo(x, y, color, newColor), canvas);
                     }
                 }
             }
@@ -292,7 +306,7 @@ void setCanvasColor(CanvasTab *tab, Canvas *canvas, int coordX, int coordY, cons
         if(canvas->pixels[coordY*canvas->w + coordX] != u32Color) {
             DEBUG_TIME_BLOCK_NAMED("Add Pixel Info for undo")
             //NOTE: Don't add and undo info unless it's a different color
-            tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, u32Color));
+            tab->addUndoInfo(PixelInfo(coordX, coordY, oldColor, u32Color), canvas);
         }
         canvas->pixels[coordY*canvas->w + coordX] = u32Color;
     }
@@ -350,7 +364,7 @@ bool isInShape(int x, int y, int w, int h, CanvasInteractionMode mode, float bru
 
         float v = float2_dot(a, make_float2(x, y));
 
-        float tolerance = 0.4f;
+        float tolerance = 0.5f;
 
         if(fabs(v) < tolerance) {
             result = true;
@@ -449,15 +463,15 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
                                 if(gameState->canvasMirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) {
                                     float mirrorX = getMirrorCoord(canvas->w, (startX + x));
                                     float mirrorY = (startY + y);
-                                    float2 p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
+                                    p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
                                 } else if(gameState->canvasMirrorFlags & CANVAS_MIRROR_VERTICAL_FLAG) {
                                     float mirrorX = (startX + x);
                                     float mirrorY = getMirrorCoord(canvas->h, (startY + y));
-                                    float2 p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
+                                    p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
                                 } else if(gameState->canvasMirrorFlags & CANVAS_MIRROR_FLAG) {
                                     float mirrorX = getMirrorCoord(canvas->w, (startX + x));
                                     float mirrorY = getMirrorCoord(canvas->h, (startY + y));
-                                    float2 p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
+                                    p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
                                 }
 
                                 pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
@@ -471,14 +485,20 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
 }
 
 void drawGuidlines(GameState *gameState, Canvas *canvas) {
+    u32 guidlines = gameState->selectGuidelineFlags;
+    if(gameState->selectGuidelineFlags == 0) {
+        //NOTE: Get rid of the mirror guildines while it's active
+        guidlines = gameState->canvasMirrorFlags;
+    }
+    
     if(canvas) {
-        if((gameState->canvasMirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) || (gameState->canvasMirrorFlags & CANVAS_MIRROR_FLAG)) {
+        if((guidlines & CANVAS_MIRROR_HORIZONTAL_FLAG) || (guidlines & CANVAS_MIRROR_FLAG)) {
             float2 p00 = canvasCoordToWorldSpace(canvas, 0.5f*canvas->w, 0, false);
             float2 p10 = canvasCoordToWorldSpace(canvas, 0.5f*canvas->w, canvas->h, false);
             pushLineEndToEndWorldSpace(gameState->renderer, p00, p10, make_float4(1, 1, 1, 1));
         } 
         
-        if((gameState->canvasMirrorFlags & CANVAS_MIRROR_VERTICAL_FLAG) || (gameState->canvasMirrorFlags & CANVAS_MIRROR_FLAG)) {
+        if((guidlines & CANVAS_MIRROR_VERTICAL_FLAG) || (guidlines & CANVAS_MIRROR_FLAG)) {
             float2 p00 = canvasCoordToWorldSpace(canvas, 0, 0.5f*canvas->h, false);
             float2 p10 = canvasCoordToWorldSpace(canvas, canvas->w, 0.5f*canvas->h, false);
             pushLineEndToEndWorldSpace(gameState->renderer, p00, p10, make_float4(1, 1, 1, 1));
@@ -897,19 +917,19 @@ void updateSelectObject(GameState *gameState, Canvas *canvas) {
             float2 margin = make_float2(ceil(0.05f*canvas->w), ceil(0.05f*canvas->h));
             if(!isKeyPressedOrDown(gameState, KEY_SHIFT) && get_abs_value(centerDiff.x) < margin.x) {
                 gameState->selectObject.T.pos.x = selectNewCenter.x;
-                gameState->canvasMirrorFlags |= CANVAS_MIRROR_HORIZONTAL_FLAG;
+                gameState->selectGuidelineFlags |= CANVAS_MIRROR_HORIZONTAL_FLAG;
             } else {
-                gameState->canvasMirrorFlags &= (~CANVAS_MIRROR_HORIZONTAL_FLAG);
+                gameState->selectGuidelineFlags &= (~CANVAS_MIRROR_HORIZONTAL_FLAG);
             }
 
             if(!isKeyPressedOrDown(gameState, KEY_SHIFT) && get_abs_value(centerDiff.y) < margin.y) {
                 gameState->selectObject.T.pos.y = selectNewCenter.y;
-                gameState->canvasMirrorFlags |= CANVAS_MIRROR_VERTICAL_FLAG;
+                gameState->selectGuidelineFlags |= CANVAS_MIRROR_VERTICAL_FLAG;
             } else {
-                gameState->canvasMirrorFlags &= (~CANVAS_MIRROR_VERTICAL_FLAG);
+                gameState->selectGuidelineFlags &= (~CANVAS_MIRROR_VERTICAL_FLAG);
             }
         } else {
-            gameState->canvasMirrorFlags = 0;
+            gameState->selectGuidelineFlags = 0;
         }
 
 
@@ -1123,8 +1143,8 @@ Canvas *getCanvasForUndoBlock(CanvasTab *tab, UndoRedoBlock *block) {
                 Canvas *c = frame->layers + j;
                 if(areEntityIdsEqual(c->id, block->canvasId)) {
                     canvas = c;
-                    tab->activeFrame = i;
-                    frame->activeLayer = j;
+                    // tab->activeFrame = i;
+                    // frame->activeLayer = j;
                     found = true;
                     break;
                 }
@@ -1243,6 +1263,105 @@ void undoRedo_MoveCanvas(Canvas* layers, int from, int to)
     layers[to] = moved;
 }
 
+void processRedoCommandFromBlock(GameState *gameState, CanvasTab *tab, UndoRedoBlock *block) {
+     if(block->type == UNDO_REDO_PIXELS) {
+        Canvas *canvas = getCanvasForUndoBlock(tab, block);
+        {
+            for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
+                PixelInfo info = block->pixelInfos[i];
+                if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
+                    canvas->pixels[info.y*canvas->w + info.x] = info.thisColor;
+                }
+            }
+        }
+    } else if(block->type == UNDO_REDO_FRAME_DELETE || block->type == UNDO_REDO_FRAME_CREATE) {
+        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+        Frame *f = tab->frames + block->frameInfo.frameIndex;
+        f->deleted =  (block->type == UNDO_REDO_FRAME_CREATE) ? false : true;
+        tab->activeFrame = block->frameInfo.afterActiveLayer;
+    } else if(block->type == UNDO_REDO_CANVAS_CREATE || block->type == UNDO_REDO_CANVAS_DELETE ) {
+        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+        Frame *f = tab->frames + block->frameInfo.frameIndex;
+        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
+        Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
+        canvas->deleted =  (block->type == UNDO_REDO_CANVAS_CREATE) ? false : true;
+        f->activeLayer = block->frameInfo.afterActiveLayer;
+        
+    } else if(block->type == UNDO_REDO_CANVAS_SWAP) {
+        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+        Frame *f = tab->frames + block->frameInfo.frameIndex;
+        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
+
+            undoRedo_MoveCanvas(f->layers,
+                block->frameInfo.canvasIndexB,
+                block->frameInfo.canvasIndex);
+
+        f->activeLayer = block->frameInfo.afterActiveLayer;
+    } else if(block->type == UNDO_REDO_CANVAS_PARENT) {
+        UndoRedoBlock *childBlock = block->childUndoRedoBlocks;
+        //NOTE: Get to the end of the list, then walk backwards. This is because the pixels have to be undone in the opposite order we blended them
+        while(childBlock && childBlock->next) {
+            childBlock = childBlock->next;
+        }
+        
+        while(childBlock) {
+            assert(childBlock->type != UNDO_REDO_CANVAS_PARENT);
+            if(childBlock->type != UNDO_REDO_CANVAS_PARENT) {
+                processRedoCommandFromBlock(gameState, tab, childBlock);
+            }
+            childBlock = childBlock->prev;
+        }
+    }
+    updateGpuCanvasTextures(gameState);
+}
+
+void processUndoCommandFromBlock(GameState *gameState, CanvasTab *tab, UndoRedoBlock *block) {
+     if(block->type == UNDO_REDO_PIXELS) {
+        Canvas *canvas = getCanvasForUndoBlock(tab, block);
+        if(canvas) {
+            for(int i = (getArrayLength(block->pixelInfos) - 1); block->pixelInfos && i >= 0; --i) {
+                PixelInfo info = block->pixelInfos[i];
+                if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
+                    canvas->pixels[info.y*canvas->w + info.x] = info.lastColor;
+                }
+            }
+            
+        }
+        } else if(block->type == UNDO_REDO_FRAME_DELETE || block->type == UNDO_REDO_FRAME_CREATE) {
+        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+        Frame *f = tab->frames + block->frameInfo.frameIndex;
+        f->deleted = (block->type == UNDO_REDO_FRAME_CREATE) ? true : false;
+        tab->activeFrame = block->frameInfo.beforeActiveLayer;
+    } else if(block->type == UNDO_REDO_CANVAS_DELETE || block->type == UNDO_REDO_CANVAS_CREATE) {
+        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+        Frame *f = tab->frames + block->frameInfo.frameIndex;
+        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
+        Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
+        canvas->deleted = (block->type == UNDO_REDO_CANVAS_CREATE) ? true : false;
+        f->activeLayer = block->frameInfo.beforeActiveLayer;
+    } else if(block->type == UNDO_REDO_CANVAS_SWAP) {
+        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+        Frame *f = tab->frames + block->frameInfo.frameIndex;
+        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
+
+        undoRedo_MoveCanvas(f->layers,
+                block->frameInfo.canvasIndex,
+                block->frameInfo.canvasIndexB);
+
+        f->activeLayer = block->frameInfo.beforeActiveLayer;
+    } else if(block->type == UNDO_REDO_CANVAS_PARENT) {
+        UndoRedoBlock *childBlock = block->childUndoRedoBlocks;
+        while(childBlock) {
+            assert(childBlock->type != UNDO_REDO_CANVAS_PARENT);
+            if(childBlock->type != UNDO_REDO_CANVAS_PARENT) {
+                processUndoCommandFromBlock(gameState, tab, childBlock);
+            }
+            childBlock = childBlock->next;
+        }
+    }
+    updateGpuCanvasTextures(gameState);
+}
+
 void updateUndoState(GameState *gameState, bool undo = false, bool redo = false) {
     DEBUG_TIME_BLOCK()
     CanvasTab *tab = getActiveCanvasTab(gameState);
@@ -1252,42 +1371,7 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
             if(undo || (gameState->keys.keys[KEY_Z] == MOUSE_BUTTON_DOWN && isKeyPressedOrDown(gameState, KEY_COMMAND) && !isKeyPressedOrDown(gameState, KEY_SHIFT))) {
                 UndoRedoBlock *block = tab->undoList;
                 if(block->next && !isUndoBlockSentinel(block)) {
-
-                    if(block->type == UNDO_REDO_PIXELS) {
-                        Canvas *canvas = getCanvasForUndoBlock(tab, block);
-                        if(canvas) {
-                            for(int i = (getArrayLength(block->pixelInfos) - 1); block->pixelInfos && i >= 0; --i) {
-                                PixelInfo info = block->pixelInfos[i];
-                                if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
-                                    canvas->pixels[info.y*canvas->w + info.x] = info.lastColor;
-                                }
-                            }
-                            
-                        }
-                     } else if(block->type == UNDO_REDO_FRAME_DELETE || block->type == UNDO_REDO_FRAME_CREATE) {
-                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
-                        Frame *f = tab->frames + block->frameInfo.frameIndex;
-                        f->deleted = (block->type == UNDO_REDO_FRAME_CREATE) ? true : false;
-                        tab->activeFrame = block->frameInfo.beforeActiveLayer;
-                    } else if(block->type == UNDO_REDO_CANVAS_DELETE || block->type == UNDO_REDO_CANVAS_CREATE) {
-                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
-                        Frame *f = tab->frames + block->frameInfo.frameIndex;
-                        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
-                        Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
-                        canvas->deleted = (block->type == UNDO_REDO_CANVAS_CREATE) ? true : false;
-                        f->activeLayer = block->frameInfo.beforeActiveLayer;
-                    } else if(block->type == UNDO_REDO_CANVAS_SWAP) {
-                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
-                        Frame *f = tab->frames + block->frameInfo.frameIndex;
-                        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
-
-                        undoRedo_MoveCanvas(f->layers,
-                                block->frameInfo.canvasIndex,
-                                block->frameInfo.canvasIndexB);
-
-                        f->activeLayer = block->frameInfo.beforeActiveLayer;
-                    }
-                    updateGpuCanvasTextures(gameState);
+                    processUndoCommandFromBlock(gameState, tab, block);
                     tab->undoList = block->next;
                 }
             }
@@ -1296,42 +1380,7 @@ void updateUndoState(GameState *gameState, bool undo = false, bool redo = false)
                 UndoRedoBlock *block = tab->undoList;
                 if(block->prev) {
                     block = block->prev;
-                    //NOTE: Process the undo block
-                    if(block->type == UNDO_REDO_PIXELS) {
-                        Canvas *canvas = getCanvasForUndoBlock(tab, block);
-                        {
-                            for(int i = 0; block->pixelInfos && i < getArrayLength(block->pixelInfos); ++i) {
-                                PixelInfo info = block->pixelInfos[i];
-                                if(info.y >= 0 && info.x >= 0 && info.y < canvas->h && info.x < canvas->w) {
-                                    canvas->pixels[info.y*canvas->w + info.x] = info.thisColor;
-                                }
-                            }
-                        }
-                    } else if(block->type == UNDO_REDO_FRAME_DELETE || block->type == UNDO_REDO_FRAME_CREATE) {
-                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
-                        Frame *f = tab->frames + block->frameInfo.frameIndex;
-                        f->deleted =  (block->type == UNDO_REDO_FRAME_CREATE) ? false : true;
-                        tab->activeFrame = block->frameInfo.afterActiveLayer;
-                    } else if(block->type == UNDO_REDO_CANVAS_CREATE || block->type == UNDO_REDO_CANVAS_DELETE ) {
-                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
-                        Frame *f = tab->frames + block->frameInfo.frameIndex;
-                        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
-                        Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
-                        canvas->deleted =  (block->type == UNDO_REDO_CANVAS_CREATE) ? false : true;
-                        f->activeLayer = block->frameInfo.afterActiveLayer;
-                        
-                    } else if(block->type == UNDO_REDO_CANVAS_SWAP) {
-                        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
-                        Frame *f = tab->frames + block->frameInfo.frameIndex;
-                        assert(block->frameInfo.canvasIndex < getArrayLength(f->layers));
-
-                          undoRedo_MoveCanvas(f->layers,
-                                block->frameInfo.canvasIndexB,
-                                block->frameInfo.canvasIndex);
-
-                        f->activeLayer = block->frameInfo.afterActiveLayer;
-                    }
-                    updateGpuCanvasTextures(gameState);
+                    processRedoCommandFromBlock(gameState, tab, block);
                     tab->undoList = block;
                 }
             }
@@ -1401,7 +1450,7 @@ void updateCanvasSelect(GameState *gameState, CanvasTab *canvas) {
     }
 }
 
-void setCanvasColorWithBrushSize(GameState *gameState, CanvasTab *tab, Canvas *canvas, u32 color, int centerX, int centerY, bool erase, bool painterIsActive = true) {
+void setCanvasColorWithBrushSize(GameState *gameState, CanvasTab *tab, Canvas *canvas, u32 color, int centerX, int centerY, bool erase, bool painterIsActive = true, DitherType ditherOption = DITHER_STAMP_NONE) {
     DEBUG_TIME_BLOCK()
     int brushSize = tab->eraserSize; //NOTE: Uses the same slider as the eraser size slider
     int halfBrushSize = floor(0.5f*(brushSize == 1 ? 0 : brushSize));
@@ -1430,11 +1479,25 @@ void setCanvasColorWithBrushSize(GameState *gameState, CanvasTab *tab, Canvas *c
                     inBounds = lenSqr <= halfBrushSize*halfBrushSize;
                 } 
 
-                if(painterIsActive) {
-                    if(x >= 0 && y >= 0 && x < canvas->w && y < canvas->h && inBounds) {
-                        setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase, gameState->canvasMirrorFlags);
-                    }        
-                } 
+                if(ditherOption != DITHER_STAMP_NONE) {
+                    if((x % 2)) {
+                        if(((y % 2) == 0)) {
+                            inBounds = false;
+                        }
+                    } else {
+                        if(((y % 2))) {
+                            inBounds = false;
+                        }
+                    }
+                    // float alpha = get_alpha_from_u32_color(getCanvasColor(canvas, x, y));
+                    // if(alpha <= 0) {
+                    //     inBounds = false;
+                    // }
+                }
+
+                if(painterIsActive && inBounds) {
+                    setCanvasColor(tab, canvas, x, y, color, tab->opacity, !erase, gameState->canvasMirrorFlags);
+                }        
                 
                 if(inBounds) {
                     assert((brushY*brushSize + brushX) < (brushSize*brushSize));
@@ -1445,7 +1508,7 @@ void setCanvasColorWithBrushSize(GameState *gameState, CanvasTab *tab, Canvas *c
     }
 }
 
-void updateCanvasDraw(GameState *gameState, Canvas *canvas, bool erase = false) {
+void updateCanvasDraw(GameState *gameState, Canvas *canvas, bool erase = false, DitherType ditherOption = DITHER_STAMP_NONE) {
     DEBUG_TIME_BLOCK()
     CanvasTab *tab = getActiveCanvasTab(gameState);
     bool painterIsActive = (gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN || gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_PRESSED);
@@ -1474,14 +1537,14 @@ void updateCanvasDraw(GameState *gameState, Canvas *canvas, bool erase = false) 
                 DEBUG_TIME_BLOCK_NAMED("DRAW SET CANVAS COLOR")
 
                 //NOTE: Draw the brush size
-                setCanvasColorWithBrushSize(gameState, tab, canvas, color, round(startP.x), round(startP.y), erase, painterIsActive);
+                setCanvasColorWithBrushSize(gameState, tab, canvas, color, round(startP.x), round(startP.y), erase, painterIsActive, ditherOption);
 
                 startP = plus_float2(startP, addend);
                 loopCount++;
             }
         } else {
             //NOTE: Not dragging the paint brush so don't need to lerp between end and start points
-            setCanvasColorWithBrushSize(gameState, tab, canvas, color, coordX, coordY, erase, painterIsActive);
+            setCanvasColorWithBrushSize(gameState, tab, canvas, color, coordX, coordY, erase, painterIsActive, ditherOption);
         }
 
            
