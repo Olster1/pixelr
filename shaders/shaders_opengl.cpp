@@ -13,23 +13,65 @@ static char *lineVertexShader =
 //uniform variables
 "uniform mat4 V;"
 "uniform mat4 projection;"
+"uniform vec2 canvasDimInWorldUnits;"
 
 //outgoing variables
 "out vec4 color_frag;"
+"out vec2 uv_frag;"
 
 "void main() {"
     "mat4 MV = V * M;"
     "gl_Position = projection * MV * vec4((vertex), 1);"
     "color_frag = color;"
+    "uv_frag =  ((M * vec4((vertex), 1)).xy + 0.5*canvasDimInWorldUnits) / canvasDimInWorldUnits;"
+"}";
+
+static char *lineVertexScreenSpaceShader = 
+"#version 330\n"
+//per vertex variables
+"in vec3 vertex;"
+"in vec3 normal;"
+"in vec2 texUV;	"
+
+//per instanced variables
+"in mat4 M;"
+"in vec4 uvAtlas;"
+"in vec4 color;"
+
+//uniform variables
+"uniform mat4 V;"
+"uniform mat4 projection;"
+"uniform vec2 canvasDimInWorldUnits;"
+
+//outgoing variables
+"out vec4 color_frag;"
+"out vec2 uv_frag;"
+
+"void main() {"
+    "mat4 MV = V * M;"
+    "gl_Position = projection * MV * vec4((vertex), 1);"
+    "color_frag = color;"
+    "uv_frag =  ((M * vec4((vertex), 1)).xy + 0.5*canvasDimInWorldUnits) / canvasDimInWorldUnits;"
 "}";
 
 
 static char *lineFragShader = 
 "#version 330\n"
 "in vec4 color_frag;" 
+"in vec2 uv_frag;"
 "out vec4 color;"
+"uniform sampler2D diffuse;" //NOTE: To get the inverse color
 "void main() {"
-    "color = color_frag;"
+    "vec4 colorSample = texture(diffuse, uv_frag);"
+    "colorSample = vec4(1.0) - colorSample;"
+    "colorSample.w = 1;"
+
+    "if(color_frag.w == 0) {"
+        "colorSample = color_frag;"
+    "}"
+    
+
+    "color = colorSample;"
 "}";
 
 static char *selectionFragShader = 
@@ -38,6 +80,7 @@ static char *selectionFragShader =
 "in vec2 uv_frag;"
 
 "uniform sampler2D diffuse;" //NOTE: Selection Mask
+"uniform sampler2D diffuse1;" //NOTE: current canvas to select inverse color from
 "uniform float u_time;"
 "out vec4 color;"
 
@@ -45,9 +88,12 @@ static char *selectionFragShader =
     "vec4 color1 = color_frag;" 
     "float isSelected = texture(diffuse, uv_frag).r;"
     "if (isSelected > 0.5) {"
+        "vec4 inverseColor = vec4(1) - texture(diffuse1, vec2(uv_frag.x, 1.0 - uv_frag.y));"
+        "inverseColor.w = 1;"
         "float stripe = sin((uv_frag.x + uv_frag.y - u_time * 2.0) * 50.0) * 0.5 + 0.5;"
-        "color1.rgb = mix(color1.rgb, vec3(1.0, 1.0, 1.0), stripe * 0.5);"
+        "color1.rgb = mix(color1.rgb, inverseColor.rgb, stripe * 0.5);"
         "color1.w *= stripe;"
+        "color1.w *= 0.7;"
         "color = color1;"
     "} else {"
         "discard;"

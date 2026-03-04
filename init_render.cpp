@@ -10,6 +10,8 @@ Renderer *initRenderer(Texture atlasTexture) {
     renderer->quadTextureShader = loadShader(quadVertexShader, quadTextureFragShader);
     renderer->fontTextureShader = loadShader(quadVertexShader, fontTextureFragShader);
     renderer->lineShader = loadShader(lineVertexShader, lineFragShader);
+    renderer->lineScreenSpaceShader = loadShader(lineVertexScreenSpaceShader, lineFragShader);
+    
 
     renderer->quadShader = loadShader(quadVertexShader, quadFragShader);
     renderer->checkQuadShader = loadShader(quadVertexShader, checkQuadFragShader);

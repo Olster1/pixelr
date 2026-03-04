@@ -58,6 +58,8 @@ void updateHotKeys(GameState *gameState) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
                 gameState->clipboard.clear();
+                CanvasSelectionPosition canvasPosition = getCanvasSelectionBounds(gameState->renderer, t);
+                gameState->clipboard.canvasBounds = make_rect2f_min_dim_2f(canvasPosition.min, canvasPosition.dim);
                 for(int i = 0; i < getArrayLength(t->selected); i++) {
                     float2 p = t->selected[i];
                     Canvas *c = getActiveCanvas(gameState);
@@ -73,6 +75,8 @@ void updateHotKeys(GameState *gameState) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
                 gameState->clipboard.clear();
+                CanvasSelectionPosition canvasPosition = getCanvasSelectionBounds(gameState->renderer, t);
+                gameState->clipboard.canvasBounds = make_rect2f_min_dim_2f(canvasPosition.min, canvasPosition.dim);
                 for(int i = 0; i < getArrayLength(t->selected); i++) {
                     float2 p = t->selected[i];
                     Canvas *c = getActiveCanvas(gameState);
@@ -116,32 +120,37 @@ void updateHotKeys(GameState *gameState) {
 
                 t->clearSelection();
 
-                float minX = FLT_MAX;
-                float maxX = -FLT_MAX;
-                float minY = FLT_MAX;
-                float maxY = -FLT_MAX;
+                float minX = gameState->clipboard.canvasBounds.minX;
+                float maxX = gameState->clipboard.canvasBounds.maxX;
+                float minY = gameState->clipboard.canvasBounds.minY;
+                float maxY = gameState->clipboard.canvasBounds.maxY;
+
+                // float minX = FLT_MAX;
+                // float maxX = -FLT_MAX;
+                // float minY = FLT_MAX;
+                // float maxY = -FLT_MAX;
                 
-                for(int i = 0; i < getArrayLength(gameState->clipboard.pixels); i++) {
-                    PixelClipboardInfo info = gameState->clipboard.pixels[i];
-                    if(u32_to_float4_color(info.color).w > 0) {
-                        // pushArrayItem(&gameState->selectObject.pixels, info, PixelClipboardInfo);
+                // for(int i = 0; i < getArrayLength(gameState->clipboard.pixels); i++) {
+                //     PixelClipboardInfo info = gameState->clipboard.pixels[i];
+                //     if(u32_to_float4_color(info.color).w > 0) {
+                //         // pushArrayItem(&gameState->selectObject.pixels, info, PixelClipboardInfo);
 
-                        if(info.x < minX) {
-                            minX = info.x;
-                        }
-                        if(info.x > maxX) {
-                            maxX = info.x;
-                        }
-                        if(info.y < minY) {
-                            minY = info.y;
-                        }
-                        if(info.y > maxY) {
-                            maxY = info.y;
-                        }
-                    }
-                }
+                //         if(info.x < minX) {
+                //             minX = info.x;
+                //         }
+                //         if(info.x > maxX) {
+                //             maxX = info.x;
+                //         }
+                //         if(info.y < minY) {
+                //             minY = info.y;
+                //         }
+                //         if(info.y > maxY) {
+                //             maxY = info.y;
+                //         }
+                //     }
+                // }
 
-                //NOTE: Account for the max borders are on the outer edge of the pixel, so essentially the next pixel over
+                // //NOTE: Account for the max borders are on the outer edge of the pixel, so essentially the next pixel over
                 maxX++;
                 maxY++;
 
@@ -189,7 +198,6 @@ void updateHotKeys(GameState *gameState) {
                 Canvas *canvas = getActiveCanvas(gameState);
                 if(canvas) {
                     clearSelection(t);
-                    
 
                     for(int y = 0; y <= t->h; ++y) {
                         for(int x = 0; x <= t->w; ++x) {

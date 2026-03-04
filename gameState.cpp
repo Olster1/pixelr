@@ -162,6 +162,8 @@ struct GameState {
     float3 startP;
     int grabbedCornerIndex;
 
+    float4 currentDropperColor;
+
     InteractionAppState interactionAppState;
 
     float scrollDp; //NOTE: velcoity to intergrate for the scroll speed

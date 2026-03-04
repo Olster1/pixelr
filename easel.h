@@ -128,6 +128,7 @@ struct Clipboard {
     Clipboard() {
 
     }
+    Rect2f canvasBounds = {};
 
     void clear() {
         if(pixels) {
@@ -321,6 +322,7 @@ struct CanvasTab {
     int w = 0;
     int h = 0;
 
+    FrameBuffer overallCanvasHandle = {}; //NOTE: What the current canvas looks like overall i.e. all visible things composited on it - all visible layers and onion skinned frames 
     float2 *selected = 0;//NOTE: Resize array 
     u32 selectionGpuHandle = 0;
     FrameBuffer checkBackgroundFrameBuffer = {};

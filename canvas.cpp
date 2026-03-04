@@ -36,6 +36,14 @@ bool inIMGUIActive() {
 }
 
 bool isInteractingWithIMGUI() {
+    //NOTE: This way is even if the mouse is over IMGUI is won't do hotkeys or zoom etc.
+    // ImGuiIO& io = ImGui::GetIO();
+    // return io.WantCaptureMouse;  
+    
+    return ImGui::IsAnyItemActive();
+}
+
+bool isInteractingWithIMGUIZoomable() {
     ImGuiIO& io = ImGui::GetIO();
     return io.WantCaptureMouse;  
 }
@@ -159,7 +167,10 @@ void outlineCanvas(GameState *gameState) {
                     }
 
                     if(found) {
-                        u32 newColor = float4_to_u32_color(tab->colorPicked);
+                        float4 colorfloat4 = tab->colorPicked;
+                        colorfloat4.w = tab->opacity;
+                        u32 newColor = float4_to_u32_color(colorfloat4);
+                        
                         //NOTE: Add the outline into the temp image
                         tempImage[y*w + x] = newColor;
                         tab->addUndoInfo(PixelInfo(x, y, color, newColor), canvas);
@@ -247,7 +258,7 @@ float2 getCanvasCoordFromMouse(GameState *gameState, int w, int h, bool real = f
 
 bool hideOrShowArrowIfOnCanvas(GameState *gameState, CanvasTab *tab) {
     float2 coord = getCanvasCoordFromMouse(gameState, tab->w, tab->h);
-    if(coord.y >= 0 && coord.x >= 0 && coord.y < tab->h && coord.x < tab->w) {
+    if(coord.y >= 0 && coord.x >= 0 && coord.y < tab->h && coord.x < tab->w && !isInteractingWithIMGUIZoomable()) {
         platform_hideMouseCursor();
         return false;
     } else {
@@ -364,8 +375,15 @@ bool isInShape(int x, int y, int w, int h, CanvasInteractionMode mode, float bru
 
         float v = float2_dot(a, make_float2(x, y));
 
-        float tolerance = 0.5f;
+        float tolerance = 0.5f*brushSize;
 
+        // if(float2_dot(make_float2(w, h), make_float2(x, y)) < 0) {
+        //     //NOTE: Is behind the start so round the corners
+        //     float dist = float2_magnitude(minus_float2(make_float2(x, y), make_float2(brushSize, brushSize)));
+        //     if(dist < 0.5f*brushSize) {
+        //         result = true;
+        //     }
+        // } else 
         if(fabs(v) < tolerance) {
             result = true;
         }
@@ -431,6 +449,16 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
         float4 color = tab->colorPicked;
         float2 p = getCanvasCoordFromMouse(gameState, canvas->w, canvas->h);
         float2 diff1 = minus_float2(p, gameState->drawShapeStart);
+        
+        float brushSize = tab->eraserSize;
+        float offset = brushSize;
+        if(mode == CANVAS_DRAW_LINE_MODE) {
+        //     if(gameState->keys.keys[KEY_SHIFT] == MOUSE_BUTTON_DOWN) {
+        //         diff1 = scale_float2(float2_magnitude(diff1), make_float2(1, 0));
+        //     }    
+            offset = 0;
+        }
+
         float2 diff = diff1;
         diff.x = abs(diff1.x);
         diff.y = abs(diff1.y);
@@ -438,43 +466,44 @@ void drawDragShape(GameState *gameState, Canvas *canvas, CanvasInteractionMode m
         float startX = (gameState->drawShapeStart.x < p.x) ? gameState->drawShapeStart.x : p.x;
         float startY = (gameState->drawShapeStart.y < p.y) ? gameState->drawShapeStart.y : p.y;
 
-        float brushSize = tab->eraserSize;
-
         float2 middle = make_float2(startX + 0.5f*diff.x, startY + 0.5f*diff.y);
-        
+      
         int w = round(diff.x);
         int h = round(diff.y);
 
-        for(int y = 0; y <= h; ++y) {
-            for(int x = 0; x <= w; ++x) {
-                float2 offset = make_float2((startX + x) - gameState->drawShapeStart.x, (startY + y) - gameState->drawShapeStart.y);
-                if(isInShape((mode == CANVAS_DRAW_LINE_MODE) ? round(offset.x) : x, (mode == CANVAS_DRAW_LINE_MODE) ? round(offset.y) : y, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.x) : w, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.y) : h, mode, brushSize)) {
-                    if((startX + x) >= 0 && (startY + y) >= 0 && (startX + x) < canvas->w && (startY + y) < canvas->h) {
-                        if(fill) {
-                            float2 p = make_float2(startX + x,startY + y);
-                            setCanvasColor(tab, canvas, p.x, p.y, float4_to_u32_color(color), tab->opacity, true, gameState->canvasMirrorFlags);
-                        } else {
-                            float2 p = make_float2((startX + x)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (startY + y)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
-                            color.w = tab->opacity;
-                            pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
-                            
-                            if(gameState->canvasMirrorFlags != 0) {
-                                float2 p = {};
-                                if(gameState->canvasMirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) {
-                                    float mirrorX = getMirrorCoord(canvas->w, (startX + x));
-                                    float mirrorY = (startY + y);
-                                    p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
-                                } else if(gameState->canvasMirrorFlags & CANVAS_MIRROR_VERTICAL_FLAG) {
-                                    float mirrorX = (startX + x);
-                                    float mirrorY = getMirrorCoord(canvas->h, (startY + y));
-                                    p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
-                                } else if(gameState->canvasMirrorFlags & CANVAS_MIRROR_FLAG) {
-                                    float mirrorX = getMirrorCoord(canvas->w, (startX + x));
-                                    float mirrorY = getMirrorCoord(canvas->h, (startY + y));
-                                    p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
-                                }
-
+        
+        {
+            for(int y = -offset; y <= h + offset; ++y) {
+                for(int x = -offset; x <= w + offset; ++x) {
+                    float2 offset = make_float2((startX + x) - gameState->drawShapeStart.x, (startY + y) - gameState->drawShapeStart.y);
+                    if(isInShape((mode == CANVAS_DRAW_LINE_MODE) ? round(offset.x) : x, (mode == CANVAS_DRAW_LINE_MODE) ? round(offset.y) : y, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.x) : w, (mode == CANVAS_DRAW_LINE_MODE) ? round(diff1.y) : h, mode, brushSize)) {
+                        if((startX + x) >= 0 && (startY + y) >= 0 && (startX + x) < canvas->w && (startY + y) < canvas->h) {
+                            if(fill) {
+                                float2 p = make_float2(startX + x,startY + y);
+                                setCanvasColor(tab, canvas, p.x, p.y, float4_to_u32_color(color), tab->opacity, true, gameState->canvasMirrorFlags);
+                            } else {
+                                float2 p = make_float2((startX + x)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS, (startY + y)*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS + 0.5f*VOXEL_SIZE_IN_METERS);
+                                color.w = tab->opacity;
                                 pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+                                
+                                if(gameState->canvasMirrorFlags != 0) {
+                                    float2 p = {};
+                                    if(gameState->canvasMirrorFlags & CANVAS_MIRROR_HORIZONTAL_FLAG) {
+                                        float mirrorX = getMirrorCoord(canvas->w, (startX + x));
+                                        float mirrorY = (startY + y);
+                                        p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
+                                    } else if(gameState->canvasMirrorFlags & CANVAS_MIRROR_VERTICAL_FLAG) {
+                                        float mirrorX = (startX + x);
+                                        float mirrorY = getMirrorCoord(canvas->h, (startY + y));
+                                        p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
+                                    } else if(gameState->canvasMirrorFlags & CANVAS_MIRROR_FLAG) {
+                                        float mirrorX = getMirrorCoord(canvas->w, (startX + x));
+                                        float mirrorY = getMirrorCoord(canvas->h, (startY + y));
+                                        p = canvasCoordToWorldSpace(canvas, mirrorX, mirrorY);
+                                    }
+
+                                    pushColoredQuad(gameState->renderer, make_float3(p.x, p.y, 0), make_float2(VOXEL_SIZE_IN_METERS, VOXEL_SIZE_IN_METERS), color);
+                                }
                             }
                         }
                     }
@@ -512,6 +541,45 @@ struct CanvasSelectionPosition {
     float2 max;
 };
 
+CanvasSelectionPosition getCanvasSelectionBounds(Renderer *renderer, CanvasTab *t) {
+    DEBUG_TIME_BLOCK()
+
+    float2 min = make_float2(FLT_MAX, FLT_MAX);
+    float2 max = make_float2(0, 0);
+            
+    for(int i = 0; i < getArrayLength(t->selected); ++i) {
+        float2 p = t->selected[i];
+        
+        if(isValidCanvasTabRange(t, p.x, p.y)) 
+        {
+            if(p.x < min.x) {
+                min.x = p.x;
+            }
+            if(p.x >= max.x) {
+                max.x = p.x + 1;
+            }
+            if(p.y < min.y) {
+                min.y = p.y;
+            }
+            if(p.y >= max.y) {
+                max.y = p.y + 1;
+            }
+        }
+    } 
+
+     if(max.x == 0 || max.y == 0) {
+        //NOTE: Nothing selected
+        CanvasSelectionPosition result = {};
+        return result;
+    } else {
+        CanvasSelectionPosition result = {};
+        result.dim = make_float2(max.x - min.x, max.y - min.y);
+        result.min = min;
+        result.max = max;
+        return result;
+    }
+}
+
 CanvasSelectionPosition updateCanvasSelectionTexture(Renderer *renderer, CanvasTab *t) {
     DEBUG_TIME_BLOCK()
     renderer->selectionTextureHandle = t->selectionGpuHandle;
@@ -524,9 +592,10 @@ CanvasSelectionPosition updateCanvasSelectionTexture(Renderer *renderer, CanvasT
             
     for(int i = 0; i < getArrayLength(t->selected); ++i) {
         float2 p = t->selected[i];
-        int y = (t->h - 1) - p.y;
-        if(isValidCanvasTabRange(t, p.x, y)) 
-        {
+        
+        if(isValidCanvasTabRange(t, p.x, p.y)) 
+        {   
+            int y = (t->h - 1) - p.y;
             if(p.x < min.x) {
                 min.x = p.x;
             }
@@ -569,7 +638,6 @@ CanvasSelectionPosition updateCanvasSelectionTexture(Renderer *renderer, CanvasT
         return result;
     }
 
-    
 }
 
 void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *canvasTab) {
@@ -582,14 +650,14 @@ void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *c
             InstanceDataWithRotation I = {};
             I.M = float16_set_pos(float16_scale(float16_identity(), make_float3(2, 2, 0)), make_float3(0, 0, MATH_3D_NEAR_CLIP_PlANE));
             I.color = make_float4(1, 1, 1, 1);
-            I.uv = make_float4(0, 1, 0, 1);
+            I.uv = make_float4(0, 1, 1, 0);
 
             assert(canvasTab->checkBackgroundFrameBuffer.handle > 0);
             backendRenderer_BindFrameBuffer(canvasTab->checkBackgroundFrameBuffer.handle);
             backendRenderer_setViewport(0, 0, canvasTab->w, canvasTab->h);
             
             updateInstanceData(renderer->quadModel.instanceBufferhandle, &I, sizeof(InstanceDataWithRotation));
-            drawModels(&renderer->quadModel, &renderer->checkQuadShader, canvasTab->checkBackgroundFrameBuffer.textureHandle, 1, float16_identity(), float16_identity(), make_float3(0, 0, 1));
+            drawModels(renderer, &renderer->quadModel, &renderer->checkQuadShader, canvasTab->checkBackgroundFrameBuffer.textureHandle, 1, float16_identity(), float16_identity(), make_float3(0, 0, 1));
 
             backendRenderer_BindFrameBuffer(0);
             backendRenderer_setViewport(0, 0, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x);
@@ -601,15 +669,16 @@ void drawCanvasGridBackground(GameState *gameState, Canvas *canvas, CanvasTab *c
     }
 }
 
-void drawCanvas(GameState *gameState, Frame *frame, CanvasTab *canvasTab, float onionSkinOpacity) {
+void drawCanvasSelection(GameState *gameState, Frame *frame, CanvasTab *canvasTab) {
     DEBUG_TIME_BLOCK()
-    pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, onionSkinOpacity), frame->frameBufferHandle.textureHandle);
+    // pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, onionSkinOpacity), frame->frameBufferHandle.textureHandle);
 
     //NOTE: Draw selected
     if(getArrayLength(canvasTab->selected) > 0) {
         CanvasSelectionPosition canvasPosition = updateCanvasSelectionTexture(gameState->renderer, canvasTab);
         pushSelectionQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(canvasTab->w*VOXEL_SIZE_IN_METERS, canvasTab->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 0.7f));
-        if(!(canvasPosition.dim.x == 0 && canvasPosition.dim.y == 0)) {// && gameState->mouseBtn[MOUSE_BUTTON_LEFT_CLICK] == MOUSE_BUTTON_DOWN
+
+        if(!(canvasPosition.dim.x == 0 && canvasPosition.dim.y == 0)) {
             char *s = easy_createString_printf(&globalPerFrameArena, "%d, %d", (int)canvasPosition.dim.x, (int)canvasPosition.dim.y);
 
             Canvas *canvas = getActiveCanvas(gameState);
@@ -635,15 +704,15 @@ void drawCanvas(GameState *gameState, Frame *frame, CanvasTab *canvasTab, float 
     }
 }
 
-void drawCursor(GameState *gameState) {
+void drawCursor(GameState *gameState, CanvasTab *tab) {
     float4 color = make_float4(0.8f, 0.8f, 0.8f, 1);
-    float offset = 5;
-    float offset1 = 15;
-    float2 mouseP = getScreenPFromMouse(gameState);
-    pushLineEndToEndScreenSpace(gameState->renderer, make_float2(mouseP.x, mouseP.y + offset), make_float2(mouseP.x, mouseP.y + offset1), color);
-    pushLineEndToEndScreenSpace(gameState->renderer, make_float2(mouseP.x, mouseP.y - offset), make_float2(mouseP.x, mouseP.y - offset1), color);
-    pushLineEndToEndScreenSpace(gameState->renderer, make_float2(mouseP.x + offset, mouseP.y), make_float2(mouseP.x + offset1, mouseP.y), color);
-    pushLineEndToEndScreenSpace(gameState->renderer, make_float2(mouseP.x - offset, mouseP.y), make_float2(mouseP.x - offset1, mouseP.y), color);
+    float offset = 0.004*tab->zoomFactor;
+    float offset1 = 0.015f*tab->zoomFactor;
+    float2 mouseP = getWorldPFromMouse(gameState);
+    pushLineEndToEndWorldSpace(gameState->renderer, make_float2(mouseP.x, mouseP.y + offset), make_float2(mouseP.x, mouseP.y + offset1), color);
+    pushLineEndToEndWorldSpace(gameState->renderer, make_float2(mouseP.x, mouseP.y - offset), make_float2(mouseP.x, mouseP.y - offset1), color);
+    pushLineEndToEndWorldSpace(gameState->renderer, make_float2(mouseP.x + offset, mouseP.y), make_float2(mouseP.x + offset1, mouseP.y), color);
+    pushLineEndToEndWorldSpace(gameState->renderer, make_float2(mouseP.x - offset, mouseP.y), make_float2(mouseP.x - offset1, mouseP.y), color);
 }
 
 
@@ -651,6 +720,9 @@ void drawPaintCursor(GameState *gameState) {
     CanvasTab *tab = getActiveCanvasTab(gameState);
     if(tab && gameState->brushOutlineStencil) {
         float4 color = tab->colorPicked;
+
+        //NOTE: Make sure the alpha is set to 1 always because we want to always see the brush
+        color.w = 1;
         int width = gameState->brushOutlineSize;
         int height = gameState->brushOutlineSize;
         u8 *stencil = gameState->brushOutlineStencil;
@@ -1036,11 +1108,13 @@ void updateColorDropper(GameState *gameState, Canvas *canvas) {
                 }
                 
             }
-            float2 worldMouseP = getWorldPFromMouse(gameState);
-            float sizeFactor = 0.06;
-            float diameter = clamp(0.1f, sizeFactor*tab->w, tab->zoomFactor*sizeFactor);
-            pushFillCircle(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), diameter, color);
-            pushCircleOutline(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), diameter, make_float4(1, 1, 1, 1));
+
+            gameState->currentDropperColor = color;
+            // float2 worldMouseP = getWorldPFromMouse(gameState);
+            // float sizeFactor = 0.06;
+            // float diameter = clamp(0.1f, sizeFactor*tab->w, tab->zoomFactor*sizeFactor);
+            // pushFillCircle(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), diameter, color);
+            // pushCircleOutline(gameState->renderer, make_float3(worldMouseP.x, worldMouseP.y, 0), diameter, make_float4(1, 1, 1, 1));
         }
     }
 }
@@ -1091,7 +1165,12 @@ void drawLinedGrid(GameState *gameState, Canvas *canvas) {
             T.pos = make_float3(0, x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS, 0);
             T.scale.xy = make_float2(canvas->w*VOXEL_SIZE_IN_METERS, 0);
             float16 A = getModelToViewSpace(T);
-            pushLine(gameState->renderer, A, greyColor);
+            float4 color = greyColor;
+
+            if((x == 0 || x == canvas->h)) {
+                color.w = 0;
+            }
+            pushLine(gameState->renderer, A, color);
         }
     }
 
@@ -1102,7 +1181,12 @@ void drawLinedGrid(GameState *gameState, Canvas *canvas) {
             T.rotation.z = 90;
             T.scale.xy = make_float2(canvas->h*VOXEL_SIZE_IN_METERS, 0);
             float16 A = getModelToViewSpace(T);
-            pushLine(gameState->renderer, A, greyColor);
+            float4 color = greyColor;
+
+            if((y == 0 || y == canvas->w)) {
+                color.w = 0;
+            }
+            pushLine(gameState->renderer, A, color);
         }
     }
 }
@@ -1190,9 +1274,9 @@ u32 *getPixelsForFrame_shortTerm(CanvasTab *t, Frame *f) {
     return pixels;
 }
 
-void updateCompositePixelsForFrame_shortTerm(Renderer *renderer, CanvasTab *t, Frame *f) {
+void updateCompositePixelsForFrame_shortTerm(Renderer *renderer, CanvasTab *t, Frame *f, float16 projectionT) {
     DEBUG_TIME_BLOCK()
-    float16 projectionT = make_ortho_matrix_origin_center(t->w, t->h, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
+    
     //NOTE: Draw to the frame buffer all the images 
     backendRenderer_BindFrameBuffer(f->frameBufferHandle.handle);
     glClearColor(1, 1, 1, 0);
@@ -1217,18 +1301,18 @@ void updateCompositePixelsForFrame_shortTerm(Renderer *renderer, CanvasTab *t, F
             data.uv = make_float4(0, 1, 1, 0);
 
             updateInstanceData(renderer->quadModel.instanceBufferhandle, &data, sizeof(InstanceDataWithRotation));
-            drawModels(&renderer->quadModel, &renderer->quadTextureShader, textureHandle, 1, projectionT, float16_identity(), make_float3(0, 0, 1));
+            drawModels(renderer, &renderer->quadModel, &renderer->quadTextureShader, textureHandle, 1, projectionT, float16_identity(), make_float3(0, 0, 1));
         }
     }
 
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
-
 }
 
 void updateGpuCanvasTextures(GameState *gameState) {
     DEBUG_TIME_BLOCK()
     CanvasTab *t = getActiveCanvasTab(gameState);
     if(t){
+        float16 projectionT = make_ortho_matrix_origin_center(t->w, t->h, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
         glViewport(0, 0, t->w, t->h);
         
         for (int i = 0; i < getArrayLength(t->frames); i++) {
@@ -1236,9 +1320,49 @@ void updateGpuCanvasTextures(GameState *gameState) {
 
             if(!f->deleted) {
                 updateFrameGPUHandles(f, t);
-                updateCompositePixelsForFrame_shortTerm(gameState->renderer, t, f);
+                updateCompositePixelsForFrame_shortTerm(gameState->renderer, t, f, projectionT);
             }
         }
+
+        glBlendFuncSeparate(
+            GL_SRC_ALPHA,
+            GL_ONE_MINUS_SRC_ALPHA,
+            GL_ONE,
+            GL_ONE_MINUS_SRC_ALPHA
+        );
+
+        Renderer *renderer = gameState->renderer;
+        //NOTE: Composite all the frames now into the canvas texture
+        if(getArrayLength(t->frames) > 0) {
+            backendRenderer_clearFrameBuffer(t->overallCanvasHandle.handle);
+            backendRenderer_BindFrameBuffer(t->overallCanvasHandle.handle);
+            for(int i = t->onionSkinningFrames; i >= 0; --i) {
+                int frameIndex = t->activeFrame - i;
+                if(frameIndex < 0) {
+                    frameIndex = getArrayLength(t->frames) + frameIndex;
+                }
+                
+                assert(frameIndex >= 0 && frameIndex < getArrayLength(t->frames));
+
+                Frame *f = t->frames + frameIndex;
+                assert(f);
+
+                float onionSkinOpacity = 1.0f / MathMax(i + 1, 1);
+                 //NOTE: Now add this composite frame to the overall tab canvas thats used for sampling for inverse colors
+                
+                InstanceDataWithRotation data = {};
+
+                data.M = float16_set_pos(float16_scale(float16_identity(), make_float3(t->w, t->h, 0)), make_float3(0, 0, 0));
+                data.color = make_float4(1, 1, 1, onionSkinOpacity);
+                data.uv = make_float4(0, 1, 1, 0);
+
+                // printf("HEY\n");
+                updateInstanceData(renderer->quadModel.instanceBufferhandle, &data, sizeof(InstanceDataWithRotation));
+                drawModels(renderer, &renderer->quadModel, &renderer->quadTextureShader, f->frameBufferHandle.textureHandle, 1, projectionT, float16_identity(), make_float3(0, 0, 1));
+            }
+        }
+
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  
 
         backendRenderer_BindFrameBuffer(0);
         glViewport(0, 0, gameState->screenWidth, gameState->screenWidth*gameState->aspectRatio_y_over_x);

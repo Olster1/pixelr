@@ -29,8 +29,8 @@ static unsigned int global_lineIndicies[] = {
 };
 
 static Vertex global_lineModelData[] = {
-    makeVertex(make_float3(-0.5f, 0, 0), make_float2(1, 1), make_float3(0, 0, 1)),
-    makeVertex(make_float3(0.5f, 0, 0), make_float2(0, 1), make_float3(0, 0, 1)),
+    makeVertex(make_float3(-0.5f, 0, 0), make_float2(0, 1), make_float3(0, 0, 1)),
+    makeVertex(make_float3(0.5f, 0, 0), make_float2(1, 1), make_float3(0, 0, 1)),
     
 };
 
@@ -92,6 +92,7 @@ struct Renderer {
     Shader quadTextureShader;
     Shader fontTextureShader;
     Shader lineShader;
+    Shader lineScreenSpaceShader;
     Shader pixelSelectionShader;
     
     ModelBuffer quadModel;
@@ -99,6 +100,8 @@ struct Renderer {
 
     float timeAccum;
     u32 checkedQuadBackgroundHandle;
+    u32 currentVisibleCanvasHandle;
+    float2 canvasDimWorldUnits;
 };
 
 InstanceDataWithRotation *pushCheckerQuad(Renderer *renderer, float3 worldP, float3 scale, u32 textureHandle) {
@@ -176,33 +179,6 @@ InstanceDataWithRotation *pushLine(Renderer *renderer, float16 T, float4 color) 
     
     if(c) {
         c->M = T;
-        c->color = color;
-    }
-
-    return c;
-}
-
-InstanceDataWithRotation *pushLineEndToEndScreenSpace(Renderer *renderer, float2 P1, float2 P2, float4 color) {
-    InstanceDataWithRotation *c = 0;
-    if(renderer->lineCountScreenSpace < arrayCount(renderer->lineDataScreenSpace)) {
-        c = &renderer->lineDataScreenSpace[renderer->lineCountScreenSpace++];
-    } else {
-        assert(false);
-    }
-    
-    if(c) {
-        float2 offsetPosition = scale_float2(0.5f, plus_float2(P1, P2));
-        float length = float2_magnitude(minus_float2(P2, P1));
-        float3 scale = make_float3(length, 1.0f, 1.0f);
-
-        TransformX T = {};
-        T.pos.xy = offsetPosition;
-        T.scale = scale;
-
-        float2 diff = minus_float2(P2, offsetPosition);
-        T.rotation = make_float3(0, 0, ATan2_0to360(diff.y, diff.x));
-
-        c->M = getModelToViewSpace(T);
         c->color = color;
     }
 

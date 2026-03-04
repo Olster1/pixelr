@@ -75,6 +75,11 @@ FrameBuffer createFrameBuffer(int width, int height, void *data = 0) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     renderCheckError();
 
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+    renderCheckError();
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+    renderCheckError();
+
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, texture, 0); 
 
      glBindTexture(GL_TEXTURE_2D, 0);    
@@ -454,6 +459,14 @@ Texture loadTextureToGPU(char *fileName, unsigned char* rawData = 0, int bufferL
     
 }
 
+void backendRenderer_clearFrameBuffer(u32 bufferHandle) {
+    backendRenderer_BindFrameBuffer(bufferHandle);
+    glClearColor(1, 1, 1, 0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  
+
+    backendRenderer_BindFrameBuffer(0);
+}
+
 void updateInstanceData(uint32_t bufferHandle, void *data, size_t sizeInBytes) {
     glBindBuffer(GL_ARRAY_BUFFER, bufferHandle);
     renderCheckError();
@@ -479,7 +492,7 @@ void bindTexture(char *uniformName, int slotId, GLint textureId, Shader *shader)
     renderCheckError();
 }
 
-void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int instanceCount, float16 projectionTransform, float16 modelViewTransform, float3 lookingAxis, GLenum primitive = GL_TRIANGLES, float time = 0) {
+void drawModels(Renderer *renderer, ModelBuffer *model, Shader *shader, uint32_t textureId, int instanceCount, float16 projectionTransform, float16 modelViewTransform, float3 lookingAxis, GLenum primitive = GL_TRIANGLES, float time = 0) {
     glUseProgram(shader->handle);
     renderCheckError();
     
@@ -498,7 +511,13 @@ void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int inst
     glUniform1f(glGetUniformLocation(shader->handle, "u_time"), time);
     renderCheckError();
 
+    glUniform2f(glGetUniformLocation(shader->handle, "canvasDimInWorldUnits"), renderer->canvasDimWorldUnits.x, renderer->canvasDimWorldUnits.y);
+    renderCheckError();
+
     bindTexture("diffuse", 1, textureId, shader);
+    renderCheckError();
+
+    bindTexture("diffuse1", 2, (renderer->currentVisibleCanvasHandle > 0) ? renderer->currentVisibleCanvasHandle : textureId, shader);
     renderCheckError();
 
     glDrawElementsInstanced(primitive, model->indexCount, GL_UNSIGNED_INT, 0, instanceCount); 
@@ -512,13 +531,13 @@ void drawModels(ModelBuffer *model, Shader *shader, uint32_t textureId, int inst
     
 }
 
-void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 modelViewTransform, float16 projectionScreenTransform, float16 textScreenTransform, float3 lookingAxis, float16 cameraTransformWithoutTranslation) {
+void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 modelViewTransform, float16 projectionScreenTransform, float16 textScreenTransform, float3 lookingAxis) {
    
     if(renderer->checkerQuadCount > 0) {
         
         if(renderer->checkedQuadBackgroundHandle > 0) {
             updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->checkerQuads, renderer->checkerQuadCount*sizeof(InstanceDataWithRotation));
-            drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->checkedQuadBackgroundHandle, renderer->checkerQuadCount, projectionTransform, modelViewTransform, lookingAxis);
+            drawModels(renderer, &renderer->quadModel, &renderer->quadTextureShader, renderer->checkedQuadBackgroundHandle, renderer->checkerQuadCount, projectionTransform, modelViewTransform, lookingAxis);
         }
 
         renderer->checkerQuadCount = 0;
@@ -530,7 +549,7 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
         renderCheckError();
         updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->canvasQuads[i], sizeof(InstanceDataWithRotation));
         renderCheckError();
-        drawModels(&renderer->quadModel, &renderer->quadTextureShader, handle, 1, projectionTransform, modelViewTransform, lookingAxis, GL_TRIANGLES, renderer->timeAccum);
+        drawModels(renderer, &renderer->quadModel, &renderer->quadTextureShader, handle, 1, projectionTransform, modelViewTransform, lookingAxis, GL_TRIANGLES, renderer->timeAccum);
         renderCheckError();
     }
 
@@ -538,14 +557,14 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
     if(renderer->atlasQuadCount > 0) {
         updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->atlasQuads, renderer->atlasQuadCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadCount, projectionTransform, modelViewTransform, lookingAxis);
+        drawModels(renderer, &renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadCount, projectionTransform, modelViewTransform, lookingAxis);
 
         renderer->atlasQuadCount = 0;
     }
 
     if(renderer->atlasQuadHUDCount > 0) {
         updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->atlasHUDQuads, renderer->atlasQuadHUDCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadHUDCount, projectionScreenTransform, float16_identity(), lookingAxis);
+        drawModels(renderer, &renderer->quadModel, &renderer->quadTextureShader, renderer->atlasTexture, renderer->atlasQuadHUDCount, projectionScreenTransform, float16_identity(), lookingAxis);
 
         renderer->atlasQuadHUDCount = 0;
     }
@@ -554,30 +573,28 @@ void rendererFinish(Renderer *renderer, float16 projectionTransform, float16 mod
 
     if(renderer->glyphCount > 0) {
         updateInstanceData(renderer->quadModel.instanceBufferhandle, renderer->glyphData, renderer->glyphCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->quadModel, &renderer->fontTextureShader, renderer->fontAtlasTexture, renderer->glyphCount, textScreenTransform, float16_identity(), lookingAxis);
+        drawModels(renderer, &renderer->quadModel, &renderer->fontTextureShader, renderer->fontAtlasTexture, renderer->glyphCount, textScreenTransform, float16_identity(), lookingAxis);
 
         renderer->glyphCount = 0;
     }
 
     if(renderer->selectionCount > 0) {
         updateInstanceData(renderer->quadModel.instanceBufferhandle, &renderer->selectionQuad, sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->quadModel, &renderer->pixelSelectionShader, renderer->selectionTextureHandle, 1, projectionTransform, modelViewTransform, lookingAxis, GL_TRIANGLES, renderer->timeAccum);
+        drawModels(renderer, &renderer->quadModel, &renderer->pixelSelectionShader, renderer->selectionTextureHandle, 1, projectionTransform, modelViewTransform, lookingAxis, GL_TRIANGLES, renderer->timeAccum);
 
         renderer->selectionCount = 0;
     }
 
     if(renderer->lineCount > 0) {
         updateInstanceData(renderer->lineModel.instanceBufferhandle, renderer->lineData, renderer->lineCount*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->lineModel, &renderer->lineShader, renderer->fontAtlasTexture, renderer->lineCount, projectionTransform, modelViewTransform, lookingAxis, GL_LINES);
+        drawModels(renderer, &renderer->lineModel, &renderer->lineShader, (renderer->currentVisibleCanvasHandle == 0) ? renderer->fontAtlasTexture : renderer->currentVisibleCanvasHandle, renderer->lineCount, projectionTransform, modelViewTransform, lookingAxis, GL_LINES);
 
         renderer->lineCount = 0;
     }
     
-
     if(renderer->lineCountScreenSpace > 0) {
         updateInstanceData(renderer->lineModel.instanceBufferhandle, renderer->lineDataScreenSpace, renderer->lineCountScreenSpace*sizeof(InstanceDataWithRotation));
-        drawModels(&renderer->lineModel, &renderer->lineShader, renderer->fontAtlasTexture, renderer->lineCountScreenSpace, textScreenTransform, modelViewTransform, lookingAxis, GL_LINES);
-
+        drawModels(renderer, &renderer->lineModel, &renderer->lineScreenSpaceShader, (renderer->currentVisibleCanvasHandle == 0) ? renderer->fontAtlasTexture : renderer->currentVisibleCanvasHandle, renderer->lineCountScreenSpace, textScreenTransform, modelViewTransform, lookingAxis, GL_LINES);
         renderer->lineCountScreenSpace = 0;
     }
 

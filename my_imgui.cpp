@@ -1712,6 +1712,23 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
               ImGui::Begin("Color Palette");
               ImGui::ColorEdit3("Brush", (float*)&tab->colorPicked);
 
+              if(state->interactionMode == CANVAS_COLOR_DROPPER || state->overideDrawModeState == CANVAS_COLOR_DROPPER) {
+                ImVec2 pos = ImGui::GetCursorScreenPos();
+                ImDrawList* drawList = ImGui::GetWindowDrawList();
+                u32 a = float4_to_u32_color(state->currentDropperColor);
+
+                float size = 15.0f;
+
+                // 1. Draw your custom shapes
+                drawList->AddRectFilled(pos, ImVec2(pos.x + size, pos.y + size), a);
+                drawList->AddRect(pos, ImVec2(pos.x + size, pos.y + size), IM_COL32(255, 255, 255, 255));
+
+                // 2. To put text NEXT to it, use SameLine
+                ImGui::ItemSize(ImVec2(size, size)); // Tells ImGui how big the item was
+                ImGui::SameLine();
+                ImGui::Text("Dropper Color");
+              }
+
               ImU32 col = ImGui::GetColorU32(ImVec4(tab->colorPicked.x, tab->colorPicked.y, tab->colorPicked.z, tab->opacity));
               
               char *strToWrite = easy_createString_printf(&globalPerFrameArena, "0x%x", col);

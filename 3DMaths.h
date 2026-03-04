@@ -407,6 +407,16 @@ static Rect2f make_rect2f_center_dim(float2 centre, float2 dim) {
 
 	return result; 
 }
+static Rect2f make_rect2f_min_dim_2f(float2 min, float2 dim) {
+	Rect2f result = {};
+
+	result.minX = min.x;
+	result.minY = min.y;
+	result.maxX = min.x + dim.x;
+	result.maxY = min.y + dim.y;
+
+	return result; 
+}
 
 static Rect2f make_rect2f_min_dim(float minX, float minY, float dimX, float dimY) {
 	Rect2f result = {};

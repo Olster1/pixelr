@@ -11,53 +11,48 @@ void updateGame(GameState *gameState) {
     //NOTE This gets cleared out each frame since it is just an immediate mode setting
     gameState->overideDrawModeState = CANVAS_INTERACTION_MODE_NONE;
 
-    float fauxWidth = FAUX_WIDTH;
-    float16 screenGuiT = make_ortho_matrix_bottom_left_corner(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
-    // gameState->renderer->textMatrixResolution = make_float2(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x);
-
-    float16 screenT = make_ortho_matrix_origin_center(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
-    float16 textGuiT = make_ortho_matrix_origin_center(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);//make_ortho_matrix_top_left_corner_y_down(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
-    float16 cameraT = transform_getInverseX(gameState->camera.T);
-    float16 cameraTWithoutTranslation = getCameraX_withoutTranslation(gameState->camera.T);
-
-    float16 rot = eulerAnglesToTransform(gameState->camera.T.rotation.y, gameState->camera.T.rotation.x, gameState->camera.T.rotation.z);
-    float3 lookingAxis = make_float3(rot.E_[2][0], rot.E_[2][1], rot.E_[2][2]);
-
     checkFileDrop(gameState);
 
    CanvasTab *t = getActiveCanvasTab(gameState);
    if(t) {
+        gameState->renderer->currentVisibleCanvasHandle = t->overallCanvasHandle.textureHandle;
+        gameState->renderer->canvasDimWorldUnits = make_float2(t->w*VOXEL_SIZE_IN_METERS, t->h*VOXEL_SIZE_IN_METERS);
+
         checkAndSaveBackupFile(gameState);
         drawCanvasGridBackground(gameState, getActiveCanvas(gameState), getActiveCanvasTab(gameState));
         sanityCheckCanvasSize(t);
         Frame *f = getActiveFrame(gameState);
         Canvas *c = f->layers + f->activeLayer;
         
-        drawLinedGrid(gameState, getActiveCanvas(gameState));
+        
         {
         
             if(t && getArrayLength(t->frames) > 0) {
                 
                 for(int i = t->onionSkinningFrames; i >= 0; --i) {
-                    int frameIndex = t->activeFrame - i;
-                    if(frameIndex < 0) {
-                        frameIndex = getArrayLength(t->frames) + frameIndex;
-                    }
+            //         int frameIndex = t->activeFrame - i;
+            //         if(frameIndex < 0) {
+            //             frameIndex = getArrayLength(t->frames) + frameIndex;
+            //         }
                     
-                    assert(frameIndex >= 0 && frameIndex < getArrayLength(t->frames));
+            //         assert(frameIndex >= 0 && frameIndex < getArrayLength(t->frames));
 
-                    Frame *f = t->frames + frameIndex;
-                    assert(f);
+            //         Frame *f = t->frames + frameIndex;
+            //         assert(f);
 
-                    float onionSkinOpacity = 1.0f / MathMax(i + 1, 1);
-                    drawCanvas(gameState, f, t, onionSkinOpacity);
+            //         float onionSkinOpacity = 1.0f / MathMax(i + 1, 1);
+                    drawCanvasSelection(gameState, f, t);
                 }
             }
+            pushCanvasQuad(gameState->renderer, make_float3(0, 0, 0), make_float2(t->w*VOXEL_SIZE_IN_METERS, t->h*VOXEL_SIZE_IN_METERS), make_float4(1, 1, 1, 1), t->overallCanvasHandle.textureHandle);
+
         }
+
+        drawLinedGrid(gameState, getActiveCanvas(gameState));
 
         updateUndoState(gameState);
 
-        updateCanvasZoom(gameState, isInteractingWithIMGUI(), 0.8f*gameState->scrollSpeed*(gameState->inverseZoom ? -1 : 1));
+        updateCanvasZoom(gameState, isInteractingWithIMGUIZoomable(), 0.8f*gameState->scrollSpeed*(gameState->inverseZoom ? -1 : 1));
         //NOTE: Update interaction with the canvas
         if(!isInteractingWithIMGUI()) {
             if(gameState->keys.keys[KEY_SPACE] == MOUSE_BUTTON_DOWN) {
@@ -95,6 +90,7 @@ void updateGame(GameState *gameState) {
             } else if(isKeyPressedOrDown(gameState, gameState->hotkeyActionKeys[HOTKEY_COLOR_DROPPER])) {
                 updateColorDropper(gameState, getActiveCanvas(gameState));
                 hideOrShowArrowIfOnCanvas(gameState, t);
+                drawSinglePixelCursor(gameState);
                 gameState->overideDrawModeState = CANVAS_COLOR_DROPPER;
             } else if(isKeyPressedOrDown(gameState, gameState->hotkeyActionKeys[HOTKEY_ERASER]) && !isKeyPressedOrDown(gameState, KEY_COMMAND)) {
                 updateEraser(gameState, getActiveCanvas(gameState));
@@ -120,15 +116,15 @@ void updateGame(GameState *gameState) {
                     hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_MOVE_MODE) {
                     updateCanvasMove(gameState);
-                    drawCursor(gameState);
+                    drawCursor(gameState, t);
                     hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_SELECT_RECTANGLE_MODE) {
                     updateCanvasSelect(gameState, getActiveCanvasTab(gameState));
-                    drawCursor(gameState);
+                    drawCursor(gameState, t);
                     hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_SPRAY_CAN) {
                     updateSprayCan(gameState, getActiveCanvas(gameState));
-                    drawCursor(gameState);
+                    drawCursor(gameState, t);
                     hideOrShowArrowIfOnCanvas(gameState, t);
                 } else if(gameState->interactionMode == CANVAS_DITHER_STAMP) {
                     updateCanvasDraw(gameState, getActiveCanvas(gameState), false, DITHER_STAMP_REGULAR);
@@ -172,7 +168,18 @@ void updateGame(GameState *gameState) {
     #if EASY_PROFILER_ON
     EasyProfile_DrawGraph(gameState->renderer, gameState, gameState->drawState, gameState->dt, gameState->aspectRatio_y_over_x, gameState->mouseP_01);
     #endif
+
+    float fauxWidth = FAUX_WIDTH;
+    float16 screenGuiT = make_ortho_matrix_bottom_left_corner(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
+
+    float16 screenT = make_ortho_matrix_origin_center(gameState->camera.fov, gameState->camera.fov*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
+    float16 textGuiT = make_ortho_matrix_origin_center(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);//make_ortho_matrix_top_left_corner_y_down(fauxWidth, fauxWidth*gameState->aspectRatio_y_over_x, MATH_3D_NEAR_CLIP_PlANE, MATH_3D_FAR_CLIP_PlANE);
+    float16 cameraT = transform_getInverseX(gameState->camera.T);
+    float16 cameraTWithoutZoom = getCameraX_withoutTranslation(gameState->camera.T);
+
+    float16 rot = eulerAnglesToTransform(gameState->camera.T.rotation.y, gameState->camera.T.rotation.x, gameState->camera.T.rotation.z);
+    float3 lookingAxis = make_float3(rot.E_[2][0], rot.E_[2][1], rot.E_[2][2]);
     
-    rendererFinish(gameState->renderer, screenT, cameraT, screenGuiT, textGuiT, lookingAxis, cameraTWithoutTranslation);
+    rendererFinish(gameState->renderer, screenT, cameraT, screenGuiT, textGuiT, lookingAxis);
     gameState->renderer->timeAccum += 0.1f*gameState->dt;
 }   

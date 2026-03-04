@@ -136,6 +136,7 @@ CanvasTab::CanvasTab(int w, int h, char *saveFilePath_) {
     {
         DEBUG_TIME_BLOCK_NAMED("CREATE GPU TEXTURES")
         this->selectionGpuHandle = createGPUTextureRed(w, h).handle;
+        this->overallCanvasHandle = createFrameBuffer(w, h, 0);
 
         // u32 *pixels = pushArray(&globalPerFrameArena, w*h, u32);
 
