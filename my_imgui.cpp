@@ -14,30 +14,31 @@ ImGuiIO& initMyImGui(SDL_GLContext gl_context, SDL_Window* window, char *exePath
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init("#version 150");
-
-    io.Fonts->AddFontDefault(); // Regular font
+    io.Fonts->AddFontDefault(); // Base font (uses implicit size)
     static const ImWchar icon_ranges[] = { 0x0020, 0xFFFF, 0 };
     ImFontConfig config;
     config.MergeMode = true;
 
     {
-      char *fontFile = (char *)easyPlatform_allocateMemory(arrayCount(fa1_otf), EASY_PLATFORM_MEMORY_NONE);
-      easyPlatform_copyMemory(fontFile, fa1_otf, arrayCount(fa1_otf));
-      
-      ImFont* iconFont = io.Fonts->AddFontFromMemoryTTF(fontFile, arrayCount(fa1_otf), 16.0f, &config, icon_ranges);
-      if (!iconFont) {
-          assert(false);
-      }
+        char *fontFile = (char *)easyPlatform_allocateMemory(arrayCount(fa1_otf), EASY_PLATFORM_MEMORY_NONE);
+        easyPlatform_copyMemory(fontFile, fa1_otf, arrayCount(fa1_otf));
+        
+        // CHANGED: Pass 0.0f instead of 16.0f to inherit the reference size
+        ImFont* iconFont = io.Fonts->AddFontFromMemoryTTF(fontFile, arrayCount(fa1_otf), 0.0f, &config, icon_ranges);
+        if (!iconFont) {
+            assert(false);
+        }
     }
 
     {
-      char *fontFile = (char *)easyPlatform_allocateMemory(arrayCount(icomoon_ttf), EASY_PLATFORM_MEMORY_NONE);
-      easyPlatform_copyMemory(fontFile, icomoon_ttf, arrayCount(icomoon_ttf));
-      
-      ImFont* iconFont = io.Fonts->AddFontFromMemoryTTF(fontFile, arrayCount(icomoon_ttf), 20.0f, &config, icon_ranges);
-      if (!iconFont) {
-          assert(false);
-      }
+        char *fontFile = (char *)easyPlatform_allocateMemory(arrayCount(icomoon_ttf), EASY_PLATFORM_MEMORY_NONE);
+        easyPlatform_copyMemory(fontFile, icomoon_ttf, arrayCount(icomoon_ttf));
+        
+        // CHANGED: Pass 0.0f instead of 16.0f to inherit the reference size
+        ImFont* iconFont = io.Fonts->AddFontFromMemoryTTF(fontFile, arrayCount(icomoon_ttf), 0.0f, &config, icon_ranges);
+        if (!iconFont) {
+            assert(false);
+        }
     }
 
     io.Fonts->Build();
@@ -234,6 +235,36 @@ int getActiveCanvasCount(Frame *frame) {
   return result;
 }
 
+int findClosestAliveActiveFrame(CanvasTab *canvasTab, int startFrame) {
+  int result = 0;
+  int smallestDist = INT_MAX;
+  for (int i = 0; i < getArrayLength(canvasTab->frames); i++) {
+    if(!canvasTab->frames[i].deleted) {
+      int dist = get_abs_value_int(startFrame - i);
+      if(dist < smallestDist) {
+          smallestDist = dist;
+          result = i;
+      }
+    }
+  }
+  return result;
+}
+
+int findClosestAliveActiveCanvas(Frame *frame, int startLayer) {
+  int result = 0;
+  int smallestDist = INT_MAX;
+  for (int i = 0; i < getArrayLength(frame->layers); i++) {
+    if(!frame->layers[i].deleted) {
+      int dist = get_abs_value_int(startLayer - i);
+      if(dist < smallestDist) {
+          smallestDist = dist;
+          result = i;
+      }
+    }
+  }
+  return result;
+}
+
 void drawChip(char *chipTitle) {
   ImGui::PushStyleColor(ImGuiCol_Button, IM_COL32(200, 200, 255, 255));  // background
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered, IM_COL32(170, 170, 230, 255));
@@ -296,11 +327,11 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
             frameUndoInfo.canvasType = UNDO_REDO_FRAME_DELETE;
             frameUndoInfo.frameIndex = canvasTab->activeFrame;
             frameUndoInfo.beforeActiveLayer = canvasTab->activeFrame;
-             
-            canvasTab->activeFrame--;
-            if(canvasTab->activeFrame < 0) {
-              canvasTab->activeFrame = 0;
-            }
+
+            canvasTab->activeFrame = findClosestAliveActiveFrame(canvasTab, canvasTab->activeFrame);
+            
+            assert(canvasTab->activeFrame >= 0);
+
             frameUndoInfo.afterActiveLayer = canvasTab->activeFrame;
 
             canvasTab->addUndoInfo(frameUndoInfo);
@@ -444,11 +475,8 @@ void ui_deleteCanvas(GameState *state, CanvasTab *canvasTab, Frame *activeFrame,
 
       frameUndoInfo.beforeActiveLayer = activeFrame->activeLayer;
 
-      if (i >= activeFrame->activeLayer)
-          activeFrame->activeLayer--;
-      if (activeFrame->activeLayer < 0)
-          activeFrame->activeLayer = 0;
-
+      activeFrame->activeLayer = findClosestAliveActiveCanvas(activeFrame, activeFrame->activeLayer);
+      
       frameUndoInfo.afterActiveLayer = activeFrame->activeLayer;
       canvasTab->addUndoInfo(frameUndoInfo);
   } else {
@@ -780,7 +808,7 @@ void exportWindow(GameState *gameState) {
       if(gameState->maxColumnsExport) {
         CanvasTab *tab = getActiveCanvasTab(gameState);
         if(tab) {
-          snprintf(gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0), "%d", getArrayLength(tab->frames));
+          snprintf(gameState->dimStr0, IM_ARRAYSIZE(gameState->dimStr0), "%d", getTotalFrameCountBasedOnDeletedFrames(tab));
           snprintf(gameState->dimStr1, IM_ARRAYSIZE(gameState->dimStr1), "%d", 1);
         }
       }

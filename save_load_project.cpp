@@ -316,6 +316,17 @@ int getCorrectActiveLayerBasedOnDeletedLayers(Frame *frame) {
     return result;
 }
 
+int getTotalFrameCountBasedOnDeletedFrames(CanvasTab *tab) {
+    int count = 0;
+    for(int i = 0; i < getArrayLength(tab->frames); ++i) {
+        Frame *f = tab->frames + i;
+        if(!f->deleted) {
+            count++;
+        }
+    }
+    return count;
+}
+
 int getCorrectActiveFrameBasedOnDeletedFrames(CanvasTab *tab) {
     int result = 0;
     bool found = false;

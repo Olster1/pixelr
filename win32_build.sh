@@ -9,18 +9,18 @@ echo "=== Cleaning old object files ==="
 echo "=== Building ImGui (libimgui.a) ==="
 
 x86_64-w64-mingw32-g++ -std=gnu++17 -O2 -c \
-    -I ~/Documents/dev/imgui \
+    -I ~/dev/imgui \
     -I ./windows_sdl_64bit/include \
     -I ./windows_sdl_64bit/include/SDL2 \
     -I ./windows_sdl_image_64bit/include \
     -I ./windows_sdl_image_64bit/include/SDL2 \
-    ~/Documents/dev/imgui/imgui.cpp \
-    ~/Documents/dev/imgui/imgui_draw.cpp \
-    ~/Documents/dev/imgui/imgui_tables.cpp \
-    ~/Documents/dev/imgui/imgui_widgets.cpp \
-    ~/Documents/dev/imgui/imgui_demo.cpp \
-    ~/Documents/dev/imgui/backends/imgui_impl_opengl3.cpp \
-    ~/Documents/dev/imgui/backends/imgui_impl_sdl2.cpp \
+    ~/dev/imgui/imgui.cpp \
+    ~/dev/imgui/imgui_draw.cpp \
+    ~/dev/imgui/imgui_tables.cpp \
+    ~/dev/imgui/imgui_widgets.cpp \
+    ~/dev/imgui/imgui_demo.cpp \
+    ~/dev/imgui/backends/imgui_impl_opengl3.cpp \
+    ~/dev/imgui/backends/imgui_impl_sdl2.cpp \
     -static -static-libgcc -static-libstdc++ 
 
 
@@ -41,8 +41,8 @@ x86_64-w64-mingw32-g++ -O2 -DNDEBUG -std=gnu++17 -msse4.2 \
     ./platform_backends/platform_layer.cpp \
     -mwindows \
     -I ./libs/GLAD/include \
-    -I ~/Documents/dev/imgui \
-    -I ~/Documents/dev/imgui/backends \
+    -I ~/dev/imgui \
+    -I ~/dev/imgui/backends \
     -I ./windows_sdl_64bit/include \
     -I ./windows_sdl_64bit/include/SDL2 \
     -I ./windows_sdl_image_64bit/include \

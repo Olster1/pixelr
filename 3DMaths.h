@@ -15,6 +15,13 @@ static inline float get_abs_value(float value) {
 	return value;
 }
 
+static inline int get_abs_value_int(int value) {
+	if(value < 0) {
+		value *= -1;
+	}
+	return value;
+}
+
 inline float radiansToDegrees(float radians) {
 	float result = (radians / TAU32) * 360;
 	return result;

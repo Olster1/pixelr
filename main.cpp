@@ -133,6 +133,7 @@ void updateGame(GameState *gameState) {
                 } else if(gameState->interactionMode == CANVAS_COLOR_DROPPER || gameState->interactionMode == CANVAS_COLOR_DROPPER_REPLACE_DEST || gameState->interactionMode == CANVAS_COLOR_DROPPER_REPLACE_SRC) {
                     updateColorDropper(gameState, getActiveCanvas(gameState));
                     hideOrShowArrowIfOnCanvas(gameState, t);
+                    drawSinglePixelCursor(gameState);
                 }
             }
         }
