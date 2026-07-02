@@ -209,25 +209,27 @@ void saveSpriteSheetToPNG(Renderer *renderer, CanvasTab *canvas, int columns, in
 
         for(int i = 0; i < getArrayLength(canvas->frames); ++i) {
             Frame *frame = canvas->frames + i;
-            u32 *compositePixels = getPixelsForFrame_shortTerm(canvas, frame);
+            if(!frame->deleted) {
+                u32 *compositePixels = getPixelsForFrame_shortTerm(canvas, frame);
 
-            for(int k = 0; k < canvas->h; ++k) {
-                for(int j = 0; j < canvas->w; ++j) {
-                    
-                    int tempX = x + j;
-                    int tempY = y + k;
+                for(int k = 0; k < canvas->h; ++k) {
+                    for(int j = 0; j < canvas->w; ++j) {
+                        
+                        int tempX = x + j;
+                        int tempY = y + k;
 
-                    if (tempX < totalWidth && tempY < totalHeight) {
-                        totalPixels[tempY * totalWidth + tempX] = compositePixels[k * canvas->w + j];
+                        if (tempX < totalWidth && tempY < totalHeight) {
+                            totalPixels[tempY * totalWidth + tempX] = compositePixels[k * canvas->w + j];
+                        }
                     }
                 }
-            }
-            
-            x += canvas->w;
+                
+                x += canvas->w;
 
-            if(((i + 1) % columns) == 0) {
-                y += canvas->h;
-                x = 0;
+                if(((i + 1) % columns) == 0) {
+                    y += canvas->h;
+                    x = 0;
+                }
             }
             
         }

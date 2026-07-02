@@ -142,7 +142,7 @@ static float lerp(float a, float b, LerpTValue t) {
 }
 
 float randomBetween(float min, float max) {
-	return lerp(min, max, make_lerpTValue((float)rand() / RAND_MAX));
+	return lerp(min, max, make_lerpTValue((float)rand() / (float)RAND_MAX));
 }
 
 struct float2
