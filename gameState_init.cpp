@@ -128,6 +128,17 @@ void loadDefaultProjectSettings(GameState *gameState) {
                     gameState->nearest = t.intVal;
                 }
 
+                  if(easyString_stringsMatch_null_and_count("gridCellSize", t.at, t.size)) {
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_COLON);
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_INTEGER);
+                    gameState->gridCellSize.x = t.intVal;
+                    t = lexGetNextToken(&tokenizer);
+                    assert(t.type == TOKEN_INTEGER);
+                    gameState->gridCellSize.y = t.intVal;
+                }
+
                 if(easyString_stringsMatch_null_and_count("inverseZoom", t.at, t.size)) {
                     t = lexGetNextToken(&tokenizer);
                     assert(t.type == TOKEN_COLON);
@@ -221,6 +232,7 @@ void initGameState(GameState *gameState) {
     gameState->camera.shakeTimer = -1;
     gameState->camera.runShakeTimer = -1;
     gameState->checkBackground = true;
+    gameState->gridCellSize = { .x = 1, .y = 1} ;
 
     gameState->bgColor = u32_to_float4_color(0xFF292829);//make_float4(0.3f,0, 0.3f, 1); 
     gameState->drawGrid = false;

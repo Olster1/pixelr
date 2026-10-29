@@ -27,19 +27,27 @@ void updateHotKeys(GameState *gameState) {
         if(gameState->keys.keys[KEY_LEFT] == MOUSE_BUTTON_PRESSED) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
-                t->activeFrame--;
-                if(t->activeFrame < 0) {
-                    t->activeFrame = getArrayLength(t->frames) - 1;
-                }
+                int loopCount = 0;
+                do {
+                    t->activeFrame--;
+                    if(t->activeFrame < 0) {
+                        t->activeFrame = getArrayLength(t->frames) - 1;
+                    }
+                    loopCount++;
+                } while(t->frames[t->activeFrame].deleted && loopCount < getArrayLength(t->frames));
             }
         }
         if(gameState->keys.keys[KEY_RIGHT] == MOUSE_BUTTON_PRESSED) {
             CanvasTab *t = getActiveCanvasTab(gameState);
             if(t) {
-                t->activeFrame++;
-                if(t->activeFrame >= getArrayLength(t->frames)) {
-                    t->activeFrame = 0;
-                }
+                int loopCount = 0;
+                do {
+                    t->activeFrame++;
+                    if(t->activeFrame >= getArrayLength(t->frames)) {
+                        t->activeFrame = 0;
+                    }
+                    loopCount++;
+                } while(t->frames[t->activeFrame].deleted && loopCount < getArrayLength(t->frames));
             }
         }
 

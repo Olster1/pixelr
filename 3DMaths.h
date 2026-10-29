@@ -187,6 +187,11 @@ struct float4
 	};
 };
 
+struct int2 {
+	int x;
+	int y;
+};
+
 
 static float2 make_float2(float x0, float y0) {
 	float2 result = {};

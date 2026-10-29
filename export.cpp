@@ -198,8 +198,6 @@ void saveSpriteSheetToPNG(Renderer *renderer, CanvasTab *canvas, int columns, in
     NULL);
 
     if(result) {
-        // columns = min getArrayLength(canvas->frames) / rows;
-
         int totalWidth = columns*canvas->w;
         int totalHeight = rows*canvas->h;
         u32 *totalPixels = pushArray(&globalPerFrameArena, totalWidth*totalHeight, u32);
@@ -378,6 +376,9 @@ void saveGlobalProjectSettings(void *gameState_) {
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"drawGrid\": %d}\n", gameState->drawGrid);
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
+    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"gridCellSize\": %d %d}\n", gameState->gridCellSize.x, gameState->gridCellSize.y);
+    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
+
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"inverseZoom\": %d}\n", gameState->inverseZoom);
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
@@ -402,8 +403,6 @@ void saveGlobalProjectSettings(void *gameState_) {
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"smoothStrokeCount\": %d}\n", gameState->runningAverageCount);
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
-    strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"drawGrid\": %d}\n", gameState->drawGrid);
-    offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);
 
     strToWrite = easy_createString_printf(&globalPerFrameArena, "{\"hotkeyOpacity\": %d}\n", gameState->hotkeyActionKeys[HOTKEY_OPACITY]);
     offset = platformWriteFile(&fileHandle, strToWrite, easyString_getSizeInBytes_utf8(strToWrite), offset);

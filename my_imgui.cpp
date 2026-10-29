@@ -387,6 +387,64 @@ void drawAnimationTimeline(GameState *state, float deltaTime) {
             ImVec2(1, 0)
         );
 
+            
+
+            ImGuiDragDropFlags src_flags = 0;
+            src_flags |= ImGuiDragDropFlags_SourceNoDisableHover;     // Keep the source displayed as hovered
+            src_flags |= ImGuiDragDropFlags_SourceNoHoldToOpenOthers; // Because our dragging is local, we disable the feature of opening foreign treenodes/tabs while dragging
+            if (ImGui::BeginDragDropSource(src_flags))
+            {
+                ImGui::SetDragDropPayload("FRAME_COLUMN", &i, sizeof(int));
+                ImGui::Text("Moving Layer %d", i);
+                ImGui::EndDragDropSource();
+            }
+            
+            // Accept drop target (this row)
+            if (ImGui::BeginDragDropTarget())
+            { 
+              const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("FRAME_COLUMN");
+                if (payload)
+                {
+                    int srcIndex = *(const int*)payload->Data;
+                    if (srcIndex != i)
+                    {
+
+                      Frame moved = canvasTab->frames[srcIndex];
+
+                      if (srcIndex < i) {
+                          // moving forward: shift left
+                          for (int j = srcIndex; j < i; ++j) {
+                              canvasTab->frames[j] = canvasTab->frames[j + 1];
+                          }
+                      } else if (srcIndex > i) {
+                          // moving backward: shift right
+                          for (int j = srcIndex; j > i; --j) {
+                              canvasTab->frames[j] = canvasTab->frames[j - 1];
+                          }
+                      }
+
+                      canvasTab->frames[i] = moved;
+
+                      // //NOTE: Add Undo redo action
+                      FrameInfo frameUndoInfo = {};
+                      frameUndoInfo.canvasType = UNDO_REDO_FRAME_SWAP;
+                      frameUndoInfo.canvasIndex = i;
+                      frameUndoInfo.canvasIndexB = srcIndex;
+
+                      frameUndoInfo.beforeActiveLayer = canvasTab->activeFrame;
+
+                      if (canvasTab->activeFrame == srcIndex) {
+                        canvasTab->activeFrame = i;
+                      }
+
+                      frameUndoInfo.afterActiveLayer = canvasTab->activeFrame;
+                      canvasTab->addUndoInfo(frameUndoInfo);
+                            
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
             // Draw the image on top
             ImGui::SetCursorScreenPos(imagePos); // Reset position to draw the image
             ImGui::Image((ImTextureID)(intptr_t)canvasTab->frames[i].frameBufferHandle.textureHandle, imageSize, ImVec2(0, 1), ImVec2(1, 0));
@@ -658,23 +716,39 @@ void outputLayerList(GameState *state, CanvasTab *canvasTab, Frame *activeFrame)
         addToolTip("Delete this layer.");
         ImGui::PopID();
 
-        ImGui::SameLine();
+        // ImGui::SameLine();
 
         // --- Column 2: Buttons ---
+        //NOTE: More layer settings could go here
+        // ImGui::PushID(i);
+        // if (ImGui::Button("\uf141"))
+        // {
+        //     state->layerOptionsIndex = i;
+        //     state->showLayerOptionsWindow = true;
+        // }
+        // addToolTip("See more layer settings.");
+        // ImGui::PopID();
+
+        // if(activeFrame->layers[i].opacity < 1.0) {
+        //   ImGui::Text("%.2f alpha", activeFrame->layers[i].opacity);
+        // }
+
         ImGui::PushID(i);
-        if (ImGui::Button("\uf141"))
-        {
-            state->layerOptionsIndex = i;
-            state->showLayerOptionsWindow = true;
-        }
-        addToolTip("See more layer settings.");
-        ImGui::PopID();
 
-        if(activeFrame->layers[i].opacity < 1.0) {
-          ImGui::Text("%.2f alpha", activeFrame->layers[i].opacity);
-        }
-
+        // 1. Display the label first
+        ImGui::Text("Alpha");
         ImGui::SameLine();
+
+        // 2. Force the slider to fill the remaining horizontal space
+        ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x);
+
+        // 3. Hide the trailing label by using ##Alpha
+        if (ImGui::SliderFloat("##Alpha", &activeFrame->layers[i].opacity, 0.0f, 1.0f)) {
+            // Your change logic here
+        }
+
+        ImGui::PopItemWidth();
+        ImGui::PopID();
     }
   ImGui::EndTable();
 }
@@ -1152,8 +1226,6 @@ void updateColorPaletteEnter(GameState *gameState) {
             }
           }
 
-      
-
     // for(int i = 0; i < arrayCount(colors); ++i) {
     //   float4 a = u32_to_float4_color(colors[i]);
     //   //NOTE: Expects blue to be in the 16th bit spot and red to be in the 0th bit spot
@@ -1387,6 +1459,26 @@ void updateCanvasSettingsWindow(GameState *gameState) {
     addToolTip("Draws background checker pattern.");
     if(ImGui::Checkbox("Draw Per Pixel Grid", &gameState->drawGrid)) {
       saveGlobalProjectSettings(gameState);
+    }
+    if(gameState->drawGrid) {
+        if(ImGui::InputInt("Cell Width", &gameState->gridCellSize.x, 1, INT_MAX, ImGuiInputTextFlags_CharsDecimal))  {
+            saveGlobalProjectSettings(gameState);
+        }
+        
+        if(ImGui::InputInt("Cell Height", &gameState->gridCellSize.y, 1, INT_MAX, ImGuiInputTextFlags_CharsDecimal)) {
+          saveGlobalProjectSettings(gameState);
+        }
+
+        // Clamp values to prevent negative or zero dimensions
+        if (gameState->gridCellSize.x < 1) {
+          gameState->gridCellSize.x = 1;
+          saveGlobalProjectSettings(gameState);
+        }
+        if (gameState->gridCellSize.y < 1) {
+          gameState->gridCellSize.y = 1;
+          saveGlobalProjectSettings(gameState);
+        }
+
     }
     addToolTip("Draws the outline of individual pixels.");
     if(ImGui::Checkbox("Nearest Filter", &gameState->nearest)) {
@@ -1826,6 +1918,24 @@ void updateMyImgui(GameState *state, ImGuiIO& io) {
               ImGui::SameLine();
               
               dropdownButton(state);
+
+              //NOTE: Add a flip on vertical or horizontal
+              ImGui::Text("Flip:");
+              ImGui::SameLine();
+              ImGui::PushID("FLIP V");
+              if (ImGui::Button("\ue901")) {
+                flipVertically(state, getActiveCanvasTab(state), getActiveCanvas(state));
+              }
+              ImGui::PopID();
+
+              addToolTip("Flip Vertically");
+              ImGui::SameLine();
+              ImGui::PushID("FLIP V");
+              if (ImGui::Button("\ue900")) {
+                flipHorizontally(state, getActiveCanvasTab(state), getActiveCanvas(state));
+              }
+              ImGui::PopID();
+              addToolTip("Flip Horizontally");
 
               ImGui::Text("Select a Color:");
               ImGui::SameLine();

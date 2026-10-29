@@ -143,7 +143,7 @@ void outlineCanvas(GameState *gameState) {
         int h = tab->h;
         u32 mask = 0xFF000000;
         u32 *tempImage = (u32 *)pushArray(&globalPerFrameArena, w*h, u32);
-         memcpy(tempImage, canvas->pixels, w * h * sizeof(u32));
+        memcpy(tempImage, canvas->pixels, w * h * sizeof(u32));
 
         for(int y = 0; y < h; ++y) {
             for(int x = 0; x < w; ++x) {
@@ -1154,12 +1154,47 @@ void updateSprayCan(GameState *gameState, Canvas *canvas) {
     
 }
 
+void flipVertically(GameState *gameState, CanvasTab *tab, Canvas *canvas) {
+    u32 *tempImage = (u32 *)pushArray(&globalPerFrameArena, tab->w*tab->h, u32);
+    
+    for(int y = 0; y < canvas->h; y++) {
+        for(int x = 0; x < canvas->w; x++) {
+            u32 newColor = getCanvasColor(canvas, x, canvas->h - y);
+            u32 prevColor = getCanvasColor(canvas, x, y);
+
+            tempImage[y*tab->w + x] = newColor;
+            tab->addUndoInfo(PixelInfo(x, y, prevColor, newColor), canvas);
+        }
+    }
+
+    // Copy back in one pass
+    memcpy(canvas->pixels, tempImage, tab->w * tab->h * sizeof(u32));
+}
+
+void flipHorizontally(GameState *gameState, CanvasTab *tab, Canvas *canvas) {
+    u32 *tempImage = (u32 *)pushArray(&globalPerFrameArena, tab->w*tab->h, u32);
+    
+    for(int y = 0; y < canvas->h; y++) {
+        for(int x = 0; x < canvas->w; x++) {
+            u32 newColor = getCanvasColor(canvas, canvas->w - x, y);
+            u32 prevColor = getCanvasColor(canvas, x, y);
+
+            tempImage[y*tab->w + x] = newColor;
+            tab->addUndoInfo(PixelInfo(x, y, prevColor, newColor), canvas);
+        }
+    }
+
+    // Copy back in one pass
+    memcpy(canvas->pixels, tempImage, tab->w * tab->h * sizeof(u32));
+}
+
 void drawLinedGrid(GameState *gameState, Canvas *canvas) {
     DEBUG_TIME_BLOCK()
     float4 greyColor = make_float4(0.4, 0.4, 0.4, 1);
     CanvasTab *tab = getActiveCanvasTab(gameState);
     assert(tab->h == canvas->h && tab->h == canvas->h);
-    for(int x = 0; x < canvas->h + 1; ++x) {
+    
+    for(int x = 0; x < canvas->h + 1; x += gameState->gridCellSize.x) {
         if(gameState->drawGrid || (x == 0 || x == canvas->h)) {
             TransformX T = {};
             T.pos = make_float3(0, x*VOXEL_SIZE_IN_METERS - 0.5f*canvas->h*VOXEL_SIZE_IN_METERS, 0);
@@ -1174,7 +1209,7 @@ void drawLinedGrid(GameState *gameState, Canvas *canvas) {
         }
     }
 
-    for(int y = 0; y < canvas->w + 1; ++y) {
+    for(int y = 0; y < canvas->w + 1; y += gameState->gridCellSize.y) {
         if(gameState->drawGrid || (y == 0 || y == canvas->w)) {
             TransformX T = {};
             T.pos = make_float3(y*VOXEL_SIZE_IN_METERS - 0.5f*canvas->w*VOXEL_SIZE_IN_METERS, 0, 0);
@@ -1369,6 +1404,23 @@ void updateGpuCanvasTextures(GameState *gameState) {
     }
 }
 
+void undoRedo_MoveFrame(Frame* frames, int from, int to)
+{
+    if (from == to) return;
+
+    Frame moved = frames[from];
+
+    if (from < to) {
+        for (int i = from; i < to; ++i)
+            frames[i] = frames[i + 1];
+    } else {
+        for (int i = from; i > to; --i)
+            frames[i] = frames[i - 1];
+    }
+
+    frames[to] = moved;
+}
+
 
 void undoRedo_MoveCanvas(Canvas* layers, int from, int to)
 {
@@ -1410,7 +1462,14 @@ void processRedoCommandFromBlock(GameState *gameState, CanvasTab *tab, UndoRedoB
         Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
         canvas->deleted =  (block->type == UNDO_REDO_CANVAS_CREATE) ? false : true;
         f->activeLayer = block->frameInfo.afterActiveLayer;
-        
+     } else if(block->type == UNDO_REDO_FRAME_SWAP) {
+        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+
+            undoRedo_MoveFrame(tab->frames,
+                block->frameInfo.canvasIndexB,
+                block->frameInfo.canvasIndex);
+
+        tab->activeFrame = block->frameInfo.afterActiveLayer;
     } else if(block->type == UNDO_REDO_CANVAS_SWAP) {
         assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
         Frame *f = tab->frames + block->frameInfo.frameIndex;
@@ -1463,6 +1522,15 @@ void processUndoCommandFromBlock(GameState *gameState, CanvasTab *tab, UndoRedoB
         Canvas *canvas = f->layers + block->frameInfo.canvasIndex;
         canvas->deleted = (block->type == UNDO_REDO_CANVAS_CREATE) ? true : false;
         f->activeLayer = block->frameInfo.beforeActiveLayer;
+
+    } else if(block->type == UNDO_REDO_FRAME_SWAP) {
+        assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
+
+        undoRedo_MoveFrame(tab->frames,
+                block->frameInfo.canvasIndex,
+                block->frameInfo.canvasIndexB);
+
+        tab->activeFrame = block->frameInfo.beforeActiveLayer;
     } else if(block->type == UNDO_REDO_CANVAS_SWAP) {
         assert(block->frameInfo.frameIndex < getArrayLength(tab->frames));
         Frame *f = tab->frames + block->frameInfo.frameIndex;

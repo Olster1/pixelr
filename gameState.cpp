@@ -182,6 +182,7 @@ struct GameState {
     int brushOutlineSize;
 
     Renderer *renderer;
+    int2 gridCellSize;
 
     Camera camera;
 

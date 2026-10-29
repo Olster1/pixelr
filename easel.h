@@ -26,6 +26,7 @@ enum UndoRedoBlockType {
     UNDO_REDO_CANVAS_CREATE,
     UNDO_REDO_FRAME_CREATE,
     UNDO_REDO_CANVAS_SWAP,
+    UNDO_REDO_FRAME_SWAP,
     UNDO_REDO_CANVAS_PARENT, //NOTE: Has children undo, redo actions
 };
 
